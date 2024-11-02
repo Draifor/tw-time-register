@@ -1,16 +1,12 @@
-import React, { useState } from 'react';
-import './style/switch_dark_mode.css';
+import React from 'react';
+import '../styles/switch_dark_mode.css';
+import useDarkMode from '../hooks/useDarkMode';
 
-const svgMoon = new URL(`./assets/moon.svg`, import.meta.url).href;
-const svgSun = new URL(`./assets/sun.svg`, import.meta.url).href;
+const svgMoon = new URL(`../assets/moon.svg`, import.meta.url).href;
+const svgSun = new URL(`../assets/sun.svg`, import.meta.url).href;
 
 function SwitchDarkMode() {
-  const [isDark, setDark] = useState(true);
-
-  const darkModeHandler = () => {
-    setDark(!isDark);
-    document.body.classList.toggle('dark');
-  };
+  const { isDark, darkModeHandler } = useDarkMode();
 
   return (
     // https://uiverse.io/andrew-demchenk0/honest-stingray-90

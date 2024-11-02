@@ -7,7 +7,7 @@ import renderer from 'vite-plugin-electron-renderer';
 import pkg from './package.json';
 
 const root = join(__dirname);
-const srcRoot = join(__dirname, 'src');
+const srcRoot = join(__dirname, 'src/renderer');
 rmSync('dist-electron', { recursive: true, force: true });
 
 const buildElectron = (isDev: boolean) => ({
@@ -25,7 +25,7 @@ function plugins(isDev: boolean) {
     electron([
       {
         // Main-Process entry file of the Electron App.
-        entry: join(root, 'electron/index.ts'),
+        entry: join(root, 'src/main/index.ts'),
         onstart(options) {
           options.startup();
         },
@@ -34,7 +34,7 @@ function plugins(isDev: boolean) {
         }
       },
       {
-        entry: join(root, 'electron/preload.ts'),
+        entry: join(root, 'src/main/preload.ts'),
         onstart(options) {
           // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete,
           // instead of restarting the entire Electron App.

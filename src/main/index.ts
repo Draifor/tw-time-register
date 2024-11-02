@@ -2,8 +2,10 @@
 import { join } from 'path';
 
 // Packages
-import { BrowserWindow, app, ipcMain, IpcMainEvent, nativeTheme } from 'electron';
+import { BrowserWindow, app, nativeTheme } from 'electron';
 import isDev from 'electron-is-dev';
+import { setupWindowIpc } from './ipc/windowIpc';
+import './ipc'
 
 const height = 600;
 const width = 800;
@@ -24,7 +26,7 @@ function createWindow() {
   });
 
   const port = process.env.PORT || 3000;
-  const url = isDev ? `http://localhost:${port}` : join(__dirname, '../dist-vite/index.html');
+  const url = isDev ? `http://localhost:${port}` : join(__dirname, '../../dist-vite/index.html');
 
   // and load the index.html of the app.
   if (isDev) {
@@ -33,24 +35,13 @@ function createWindow() {
     window?.loadFile(url);
   }
   // Open the DevTools.
-  // window.webContents.openDevTools();
+  window.webContents.openDevTools();
 
-  // For AppBar
-  ipcMain.on('minimize', () => {
-    // eslint-disable-next-line no-unused-expressions
-    window.isMinimized() ? window.restore() : window.minimize();
-    // or alternatively: win.isVisible() ? win.hide() : win.show()
-  });
-  ipcMain.on('maximize', () => {
-    // eslint-disable-next-line no-unused-expressions
-    window.isMaximized() ? window.restore() : window.maximize();
-  });
-
-  ipcMain.on('close', () => {
-    window.close();
-  });
+  setupWindowIpc(window);
 
   nativeTheme.themeSource = 'dark';
+
+  window.maximize()
 }
 
 // This method will be called when Electron has finished
@@ -76,8 +67,3 @@ app.on('window-all-closed', () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 
-// listen the channel `message` and resend the received message to the renderer process
-ipcMain.on('message', (event: IpcMainEvent, message: any) => {
-  console.log(message);
-  setTimeout(() => event.sender.send('message', 'common.hiElectron'), 500);
-});

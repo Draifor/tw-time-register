@@ -2,7 +2,7 @@ import { Select, Option } from '@material-tailwind/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import './style/select_language.css';
+import '../styles/select_language.css';
 
 function SelectLanguage() {
   const [language, setLanguage] = React.useState('en');
@@ -20,26 +20,26 @@ function SelectLanguage() {
     {
       value: 'English',
       key: 'en',
-      iconPath: new URL(`./assets/locales/en.svg`, import.meta.url).href
+      iconPath: new URL(`../assets/locales/en.svg`, import.meta.url).href
     },
     {
       value: 'Español',
       key: 'es',
-      iconPath: new URL(`./assets/locales/es.svg`, import.meta.url).href
-    },
+      iconPath: new URL(`../assets/locales/es.svg`, import.meta.url).href
+    }
   ];
 
   return (
     <div className="div-select-language">
       <Select
-        label={t('common.selectLanguage')}
+        // label={t('common.selectLanguage')}
         variant="standard"
         value={language}
         onChange={languageHandler}
         color="blue"
       >
         {languages.map(({ value, key, iconPath }) => (
-          <Option value={key} className="language">
+          <Option value={key} key={key} className="language">
             <img src={iconPath} alt={value} className="language-icon" />
             {value}
           </Option>

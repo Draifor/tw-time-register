@@ -1,0 +1,2 @@
+import './databaseIpc';
+import './anotherIpc';

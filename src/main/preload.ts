@@ -47,7 +47,7 @@ const safeDOM = {
 function useLoading() {
   const styleContent = `
   .sk-chase {
-  
+
   }
 
   .sk-chase-dot {
@@ -65,7 +65,7 @@ function useLoading() {
     height: 25%;
     background-color: #fff;
     border-radius: 100%;
-    animation: sk-chase-dot-before 2.0s infinite ease-in-out both; 
+    animation: sk-chase-dot-before 2.0s infinite ease-in-out both;
   }
 
   .sk-chase-dot:nth-child(1) { animation-delay: -1.1s; }
@@ -80,21 +80,21 @@ function useLoading() {
   .sk-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
   .sk-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
   .sk-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
-  
+
   @keyframes sk-chase {
-    100% { transform: rotate(360deg); } 
+    100% { transform: rotate(360deg); }
   }
-  
+
   @keyframes sk-chase-dot {
-    80%, 100% { transform: rotate(360deg); } 
+    80%, 100% { transform: rotate(360deg); }
   }
 
   @keyframes sk-chase-dot-before {
     50% {
-      transform: scale(0.4); 
+      transform: scale(0.4);
     } 100%, 0% {
-      transform: scale(1.0); 
-    } 
+      transform: scale(1.0);
+    }
   }
 
   .app-loading-wrap {
@@ -174,12 +174,20 @@ const api = {
   Maximize: () => {
     ipcRenderer.send('maximize');
   },
+  ToggleDevTools: () => {
+    ipcRenderer.send('toggleDevTools');
+  },
   Close: () => {
     ipcRenderer.send('close');
   },
   removeLoading: () => {
     removeLoading();
   },
+  addWorkTime: (entry: { description: string; hours: number; date: string }) => ipcRenderer.invoke('addWorkTime', entry),
+  getWorkTimes: () => ipcRenderer.invoke('getWorkTimes'),
+  registerUser: (username: string, password: string) => ipcRenderer.invoke('registerUser', username, password),
+  loginUser: (username: string, password: string) => ipcRenderer.invoke('loginUser', username, password),
+  registerTimeEntry: (entry: { taskId: string; description: string; hours: number; minutes: number; time: number; date: string; isBillable: boolean }) => ipcRenderer.invoke('registerTimeEntry', entry),
   /**
    * Provide an easier way to listen to events
    */
