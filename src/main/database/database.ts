@@ -1,60 +1,54 @@
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+import fs from 'fs';
 
-let db: any
+let db: any;
 
-export async function openDb() {
+async function openDb() {
   if (!db) {
     db = await open({
-      filename: './worktime.sqlite',
+      filename: './database/worktime.sqlite',
       driver: sqlite3.Database
-    })
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS work_times (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        description TEXT,
-        hours REAL,
-        date TEXT
-      );
-      CREATE TABLE IF NOT EXISTS credentials (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT
-      )
-    `)
+    });
+
+    const schema = fs.readFileSync('./database/schema.sql', 'utf-8');
+
+    await db.exec(schema);
   }
-  return db
+  return db;
 }
 
 export async function addWorkTime(description: string, hours: number, date: string) {
-  const db = await openDb()
-  return db.run('INSERT INTO work_times (description, hours, date) VALUES (?, ?, ?)', [description, hours, date])
+  const db = await openDb();
+  return db.run('INSERT INTO work_times (description, hours, date) VALUES (?, ?, ?)', [description, hours, date]);
 }
 
 export async function getWorkTimes() {
-  const db = await openDb()
-  return db.all('SELECT * FROM work_times ORDER BY date DESC')
+  const db = await openDb();
+  return db.all('SELECT * FROM work_times ORDER BY date DESC');
 }
 
 export async function addCredential(username: string, password: string) {
-  const db = await openDb()
-  return db.run('INSERT INTO credentials (username, password) VALUES (?, ?)', [username, password])
+  const db = await openDb();
+  return db.run('INSERT INTO credentials (username, password) VALUES (?, ?)', [username, password]);
 }
 
 export async function getActiveCredential() {
-  const db = await openDb()
-  return db.get('SELECT * FROM credentials ORDER BY id DESC LIMIT 1')
+  const db = await openDb();
+  return db.get('SELECT * FROM credentials ORDER BY id DESC LIMIT 1');
 }
 
 export async function getCredential(username: string) {
-  const db = await openDb()
-  return db.get('SELECT * FROM credentials WHERE username = ?', [username])
+  const db = await openDb();
+  return db.get('SELECT * FROM credentials WHERE username = ?', [username]);
 }
 
 export async function verifyCredential(username: string, password: string) {
-  const credential = await getCredential(username)
+  const credential = await getCredential(username);
   if (!credential) {
-    return null
+    return null;
   }
-  return password === credential.password
+  return password === credential.password;
 }
+
+export default openDb;

@@ -85,7 +85,8 @@
     "asar": true,
     "files": [
       "dist-electron",
-      "dist-vite"
+      "dist-vite",
+      "database/**/*"
     ],
     "directories": {
       "buildResources": "resources"

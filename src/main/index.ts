@@ -6,6 +6,7 @@ import { BrowserWindow, app, nativeTheme } from 'electron';
 import isDev from 'electron-is-dev';
 import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc'
+import './database/database'
 
 const height = 600;
 const width = 800;

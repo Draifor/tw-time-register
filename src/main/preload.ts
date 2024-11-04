@@ -188,6 +188,16 @@ const api = {
   registerUser: (username: string, password: string) => ipcRenderer.invoke('registerUser', username, password),
   loginUser: (username: string, password: string) => ipcRenderer.invoke('loginUser', username, password),
   registerTimeEntry: (entry: { taskId: string; description: string; hours: number; minutes: number; time: number; date: string; isBillable: boolean }) => ipcRenderer.invoke('registerTimeEntry', entry),
+  addTypeTasks: (typeTasks: any) => ipcRenderer.invoke('addTypeTasks', typeTasks),
+  getTypeTasks: () => ipcRenderer.invoke('getTypeTasks'),
+  getTypeTaskById: (id: number) => ipcRenderer.invoke('getTypeTaskById', id),
+  updateTypeTask: (id: number, typeName: string) => ipcRenderer.invoke('updateTypeTask', id, typeName),
+  deleteTypeTask: (id: number) => ipcRenderer.invoke('deleteTypeTask', id),
+  addTask: (task: any) => ipcRenderer.invoke('addTask', task),
+  getTasks: () => ipcRenderer.invoke('getTasks'),
+  getTaskById: (id: number) => ipcRenderer.invoke('getTaskById', id),
+  updateTask: (task: any) => ipcRenderer.invoke('updateTask', task),
+  deleteTask: (id: number) => ipcRenderer.invoke('deleteTask', id),
   /**
    * Provide an easier way to listen to events
    */

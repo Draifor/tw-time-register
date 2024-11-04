@@ -8,4 +8,4 @@ function UsersTable() {
   return <DataTable data={data} isLoading={isLoading} error={error} columns={usersColumns} />;
 }
 
-export { UsersTable };
+export default UsersTable;

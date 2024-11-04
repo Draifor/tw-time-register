@@ -8,4 +8,4 @@ function CommentsTable() {
   return <DataTable data={data} isLoading={isLoading} error={error} columns={commentsColumns} />;
 }
 
-export { CommentsTable };
+export default CommentsTable;
