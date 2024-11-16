@@ -1,11 +1,21 @@
+import { Column } from './dataTable';
 import { columnsDB as typeTasksDBColumns } from './typeTasks';
+
+export interface TaskDB {
+  task_id: number;
+  type_id: number;
+  type_name: string;
+  task_name: string;
+  task_link: string;
+  description: string;
+}
 
 export interface Task {
   id?: number;
-  typeId: number;
+  typeName: string;
   taskName: string;
   taskLink: string;
-  descripcion: string;
+  description: string;
 }
 
 export const columnsDB = {
@@ -18,25 +28,28 @@ export const columnsDB = {
   TYPE_NAME: typeTasksDBColumns.TYPE_NAME
 };
 
-export const columns = [
+export const columns: Column[] = [
   {
     header: 'Task Name',
-    accessorKey: columnsDB.TASK_NAME,
-    enableColumnFilter: true
+    accessorKey: 'taskName',
+    type: 'text',
+    rules: { required: 'Task name is required' }
   },
   {
     header: 'Task Type',
-    accessorKey: columnsDB.TYPE_NAME,
-    enableColumnFilter: true
+    accessorKey: 'typeName',
+    type: 'select',
+    rules: { required: 'Task type is required' }
   },
   {
     header: 'Task Link',
-    accessorKey: columnsDB.TASK_LINK,
-    enableColumnFilter: true
+    accessorKey: 'taskLink',
+    type: 'text',
+    rules: { required: 'Task link is required' }
   },
   {
     header: 'Description',
-    accessorKey: columnsDB.DESCRIPTION,
-    enableColumnFilter: true
+    accessorKey: 'description',
+    type: 'text'
   }
 ];

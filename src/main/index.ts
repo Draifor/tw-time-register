@@ -1,5 +1,6 @@
 // Native
 import { join } from 'path';
+import fs from 'fs';
 
 // Packages
 import { BrowserWindow, app, nativeTheme } from 'electron';
@@ -10,10 +11,31 @@ import './database/database'
 
 const height = 600;
 const width = 800;
+const windowStatePath = join(app.getPath('userData'), 'window-state.json');
+
+function readWindowState() {
+  try {
+    return JSON.parse(fs.readFileSync(windowStatePath, 'utf-8'));
+  } catch (error) {
+    return {
+      width,
+      height
+    };
+  }
+}
+
+function saveWindowState(window: BrowserWindow) {
+  const windowState = window.getBounds();
+  fs.writeFileSync(windowStatePath, JSON.stringify(windowState));
+}
 
 function createWindow() {
   // Create the browser window.
+  const { height, width, x, y} = readWindowState();
+
   const window = new BrowserWindow({
+    x,
+    y,
     width,
     height,
     //  change to false to use AppBar
@@ -42,7 +64,11 @@ function createWindow() {
 
   nativeTheme.themeSource = 'dark';
 
-  window.maximize()
+  // window.maximize();
+
+  window.on('close', () => {
+    saveWindowState(window);
+  });
 }
 
 // This method will be called when Electron has finished

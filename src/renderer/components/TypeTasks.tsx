@@ -2,9 +2,9 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import fetchTypeTasks from '../services/typeTasksService';
 import { columns } from '../../types/typeTasks';
-import DataTable from '../components/DataTable';
+import DataTable from './DataTable';
 
-function TasksTable() {
+function TypeTasksTable() {
   const { data, isLoading, error } = useQuery(['typeTasks'], fetchTypeTasks);
   return (
     <div>
@@ -13,4 +13,4 @@ function TasksTable() {
   );
 }
 
-export default TasksTable;
+export default TypeTasksTable;

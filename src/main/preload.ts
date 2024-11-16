@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron';
+import { Task } from '../types/tasks';
 
 /**
  * Using the ipcRenderer directly in the browser through the contextBridge ist not really secure.
@@ -193,10 +194,10 @@ const api = {
   getTypeTaskById: (id: number) => ipcRenderer.invoke('getTypeTaskById', id),
   updateTypeTask: (id: number, typeName: string) => ipcRenderer.invoke('updateTypeTask', id, typeName),
   deleteTypeTask: (id: number) => ipcRenderer.invoke('deleteTypeTask', id),
-  addTask: (task: any) => ipcRenderer.invoke('addTask', task),
+  addTask: (task: Task) => ipcRenderer.invoke('addTask', task),
   getTasks: () => ipcRenderer.invoke('getTasks'),
   getTaskById: (id: number) => ipcRenderer.invoke('getTaskById', id),
-  updateTask: (task: any) => ipcRenderer.invoke('updateTask', task),
+  updateTask: (task: Task) => ipcRenderer.invoke('updateTask', task),
   deleteTask: (id: number) => ipcRenderer.invoke('deleteTask', id),
   /**
    * Provide an easier way to listen to events

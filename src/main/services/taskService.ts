@@ -1,10 +1,20 @@
 import openDB from '../database/database';
-import { Task, columnsDB } from '../../types/tasks';
+import { Task, TaskDB, columnsDB } from '../../types/tasks';
 import { columnsDB as typeTasksDBColumns } from '../../types/typeTasks';
 
 // Function to add a task
-export async function addTask({ typeId, taskName, taskLink, descripcion }: Task): Promise<void> {
+export async function addTask({ typeName, taskName, taskLink, description }: Task): Promise<void> {
   const db = await openDB();
+
+  const type = await db.get(
+    `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
+    [typeName]
+  );
+
+  if (!type) {
+    throw new Error('Type not found');
+  }
+
   const query = `INSERT INTO
     ${columnsDB.TABLE_NAME}
       (${columnsDB.TYPE_ID},
@@ -12,11 +22,11 @@ export async function addTask({ typeId, taskName, taskLink, descripcion }: Task)
        ${columnsDB.TASK_LINK},
        ${columnsDB.DESCRIPTION})
   VALUES (?, ?, ?, ?)`;
-  return db.run(query, [typeId, taskName, taskLink, descripcion]);
+  return db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description]);
 }
 
 // Function to get all tasks
-export async function getTasks(): Promise<any> {
+export async function getTasks(): Promise<Task[]> {
   const db = await openDB();
   const query = `SELECT
       ${columnsDB.TABLE_NAME}.${columnsDB.ID},
@@ -28,11 +38,22 @@ export async function getTasks(): Promise<any> {
       ${columnsDB.TABLE_NAME}
     JOIN
       ${typeTasksDBColumns.TABLE_NAME} ON ${columnsDB.TABLE_NAME}.${columnsDB.TYPE_ID} = ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.ID}`;
-  return db.all(query);
+
+    const response: TaskDB[] = await db.all(query);
+
+  return response.map((task) => {
+    return {
+      id: task.task_id,
+      typeName: task.type_name,
+      taskName: task.task_name,
+      taskLink: task.task_link,
+      description: task.description
+    };
+  });
 }
 
 // Function to get a task by id
-export async function getTaskById(id: number): Promise<any> {
+export async function getTaskById(id: number): Promise<Task> {
   const db = await openDB();
   const query = `SELECT
     ${columnsDB.TABLE_NAME}.${columnsDB.ID},
@@ -50,7 +71,7 @@ export async function getTaskById(id: number): Promise<any> {
 }
 
 // Function to update a task
-export async function updateTask({ id, typeId, taskName, taskLink, descripcion }: Task): Promise<void> {
+export async function updateTask({ id, typeName, taskName, taskLink, description }: Task): Promise<void> {
   const db = await openDB();
   const query = `UPDATE
     ${columnsDB.TABLE_NAME}
@@ -61,7 +82,7 @@ export async function updateTask({ id, typeId, taskName, taskLink, descripcion }
     ${columnsDB.DESCRIPTION} = ?
   WHERE
     ${columnsDB.ID} = ?`;
-  return db.run(query, [typeId, taskName, taskLink, descripcion, id]);
+  return db.run(query, [typeName, taskName, taskLink, description, id]);
 }
 
 // Function to delete a task

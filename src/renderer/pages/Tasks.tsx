@@ -1,6 +1,6 @@
 import React from 'react';
-import TypeTasks from '../hooks/TypeTasks';
-import Tasks from '../hooks/Tasks';
+import TypeTasks from '../components/TypeTasks';
+import Tasks from '../components/Tasks';
 
 function TasksPage() {
   return (

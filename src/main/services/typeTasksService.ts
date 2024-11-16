@@ -1,4 +1,5 @@
 import openDB from '../database/database';
+import { TypeTasksDB, TypeTasks } from '../../types/typeTasks';
 
 interface Database {
   run(query: string, params: any[]): Promise<void>;
@@ -14,17 +15,27 @@ export async function addTypeTask(typeName: string): Promise<void> {
 }
 
 // Function to get all task types
-export async function getTypeTasks(): Promise<any> {
+export async function getTypeTasks(): Promise<TypeTasks[]> {
   const db: Database = await openDB();
   const query = 'SELECT * FROM type_tasks';
-  return db.all(query);
+  const response: TypeTasksDB[] = await db.all(query);
+  return response.map((type) => {
+    return {
+      id: type.type_id,
+      typeName: type.type_name
+    };
+  });
 }
 
 // Function to get a task type by id
 export async function getTypeTaskById(id: number): Promise<any> {
   const db: Database = await openDB();
   const query = 'SELECT * FROM type_tasks WHERE id = ?';
-  return db.get(query, [id]);
+  const response: TypeTasksDB = await db.get(query, [id]);
+  return {
+    id: response.type_id,
+    typeName: response.type_name
+  };
 }
 
 // Funxtion to update a task type
@@ -40,4 +51,3 @@ export async function deleteTypeTask(id: number): Promise<void> {
   const query = 'DELETE FROM type_tasks WHERE id = ?';
   return db.run(query, [id]);
 }
-

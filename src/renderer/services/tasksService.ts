@@ -1,6 +1,21 @@
-const fetchTasks = async () => {
+import { Task } from '../../types/tasks';
+
+export const fetchTasks = async () => {
   const response = await window.Main.getTasks();
   return response;
 };
 
-export default fetchTasks;
+export const addTask = async (task: Task) => {
+  const response = await window.Main.addTask(task);
+  return response;
+};
+
+export const editTask = async (task: Task) => {
+  const response = await window.Main.editTask(task);
+  return response;
+};
+
+export const deleteTask = async (task: Task) => {
+  const response = await window.Main.deleteTask(task);
+  return response;
+};
