@@ -5,7 +5,14 @@ import DataTable from '../components/DataTable';
 
 function CommentsTable() {
   const { data, isLoading, error } = useQuery(['comments'], fetchComments);
-  return <DataTable data={data} isLoading={isLoading} error={error} columns={commentsColumns} />;
+  return (
+    <DataTable
+      data={data}
+      isLoading={isLoading}
+      error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
+      columns={commentsColumns}
+    />
+  );
 }
 
 export default CommentsTable;

@@ -1,0 +1,2 @@
+// History service placeholder
+export {};

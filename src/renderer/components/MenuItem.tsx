@@ -1,7 +1,8 @@
 import { ChevronRight } from 'lucide-react';
 import React from 'react';
+import { MenuItemProps } from '../../types/menu';
 
-function MenuItem({ label, items, onClick, setIsOpen }) {
+function MenuItem({ label, items, onClick, setIsOpen }: MenuItemProps) {
   const handleClick = () => {
     if (onClick) {
       onClick();
@@ -20,7 +21,13 @@ function MenuItem({ label, items, onClick, setIsOpen }) {
       {items && (
         <div className="absolute left-full top-0 w-48 bg-white shadow-lg rounded-md hidden group-hover:block">
           {items.map((item) => (
-            <MenuItem key={item.label} {...item} setIsOpen={setIsOpen} />
+            <MenuItem
+              key={item.label}
+              label={item.label}
+              items={item.items}
+              onClick={item.action}
+              setIsOpen={setIsOpen}
+            />
           ))}
         </div>
       )}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { FieldValues } from 'react-hook-form';
 import { FormFieldProps } from '../../types/dataTable';
-import Input from './ui/Input';
+import Input from './ui/InputForm';
 import Label from './ui/Label';
 import Select from './ui/Select';
 

@@ -1,1 +1,2 @@
- 
+// TimeEntries service placeholder
+export {};

@@ -1,0 +1,2 @@
+// History model placeholder
+export {};

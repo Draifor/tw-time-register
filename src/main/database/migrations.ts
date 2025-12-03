@@ -1,1 +1,3 @@
+// Database migrations placeholder
+export {};
 

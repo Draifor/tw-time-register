@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import Button from './ui/Button';
-import Input from './ui/Input';
+import Input from './ui/InputForm';
 import Label from './ui/Label';
 import Select from './ui/Select';
 import TotalTimeDay from './TotalTimeDay';
@@ -186,7 +186,7 @@ export default function WorkTimeForm() {
                 }}
               />
             </div>
-            <Button type="button" variant="destructive" onClick={() => remove(index)} disabled={fields.length === 1}>
+            <Button type="button" className="destructive" onClick={() => remove(index)} disabled={fields.length === 1}>
               Remove
             </Button>
           </div>

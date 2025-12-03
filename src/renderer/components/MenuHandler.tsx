@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import MenuItem from './MenuItem';
+import { MenuHandlerProps } from '../../types/menu';
 
-function MenuHandler({ label, items }) {
+function MenuHandler({ label, items }: MenuHandlerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleClick = () => {
     setIsOpen(!isOpen);
   };
 
-  const handleClickOutside = (event) => {
-    if (menuRef.current && !menuRef.current.contains(event.target)) {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
       setIsOpen(false);
     }
   };
@@ -28,7 +29,13 @@ function MenuHandler({ label, items }) {
       {isOpen && items && (
         <div className="absolute left-0 top-full w-48 bg-white shadow-lg rounded-md z-10">
           {items.map((item) => (
-            <MenuItem key={item.label} {...item} setIsOpen={setIsOpen} />
+            <MenuItem
+              key={item.label}
+              label={item.label}
+              items={item.items}
+              onClick={item.action}
+              setIsOpen={setIsOpen}
+            />
           ))}
         </div>
       )}

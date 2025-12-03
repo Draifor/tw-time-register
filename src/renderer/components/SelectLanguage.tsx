@@ -37,6 +37,8 @@ function SelectLanguage() {
         value={language}
         onChange={languageHandler}
         color="blue"
+        onResize={undefined}
+        onResizeCapture={undefined}
       >
         {languages.map(({ value, key, iconPath }) => (
           <Option value={key} key={key} className="language">

@@ -1,20 +1,22 @@
 import React from 'react';
-import DataTable from './DataTable';
+import DataTable from './DataTableNew';
 import useTasks from '../hooks/useTasks';
 
 function TasksTable() {
-  const { data, isLoading, error, onSubmit, columns, onEdit, onDelete } = useTasks();
+  const { data, isLoading, isEditable, error, onSubmit, columns, onEdit, onDelete, handleAddRow } = useTasks();
 
   return (
     <div>
       <DataTable
         data={data}
         isLoading={isLoading}
-        error={error as { message: string } | null}
+        isEditable={isEditable}
+        error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
         columns={columns}
         formFunction={onSubmit}
         onEdit={onEdit}
         onDelete={onDelete}
+        onAddRow={handleAddRow}
       />
     </div>
   );

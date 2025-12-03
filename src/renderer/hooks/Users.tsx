@@ -5,7 +5,14 @@ import DataTable from '../components/DataTable';
 
 function UsersTable() {
   const { data, isLoading, error } = useQuery(['users'], fetchUsers);
-  return <DataTable data={data} isLoading={isLoading} error={error} columns={usersColumns} />;
+  return (
+    <DataTable
+      data={data}
+      isLoading={isLoading}
+      error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
+      columns={usersColumns}
+    />
+  );
 }
 
 export default UsersTable;

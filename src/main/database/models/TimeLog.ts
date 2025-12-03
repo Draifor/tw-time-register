@@ -1,0 +1,2 @@
+// TimeLog model placeholder
+export {};

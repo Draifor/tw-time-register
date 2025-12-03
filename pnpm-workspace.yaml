@@ -1,0 +1,9 @@
+ignoredBuiltDependencies:
+  - esbuild
+  - sqlite3
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - lzma-native
+  - sqlite3

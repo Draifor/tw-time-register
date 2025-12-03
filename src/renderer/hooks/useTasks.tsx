@@ -1,11 +1,17 @@
+import React, { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Column, Row, ColumnDef } from '@tanstack/react-table';
 import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
-import { columns as originalColumns, Task } from '../../types/tasks';
-import { TypeTasks } from '../../types/typeTasks';
+import fetchTypeTasks from '../services/typeTasksService';
+import { Task } from '../../types/tasks';
+import Select from '../components/ui/Select';
+// import { TypeTasks } from '../../types/typeTasks';
 
 function useTasks() {
   const { data, isLoading, error } = useQuery(['tasks'], fetchTasks);
   const queryClient = useQueryClient();
+
+  const isEditable = true;
 
   const { mutate: onSubmit, isLoading: isLoadingMutation } = useMutation({
     mutationFn: addTask,
@@ -30,31 +36,140 @@ function useTasks() {
   const { mutate: onEdit } = useMutation(editTask, {
     onSuccess: () => {
       queryClient.invalidateQueries(['tasks']);
+    },
+    onError: (error) => {
+      console.error('Error updating task:', error);
     }
   });
 
-  const { mutate: onDelete } = useMutation(deleteTask, {
+  const { mutate: deleteTaskMutation } = useMutation(deleteTask, {
     onSuccess: () => {
       queryClient.invalidateQueries(['tasks']);
     }
   });
 
-  const taskTypes = queryClient.getQueryData<TypeTasks[]>(['typeTasks']);
-
-  const columns = originalColumns.map((column) => {
-    if (column.type === 'select') {
-      return {
-        ...column,
-        options: taskTypes?.map((type: TypeTasks) => ({
-          value: type.typeName,
-          label: type.typeName
-        }))
-      };
+  const handleDelete = (task: Task) => {
+    if (task.id) {
+      deleteTaskMutation(task.id);
     }
-    return column;
-  });
-  console.log(data);
-  return { data, isLoading, error, columns, onSubmit, isLoadingMutation, onEdit, onDelete };
+  };
+
+  const { data: typeTasks } = useQuery(['typeTasks'], fetchTypeTasks);
+
+  // const taskTypes = queryClient.getQueryData<TypeTasks[]>(['typeTasks']);
+
+  // const columns = originalColumns.map((column) => {
+  //   if (column.type === 'select') {
+  //     return {
+  //       ...column,
+  //       options: taskTypes?.map((type: TypeTasks) => ({
+  //         value: type.typeName,
+  //         label: type.typeName
+  //       }))
+  //     };
+  //   }
+  //   return column;
+  // });
+  console.log(data); // AQUI VOY
+
+  interface RowT {
+    row: Row<Task>;
+  }
+
+  interface ColumnFooterProps {
+    column: Column<Task, unknown>;
+  }
+
+  const columns = useMemo<ColumnDef<Task>[]>(
+    () => [
+      {
+        header: 'Teamwork Tasks',
+        footer: (props: ColumnFooterProps) => props.column.id,
+        columns: [
+          {
+            accessorFn: (row: Task) => row.taskName,
+            id: 'taskName',
+            header: () => 'Task Name',
+            footer: (props: ColumnFooterProps) => props.column.id
+          },
+          {
+            accessorFn: (row: Task) => row.typeName,
+            id: 'typeName',
+            header: () => 'Type Name',
+            cell: ({ row }) => {
+              if (!typeTasks) return row.original.typeName;
+              return (
+                <Select
+                  options={typeTasks.map((tt: { typeName: string }) => ({
+                    value: tt.typeName,
+                    label: tt.typeName
+                  }))}
+                  value={{
+                    value: row.original.typeName ?? '',
+                    label: row.original.typeName ?? ''
+                  }}
+                  onChange={(selectedOption: { value: string; label: string } | null) =>
+                    onEdit({ ...row.original, typeName: selectedOption?.value ?? '' })
+                  }
+                />
+              );
+            },
+            footer: (props: ColumnFooterProps) => props.column.id
+          },
+          {
+            accessorFn: (row: Task) => row.taskLink,
+            id: 'taskLink',
+            header: () => 'Task Link',
+            footer: (props: ColumnFooterProps) => props.column.id
+          },
+          {
+            accessorFn: (row: Task) => row.description,
+            id: 'description',
+            header: () => 'Description',
+            footer: (props: ColumnFooterProps) => props.column.id
+          }
+        ]
+      },
+      ...(isEditable
+        ? [
+            {
+              header: 'Actions',
+              footer: (props: ColumnFooterProps) => props.column.id,
+              columns: [
+                {
+                  id: 'delete',
+                  header: 'Delete',
+                  cell: ({ row }: RowT) => <button onClick={() => handleDelete(row.original)}>Eliminar</button>
+                }
+              ]
+            }
+          ]
+        : [])
+    ],
+    [isEditable, typeTasks]
+  );
+
+  function handleAddRow() {
+    onSubmit({
+      taskName: '',
+      typeName: 'RECA',
+      taskLink: '',
+      description: ''
+    });
+  }
+
+  return {
+    data,
+    isLoading,
+    error,
+    columns,
+    onSubmit,
+    isLoadingMutation,
+    onEdit,
+    onDelete: handleDelete,
+    isEditable,
+    handleAddRow
+  };
 }
 
 export default useTasks;

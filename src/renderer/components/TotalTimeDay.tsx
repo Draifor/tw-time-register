@@ -1,7 +1,11 @@
 import React from 'react';
-import { useWatch } from 'react-hook-form';
+import { useWatch, Control } from 'react-hook-form';
 
-function TotalTimeDay({ control }) {
+interface TotalTimeDayProps {
+  control: Control<any>;
+}
+
+function TotalTimeDay({ control }: TotalTimeDayProps) {
   const result = useWatch({
     control,
     name: 'entries'
@@ -10,7 +14,7 @@ function TotalTimeDay({ control }) {
   const totalTime = React.useMemo(() => {
     console.log(result);
     return result.reduce(
-      (acc, field) => {
+      (acc: any, field: any) => {
         const hours = field.hours[0]?.getHours() ?? 0;
         const minutes = field.hours[0]?.getMinutes() ?? 0;
         console.log('Este', hours, minutes);

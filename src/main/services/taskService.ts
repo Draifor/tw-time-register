@@ -73,6 +73,12 @@ export async function getTaskById(id: number): Promise<Task> {
 // Function to update a task
 export async function updateTask({ id, typeName, taskName, taskLink, description }: Task): Promise<void> {
   const db = await openDB();
+
+  const type = await db.get(
+    `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
+    [typeName]
+  );
+
   const query = `UPDATE
     ${columnsDB.TABLE_NAME}
   SET
@@ -82,7 +88,7 @@ export async function updateTask({ id, typeName, taskName, taskLink, description
     ${columnsDB.DESCRIPTION} = ?
   WHERE
     ${columnsDB.ID} = ?`;
-  return db.run(query, [typeName, taskName, taskLink, description, id]);
+  return db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description, id]);
 }
 
 // Function to delete a task

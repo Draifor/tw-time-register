@@ -11,11 +11,11 @@ export const addTask = async (task: Task) => {
 };
 
 export const editTask = async (task: Task) => {
-  const response = await window.Main.editTask(task);
+  const response = await window.Main.updateTask(task);
   return response;
 };
 
-export const deleteTask = async (task: Task) => {
-  const response = await window.Main.deleteTask(task);
+export const deleteTask = async (id: number) => {
+  const response = await window.Main.deleteTask(id);
   return response;
 };

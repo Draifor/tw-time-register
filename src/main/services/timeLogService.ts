@@ -1,0 +1,2 @@
+// TimeLog service placeholder
+export {};
