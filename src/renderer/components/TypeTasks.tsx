@@ -13,7 +13,10 @@ const columns: ColumnDef<TypeTasks>[] = [
 ];
 
 function TypeTasksTable() {
-  const { data, isLoading, error } = useQuery(['typeTasks'], fetchTypeTasks);
+  const { data, isPending: isLoading, error } = useQuery({
+    queryKey: ['typeTasks'],
+    queryFn: fetchTypeTasks
+  });
   return (
     <div>
       <DataTable

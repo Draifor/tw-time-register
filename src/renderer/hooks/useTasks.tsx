@@ -8,15 +8,18 @@ import Select from '../components/ui/Select';
 // import { TypeTasks } from '../../types/typeTasks';
 
 function useTasks() {
-  const { data, isLoading, error } = useQuery(['tasks'], fetchTasks);
+  const { data, isPending: isLoading, error } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: fetchTasks
+  });
   const queryClient = useQueryClient();
 
   const isEditable = true;
 
-  const { mutate: onSubmit, isLoading: isLoadingMutation } = useMutation({
+  const { mutate: onSubmit, isPending: isLoadingMutation } = useMutation({
     mutationFn: addTask,
     onMutate: async (newTask) => {
-      await queryClient.cancelQueries(['tasks']);
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       const previousTasks = queryClient.getQueryData(['tasks']);
 
@@ -24,27 +27,29 @@ function useTasks() {
 
       return { previousTasks };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       console.error(err);
       queryClient.setQueryData(['tasks'], context?.previousTasks);
     },
     onSettled: async () => {
-      await queryClient.invalidateQueries(['tasks']);
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
   });
 
-  const { mutate: onEdit } = useMutation(editTask, {
+  const { mutate: onEdit } = useMutation({
+    mutationFn: editTask,
     onSuccess: () => {
-      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (error) => {
       console.error('Error updating task:', error);
     }
   });
 
-  const { mutate: deleteTaskMutation } = useMutation(deleteTask, {
+  const { mutate: deleteTaskMutation } = useMutation({
+    mutationFn: deleteTask,
     onSuccess: () => {
-      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
   });
 
@@ -54,7 +59,10 @@ function useTasks() {
     }
   };
 
-  const { data: typeTasks } = useQuery(['typeTasks'], fetchTypeTasks);
+  const { data: typeTasks } = useQuery({
+    queryKey: ['typeTasks'],
+    queryFn: fetchTypeTasks
+  });
 
   // const taskTypes = queryClient.getQueryData<TypeTasks[]>(['typeTasks']);
 

@@ -2,7 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchWorkTimes, columns } from '../services/timesService';
 
 function useTimeLogs() {
-  const { data, isLoading, error } = useQuery(['workTimes'], fetchWorkTimes);
+  const { data, isPending: isLoading, error } = useQuery({
+    queryKey: ['workTimes'],
+    queryFn: fetchWorkTimes
+  });
 
   return {
     data: data || [],
