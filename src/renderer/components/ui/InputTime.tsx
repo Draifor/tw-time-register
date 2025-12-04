@@ -14,6 +14,7 @@ interface InputTimeProps {
 
 function InputTime({ className, control, name, rules, options }: InputTimeProps) {
   const { isDark } = useDarkMode();
+  const DateTimePickerAny = DateTimePicker as any;
 
   return (
     <Controller
@@ -21,10 +22,10 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
       control={control}
       rules={rules}
       render={({ field }) => (
-        <DateTimePicker
+        <DateTimePickerAny
           {...field}
           value={field.value || []} // Asignamos un valor inicial si `field.value` es `undefined`
-          onChange={(date) => field.onChange(date)} // Actualiza el valor en react-hook-form
+          onChange={(date: any) => field.onChange(date)} // Actualiza el valor en react-hook-form
           className={`${isDark ? 'text-gray-800' : ''} border border-gray-300 rounded px-2 py-1 h-10 ${className}`}
           options={options}
         />

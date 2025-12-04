@@ -8,6 +8,7 @@ function SelectLanguage() {
   const [language, setLanguage] = React.useState('en');
 
   const { i18n, t } = useTranslation();
+  const SelectAny = Select as any;
 
   const languageHandler = (lang: string | undefined) => {
     if (typeof lang === 'string') {
@@ -31,14 +32,12 @@ function SelectLanguage() {
 
   return (
     <div className="div-select-language">
-      <Select
-        // label={t('common.selectLanguage')}
+      <SelectAny
+        label={t('common.selectLanguage')}
         variant="standard"
         value={language}
         onChange={languageHandler}
         color="blue"
-        onResize={undefined}
-        onResizeCapture={undefined}
       >
         {languages.map(({ value, key, iconPath }) => (
           <Option value={key} key={key} className="language">
@@ -46,7 +45,7 @@ function SelectLanguage() {
             {value}
           </Option>
         ))}
-      </Select>
+      </SelectAny>
     </div>
   );
 }

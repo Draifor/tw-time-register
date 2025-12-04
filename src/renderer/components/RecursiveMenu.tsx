@@ -7,46 +7,26 @@ interface RecursiveMenuProps {
 }
 
 function RecursiveMenu({ items }: RecursiveMenuProps) {
+  const MenuListAny = MenuList as any;
+  const MenuItemAny = MenuItem as any;
+
   return (
-    <MenuList
-      placeholder={undefined}
-      onPointerEnterCapture={undefined}
-      onPointerLeaveCapture={undefined}
-      onResize={undefined}
-      onResizeCapture={undefined}
-    >
+    <MenuListAny>
       {items.map((item, index) => (
         <React.Fragment key={`menu-item-${item.label}-${index}`}>
           {item.items ? (
             <Menu placement="right-start">
               <MenuHandler>
-                <MenuItem
-                  placeholder={undefined}
-                  onPointerEnterCapture={undefined}
-                  onPointerLeaveCapture={undefined}
-                  onResize={undefined}
-                  onResizeCapture={undefined}
-                >
-                  {item.label}
-                </MenuItem>
+                <MenuItemAny>{item.label}</MenuItemAny>
               </MenuHandler>
               <RecursiveMenu items={item.items} />
             </Menu>
           ) : (
-            <MenuItem
-              onClick={item.action}
-              placeholder={undefined}
-              onPointerEnterCapture={undefined}
-              onPointerLeaveCapture={undefined}
-              onResize={undefined}
-              onResizeCapture={undefined}
-            >
-              {item.label}
-            </MenuItem>
+            <MenuItemAny onClick={item.action}>{item.label}</MenuItemAny>
           )}
         </React.Fragment>
       ))}
-    </MenuList>
+    </MenuListAny>
   );
 }
 

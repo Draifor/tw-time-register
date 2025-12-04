@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { FieldValues } from 'react-hook-form';
-import { Row } from '@tanstack/react-table';
+import { Row, flexRender } from '@tanstack/react-table';
 import Button from './ui/Button';
 import Input from './ui/InputForm';
 import { Column, DataTableProps } from '../../types/dataTable';
@@ -107,7 +107,7 @@ function DataTable<T extends FieldValues>({
                   >
                     {header.isPlaceholder ? null : (
                       <div className="flex flex-col">
-                        <span>{header.column.columnDef.header}</span>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
                       </div>
                     )}
                   </th>
@@ -120,7 +120,7 @@ function DataTable<T extends FieldValues>({
               <tr key={row.id} className="border md:table-row">
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="p-2 border md:table-cell">
-                    {cell.getValue()}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
               </tr>
