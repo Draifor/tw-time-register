@@ -27,14 +27,6 @@ function NavBar() {
           |{' '}
           <Link to="/tasks" className="ml-4 mr-4">
             Tasks
-          </Link>{' '}
-          |{' '}
-          <Link to="/users" className="ml-4 mr-4">
-            Users
-          </Link>{' '}
-          |{' '}
-          <Link to="/comments" className="ml-4 mr-4">
-            Comments
           </Link>
         </nav>
         <SwitchDarkMode />
