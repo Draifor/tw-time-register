@@ -1,22 +1,23 @@
 {
-  "name": "vite-reactts-electron-starter",
-  "version": "0.6.0",
+  "name": "tw-time-register",
+  "version": "0.1.0",
   "license": "MIT",
   "main": "dist-electron/index.js",
   "author": {
-    "name": "Maximilian Stümpfl"
+    "name": "Luis Alfredo Parra"
   },
-  "description": "Starter using Vite 2+ React +Typescript + Electron for fast prototyping.",
+  "description": "Aplicación de escritorio para registrar y gestionar tiempos de trabajo en TeamWork",
   "keywords": [
-    "vite",
-    "react",
+    "teamwork",
+    "time-tracking",
     "electron",
+    "react",
     "typescript"
   ],
   "repository": {
-    "url": "https://github.com/lTimeless/vite-reactts-electron-starter"
+    "url": "https://github.com/Draifor/tw-time-register"
   },
-  "productName": "vite-reactts-electron-starter",
+  "productName": "TW Time Register",
   "scripts": {
     "dev": "vite",
     "dev:electron": "npm run build:electron && electron .",
@@ -35,7 +36,6 @@
     "postinstall": "npx @electron/rebuild"
   },
   "dependencies": {
-    "@faker-js/faker": "^9.9.0",
     "@material-tailwind/react": "^2.1.9",
     "@tanstack/react-query": "4",
     "@tanstack/react-table": "^8.20.5",
