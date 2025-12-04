@@ -6,8 +6,8 @@ import fs from 'fs';
 import { BrowserWindow, app, nativeTheme } from 'electron';
 import isDev from 'electron-is-dev';
 import { setupWindowIpc } from './ipc/windowIpc';
-import './ipc'
-import './database/database'
+import './ipc';
+import './database/database';
 
 const height = 600;
 const width = 800;
@@ -17,6 +17,7 @@ function readWindowState() {
   try {
     return JSON.parse(fs.readFileSync(windowStatePath, 'utf-8'));
   } catch (error) {
+    console.error('Error reading window state:', error);
     return {
       width,
       height
@@ -31,7 +32,7 @@ function saveWindowState(window: BrowserWindow) {
 
 function createWindow() {
   // Create the browser window.
-  const { height, width, x, y} = readWindowState();
+  const { height, width, x, y } = readWindowState();
 
   const window = new BrowserWindow({
     x,
@@ -93,4 +94,3 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
-

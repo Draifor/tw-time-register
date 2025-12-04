@@ -59,7 +59,7 @@ export default ({ command }: ConfigEnv): UserConfig => {
       plugins: plugins(true),
       resolve: {
         alias: {
-          '/@': srcRoot
+          '@': srcRoot
         }
       },
       build: {
@@ -82,7 +82,7 @@ export default ({ command }: ConfigEnv): UserConfig => {
     plugins: plugins(false),
     resolve: {
       alias: {
-        '/@': srcRoot
+        '@': srcRoot
       }
     },
     build: {

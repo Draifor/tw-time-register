@@ -203,6 +203,7 @@ CREATE TABLE users (
 ### Errores de Linting
 
 Después de la migración a ESLint 9, hay varios errores de linting pendientes de corregir:
+
 - Uso de `any` en algunos archivos (se debe tipar correctamente)
 - Variables `event` no usadas en handlers IPC (usar `_event`)
 - Algunos imports no utilizados

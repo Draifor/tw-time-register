@@ -1,9 +1,9 @@
 import React from 'react';
 import { FieldValues } from 'react-hook-form';
 import { FormFieldProps } from '../../types/dataTable';
-import Input from './ui/InputForm';
-import Label from './ui/Label';
-import Select from './ui/Select';
+import Input from './ui/input-form';
+import { Label } from './ui/label';
+import Select from './ui/select-custom';
 
 function FormField<T extends FieldValues>({ field, control, className }: FormFieldProps<T>) {
   const { accessorKey, header, type = 'text', label, rules, options } = field;

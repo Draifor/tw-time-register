@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
-import Button from './ui/Button';
-import Input from './ui/InputForm';
-import Label from './ui/Label';
-import Select from './ui/Select';
+import { Button } from './ui/button';
+import Input from './ui/input-form';
+import { Label } from './ui/label';
+import Select from './ui/select-custom';
 import TotalTimeDay from './TotalTimeDay';
-import InputTime from './ui/InputTime';
+import InputTime from './ui/input-time';
 import useTasks from '../hooks/useTasks';
 
 type WorkTimeEntry = {

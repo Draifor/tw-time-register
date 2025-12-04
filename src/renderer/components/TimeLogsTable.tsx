@@ -11,7 +11,7 @@ function TimeLogs() {
       <DataTable
         data={data}
         isLoading={isLoading}
-        error={error ? { message: String((error as Error)?.message) || 'An error occurred', name: 'Error' } : null}
+        error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
         columns={columns}
       />
     </div>

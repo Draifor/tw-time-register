@@ -9,7 +9,7 @@ import {
   getSortedRowModel
 } from '@tanstack/react-table';
 import { UseTableProps } from '../../types/dataTable';
-import Input from '../components/ui/Input';
+import { Input } from '../components/ui/input';
 
 function useSkipper() {
   const shouldSkipRef = useRef(true);

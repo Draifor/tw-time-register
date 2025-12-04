@@ -1,22 +1,22 @@
-import React from 'react';
-import useDarkMode from '../../hooks/useDarkMode';
+import * as React from 'react';
 
-interface InputProps {
-  className?: string;
-  name?: string;
-  [key: string]: any;
-}
+import { cn } from '@/lib/utils';
 
-function Input({ className, name, ...rest }: InputProps) {
-  const { isDark } = useDarkMode();
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Input.displayName = 'Input';
 
-  return (
-    <input
-      className={`${isDark ? 'text-gray-800' : ''} border border-gray-300 rounded px-2 py-1 h-10 ${className}`}
-      {...rest}
-      name={name}
-    />
-  );
-}
-
-export default Input;
+export { Input };

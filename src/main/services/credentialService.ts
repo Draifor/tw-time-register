@@ -5,6 +5,7 @@ export async function registerUser(username: string, password: string) {
     await addCredential(username, password);
     return { success: true, message: 'User registered successfully' };
   } catch (error) {
+    console.error('Error registering user:', error);
     return { success: false, message: 'Error registering user' };
   }
 }

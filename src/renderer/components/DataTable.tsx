@@ -2,8 +2,8 @@ import React from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
 import useTable from '../hooks/useTable';
-import Button from './ui/Button';
-import Input from './ui/Input';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {

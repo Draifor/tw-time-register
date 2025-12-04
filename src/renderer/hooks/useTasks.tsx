@@ -4,11 +4,15 @@ import { Column, Row, ColumnDef } from '@tanstack/react-table';
 import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
 import { Task } from '../../types/tasks';
-import Select from '../components/ui/Select';
+import Select from '../components/ui/select-custom';
 // import { TypeTasks } from '../../types/typeTasks';
 
 function useTasks() {
-  const { data, isPending: isLoading, error } = useQuery({
+  const {
+    data,
+    isPending: isLoading,
+    error
+  } = useQuery({
     queryKey: ['tasks'],
     queryFn: fetchTasks
   });
