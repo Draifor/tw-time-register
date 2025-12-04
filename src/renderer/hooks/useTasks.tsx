@@ -107,7 +107,7 @@ function useTasks() {
           {
             accessorFn: (row: Task) => row.typeName,
             id: 'typeName',
-            header: () => 'Type Name',
+            header: () => 'Task Type',
             cell: ({ row }) => {
               if (!typeTasks) return row.original.typeName;
               return (

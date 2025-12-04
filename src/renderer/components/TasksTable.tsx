@@ -3,7 +3,7 @@ import DataTable from './DataTable';
 import useTasks from '../hooks/useTasks';
 
 function TasksTable() {
-  const { data, isLoading, isEditable, error, onSubmit, columns, onEdit, onDelete, handleAddRow } = useTasks();
+  const { data, isLoading, isEditable, error, columns, handleAddRow } = useTasks();
 
   return (
     <DataTable
@@ -13,9 +13,6 @@ function TasksTable() {
       isEditable={isEditable}
       error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
       columns={columns}
-      formFunction={onSubmit}
-      onEdit={onEdit}
-      onDelete={onDelete}
       onAddRow={handleAddRow}
     />
   );

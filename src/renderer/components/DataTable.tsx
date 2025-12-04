@@ -21,9 +21,10 @@ interface DataTableProps<T extends FieldValues> {
   error: { message: string } | null;
   title?: string;
   onAddRow?: () => void;
-  formFunction?: (newData: any) => void;
-  onEdit?: (rowData: T) => void;
-  onDelete?: (rowData: T) => void;
+  // TODO: Implement these handlers for inline editing
+  // formFunction?: (newData: T) => void;
+  // onEdit?: (rowData: T) => void;
+  // onDelete?: (rowData: T) => void;
 }
 
 function DataTable<T extends FieldValues>({
@@ -33,10 +34,7 @@ function DataTable<T extends FieldValues>({
   isEditable = false,
   error,
   title,
-  onAddRow,
-  formFunction,
-  onEdit,
-  onDelete
+  onAddRow
 }: DataTableProps<T>) {
   const { table, globalFilter, setGlobalFilter } = useTable({ columns, data, isEditable });
 
@@ -83,9 +81,7 @@ function DataTable<T extends FieldValues>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -96,9 +92,7 @@ function DataTable<T extends FieldValues>({
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>
                 ))
