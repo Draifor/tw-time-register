@@ -9,17 +9,18 @@ function MenuItem({ label, items, onClick, setIsOpen }: MenuItemProps) {
       setIsOpen(false);
     }
   };
+
   return (
     <div className="relative group">
       <button
         onClick={handleClick}
-        className="flex items-center w-full px-4 py-1 text-sm text-gray-700 hover:gray-100 focus:outline-none"
+        className="flex items-center w-full px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground focus:outline-none transition-colors"
       >
         {label}
-        {items && <ChevronRight className="ml-auto h-4 w-4" />}
+        {items && <ChevronRight className="ml-auto h-4 w-4 opacity-70" />}
       </button>
       {items && (
-        <div className="absolute left-full top-0 w-48 bg-white shadow-lg rounded-md hidden group-hover:block">
+        <div className="absolute left-full top-0 w-52 bg-popover border border-border shadow-lg rounded-md py-1 hidden group-hover:block">
           {items.map((item) => (
             <MenuItem
               key={item.label}

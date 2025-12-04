@@ -1,7 +1,10 @@
 import React from 'react';
 import { DefaultValues, FieldValues, useForm } from 'react-hook-form';
+import { Plus } from 'lucide-react';
 import { Column, NewRecord } from '../../types/dataTable';
 import FormField from './FormField';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
 
 interface DynamicFormProps<T extends FieldValues> {
   fields: Column[];
@@ -19,8 +22,8 @@ function DynamicForm<T extends FieldValues>({ fields, onSubmit, onError, initial
   const {
     control,
     handleSubmit,
-    reset
-    // formState: { errors, isSubmitting }
+    reset,
+    formState: { isSubmitting }
   } = useForm<T>({
     defaultValues
   });
@@ -48,46 +51,22 @@ function DynamicForm<T extends FieldValues>({ fields, onSubmit, onError, initial
   };
 
   return (
-    <>
-      <form
-        className="flex flex-row rounded-lg shadow-lg flex-wrap space-x-4 p-4 justify-center items-start"
-        onSubmit={handleSubmit(handleFormSubmit)}
-      >
-        {fields.map((field) => (
-          <FormField key={field.accessorKey} field={field} control={control} />
-        ))}
-        <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded">
-          Añadir
-        </button>
-      </form>
-      {/* <form className="space-y-4 p-6 bg-white rounded-lg shadow-sm" onSubmit={handleSubmit(handleFormSubmit)}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <Card>
+      <CardContent className="pt-4">
+        <form
+          className="flex flex-row flex-wrap gap-4 items-end justify-center"
+          onSubmit={handleSubmit(handleFormSubmit)}
+        >
           {fields.map((field) => (
-            <div key={String(field.name)} className="space-y-2">
-              <label htmlFor={String(field.name)} className="block text-sm font-medium text-gray-700">
-                {field.header}
-                {field.rules && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              <FormField field={field} control={control} />
-              {errors[field.name] && <p className="text-sm text-red-500">{errors[field.name]?.message as string}</p>}
-            </div>
+            <FormField key={field.accessorKey} field={field} control={control} />
           ))}
-        </div>
-
-        <div className="flex justify-end mt-4">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   transition-colors duration-200"
-          >
-            {isSubmitting ? 'Enviando...' : 'Añadir'}
-          </button>
-        </div>
-      </form> */}
-    </>
+          <Button type="submit" disabled={isSubmitting} className="gap-1">
+            <Plus className="h-4 w-4" />
+            {isSubmitting ? 'Adding...' : 'Add'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 

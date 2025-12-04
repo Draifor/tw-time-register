@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Minus, Square, X, Maximize2 } from 'lucide-react';
 
 import Icon from '../assets/icons/Icon-Electron.png';
 import MenuBar from './MenuBar';
@@ -9,11 +10,7 @@ function AppBar() {
   const { t } = useTranslation();
 
   const handleToggle = () => {
-    if (isMaximize) {
-      setMaximize(false);
-    } else {
-      setMaximize(true);
-    }
+    setMaximize(!isMaximize);
     window.Main.Maximize();
   };
 
@@ -25,14 +22,14 @@ function AppBar() {
     {
       label: t('menu.file.file'),
       items: [
-        { label: t('menu.file.new'), onClick: () => console.log(t('menu.file.new')) },
-        { label: t('menu.file.open'), onClick: () => console.log(t('menu.file.open')) },
-        { label: t('menu.file.save'), onClick: () => console.log(t('menu.file.save')) },
+        { label: t('menu.file.new'), onClick: () => {} },
+        { label: t('menu.file.open'), onClick: () => {} },
+        { label: t('menu.file.save'), onClick: () => {} },
         {
           label: t('menu.file.export'),
           items: [
-            { label: 'PDF', onClick: () => console.log(t('menu.file.export'), 'PDF') },
-            { label: 'HTML', onClick: () => console.log(t('menu.file.export'), 'HTML') }
+            { label: 'PDF', onClick: () => {} },
+            { label: 'HTML', onClick: () => {} }
           ]
         }
       ]
@@ -40,11 +37,11 @@ function AppBar() {
     {
       label: t('menu.edit.edit'),
       items: [
-        { label: t('menu.edit.undo'), onClick: () => console.log(t('menu.edit.undo')) },
-        { label: t('menu.edit.redo'), onClick: () => console.log(t('menu.edit.redo')) },
-        { label: t('menu.edit.cut'), onClick: () => console.log(t('menu.edit.cut')) },
-        { label: t('menu.edit.copy'), onClick: () => console.log(t('menu.edit.copy')) },
-        { label: t('menu.edit.paste'), onClick: () => console.log(t('menu.edit.paste')) }
+        { label: t('menu.edit.undo'), onClick: () => {} },
+        { label: t('menu.edit.redo'), onClick: () => {} },
+        { label: t('menu.edit.cut'), onClick: () => {} },
+        { label: t('menu.edit.copy'), onClick: () => {} },
+        { label: t('menu.edit.paste'), onClick: () => {} }
       ]
     },
     {
@@ -54,41 +51,52 @@ function AppBar() {
           label: t('menu.view.toggleDevTools'),
           onClick: () => toggleDevTools()
         },
-        { label: t('menu.view.zoomIn'), onClick: () => console.log(t('menu.view.zoomIn')) },
-        { label: t('menu.view.zoomOut'), onClick: () => console.log(t('menu.view.zoomOut')) },
-        { label: t('menu.view.fullscreen'), onClick: () => console.log(t('menu.view.fullscreen')) }
+        { label: t('menu.view.zoomIn'), onClick: () => {} },
+        { label: t('menu.view.zoomOut'), onClick: () => {} },
+        { label: t('menu.view.fullscreen'), onClick: () => {} }
       ]
     },
     {
       label: t('menu.help.help'),
       items: [
-        { label: t('menu.help.documentation'), onClick: () => console.log(t('menu.help.documentation')) },
-        { label: t('menu.help.about'), onClick: () => console.log(t('menu.help.about')) }
+        { label: t('menu.help.documentation'), onClick: () => {} },
+        { label: t('menu.help.about'), onClick: () => {} }
       ]
     }
   ];
+
   return (
     <div className="fixed top-0 w-full z-50">
-      <div className="bg-slate-800 py-0.5 flex justify-between draggable text-white">
-        <div className="inline-flex">
-          <img className="h-6 lg:-ml-2" src={Icon} alt="Icon of Electron" />
-          <p className="text-xs md:pt-1 md:-ml-1 lg:-ml-2">Vite App</p>
+      <div className="bg-slate-800 h-8 flex justify-between items-center draggable text-white">
+        <div className="inline-flex items-center gap-1 pl-2">
+          <img className="h-5 w-5" src={Icon} alt="TW Time Register" />
+          <span className="text-sm font-medium">TW Time Register</span>
         </div>
-        <div className="inline-flex -mt-1">
-          <button onClick={window.Main.Minimize} className="undraggable md:px-4 lg:px-3 pt-1 hover:bg-gray-300">
-            &#8211;
+        <div className="inline-flex h-full">
+          <button
+            onClick={window.Main.Minimize}
+            className="undraggable w-12 h-full flex items-center justify-center hover:bg-slate-700 transition-colors"
+            aria-label="Minimize"
+          >
+            <Minus className="h-4 w-4" />
           </button>
-          <button onClick={handleToggle} className="undraggable px-6 lg:px-5 pt-1 hover:bg-gray-300">
-            {isMaximize ? '\u2752' : '⃞'}
+          <button
+            onClick={handleToggle}
+            className="undraggable w-12 h-full flex items-center justify-center hover:bg-slate-700 transition-colors"
+            aria-label={isMaximize ? 'Restore' : 'Maximize'}
+          >
+            {isMaximize ? <Maximize2 className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
           </button>
-          <button onClick={window.Main.Close} className="undraggable px-4 pt-1 hover:bg-red-500 hover:text-white">
-            &#10005;
+          <button
+            onClick={window.Main.Close}
+            className="undraggable w-12 h-full flex items-center justify-center hover:bg-red-500 transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div className="flex flex-col">
-        <MenuBar items={menuItems} />
-      </div>
+      <MenuBar items={menuItems} />
     </div>
   );
 }

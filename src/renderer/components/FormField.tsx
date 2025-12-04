@@ -10,30 +10,38 @@ function FormField<T extends FieldValues>({ field, control, className }: FormFie
 
   if (options) {
     return (
-      <div className="flex items-end space-x-2 flex-1 justify-center">
-        {label && <Label htmlFor={accessorKey as string}>{label}</Label>}
+      <div className="flex flex-col gap-1.5 min-w-[150px]">
+        {label && (
+          <Label htmlFor={accessorKey as string} className="text-sm font-medium">
+            {label}
+          </Label>
+        )}
         <Select
           name={accessorKey as string}
           control={control}
           options={options}
           placeholder={header}
           rules={rules}
-          className={`w-full ${className}`}
+          className={className}
         />
       </div>
     );
   }
 
   return (
-    <div className="flex items-end space-x-2 flex-1 justify-center">
-      {label && <Label htmlFor={accessorKey as string}>{label}</Label>}
+    <div className="flex flex-col gap-1.5 min-w-[150px]">
+      {label && (
+        <Label htmlFor={accessorKey as string} className="text-sm font-medium">
+          {label}
+        </Label>
+      )}
       <Input
         name={accessorKey as string}
         control={control}
         rules={rules}
         type={type}
         placeholder={header}
-        className={`w-full ${className}`}
+        className={className}
       />
     </div>
   );

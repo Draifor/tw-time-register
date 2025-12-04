@@ -1,6 +1,7 @@
 import React from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -68,7 +69,8 @@ function DataTable<T extends FieldValues>({
             className="max-w-sm"
           />
           {isEditable && onAddRow && (
-            <Button onClick={onAddRow} size="sm">
+            <Button onClick={onAddRow} size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
               Add Row
             </Button>
           )}
@@ -118,11 +120,20 @@ function DataTable<T extends FieldValues>({
                 size="sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
+                className="gap-1"
               >
+                <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
-              <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="gap-1"
+              >
                 Next
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>

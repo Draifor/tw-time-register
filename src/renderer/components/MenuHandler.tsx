@@ -23,11 +23,16 @@ function MenuHandler({ label, items }: MenuHandlerProps) {
 
   return (
     <div className="relative" ref={menuRef}>
-      <button onClick={handleClick} className="px-3 text-sm hover:bg-gray-700 focus:outline-none">
+      <button
+        onClick={handleClick}
+        className={`px-3 py-1 text-sm transition-colors hover:bg-slate-700 focus:outline-none ${
+          isOpen ? 'bg-slate-700' : ''
+        }`}
+      >
         {label}
       </button>
       {isOpen && items && (
-        <div className="absolute left-0 top-full w-48 bg-white shadow-lg rounded-md z-10">
+        <div className="absolute left-0 top-full w-52 bg-popover border border-border shadow-lg rounded-md py-1 z-50">
           {items.map((item) => (
             <MenuItem
               key={item.label}
