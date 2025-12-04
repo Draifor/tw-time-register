@@ -1,5 +1,6 @@
-export const fetchTasks = async () => {
-  return [];
+export const fetchWorkTimes = async () => {
+  const response = await window.Main.getTimeEntries();
+  return response;
 };
 
 export const columns = [

@@ -86,7 +86,32 @@ export default function WorkTimeForm() {
 
   const onSubmit = async (data: { entries: WorkTimeEntry[] }) => {
     console.log(data);
-    reset();
+    try {
+      for (const entry of data.entries) {
+        // Format times for DB (HH:MM)
+        const formatTime = (date: Date) => {
+          if (!date) return '00:00';
+          return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        const startTimeStr = formatTime(entry.startTime[0]);
+        const endTimeStr = formatTime(entry.endTime[0]);
+
+        // Save locally
+        await window.Main.addTimeEntry({
+          taskId: Number(entry.task),
+          description: entry.description,
+          date: entry.date,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          isBillable: true
+        });
+      }
+      alert('Entries saved successfully!');
+    } catch (error) {
+      console.error('Error saving entries:', error);
+      alert('Error saving entries');
+    }
   };
 
   const handleAddEntry = () => {

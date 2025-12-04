@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { addWorkTime, getWorkTimes } from '../database/database';
+import { addWorkTime, getWorkTimes, addTimeEntry, getTimeEntries } from '../database/database';
 import { registerTimeEntry } from '../services/apiService';
 import { registerUser, loginUser } from '../services/credentialService';
 import { addTypeTask, getTypeTasks, getTypeTaskById, updateTypeTask, deleteTypeTask } from '../services/typeTasksService';
@@ -11,6 +11,14 @@ ipcMain.handle('addWorkTime', async (event: any, description: string, hours: num
 
 ipcMain.handle('getWorkTimes', async (event: any) => {
   return getWorkTimes();
+});
+
+ipcMain.handle('addTimeEntry', async (event: any, entry: any) => {
+  return addTimeEntry(entry.taskId, entry.description, entry.date, entry.startTime, entry.endTime, entry.isBillable);
+});
+
+ipcMain.handle('getTimeEntries', async (event: any) => {
+  return getTimeEntries();
 });
 
 ipcMain.handle('registerUser', async (event: any, username: string, password: string) => {

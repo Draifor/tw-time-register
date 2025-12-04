@@ -186,6 +186,8 @@ const api = {
   },
   addWorkTime: (entry: { description: string; hours: number; date: string }) => ipcRenderer.invoke('addWorkTime', entry),
   getWorkTimes: () => ipcRenderer.invoke('getWorkTimes'),
+  addTimeEntry: (entry: { taskId: number; description: string; date: string; startTime: string; endTime: string; isBillable: boolean }) => ipcRenderer.invoke('addTimeEntry', entry),
+  getTimeEntries: () => ipcRenderer.invoke('getTimeEntries'),
   registerUser: (username: string, password: string) => ipcRenderer.invoke('registerUser', username, password),
   loginUser: (username: string, password: string) => ipcRenderer.invoke('loginUser', username, password),
   registerTimeEntry: (entry: { taskId: string; description: string; hours: number; minutes: number; time: number; date: string; isBillable: boolean }) => ipcRenderer.invoke('registerTimeEntry', entry),
