@@ -27,15 +27,20 @@ Desarrollador que necesita registrar su tiempo de trabajo diario en TeamWork de 
 ### Proceso Renderer (React)
 - **React v18** con hooks
 - **TypeScript v5** - Todo el código debe estar tipado
-- **Vite v2.8** - Bundler y dev server
-- **TanStack React Query v4** - Cache y estado del servidor
+- **Vite v7** - Bundler y dev server ultrarrápido
+- **TanStack React Query v5** - Cache y estado del servidor
 - **TanStack React Table v8** - Tablas con filtrado, paginación, edición
 - **React Hook Form v7** - Formularios con validación
-- **Tailwind CSS v3** - Estilos utility-first
+- **Tailwind CSS v3.4** - Estilos utility-first
 - **React Router DOM v6** - Navegación SPA
 - **i18next** - Internacionalización (ES/EN)
 - **date-fns** - Manipulación de fechas
 - **Flatpickr** - Selector de tiempo
+
+### Calidad de Código
+- **ESLint v9** - Linting con flat config (`eslint.config.js`)
+- **Prettier v3** - Formateo de código
+- **typescript-eslint v8** - Reglas TypeScript para ESLint
 
 ---
 
@@ -106,12 +111,15 @@ const query = `SELECT ${columnsDB.ID} FROM ${columnsDB.TABLE_NAME}`;
 - **Invalidate**: Refrescar después de mutaciones
 
 ```typescript
-// Patrón estándar
-const { data, isLoading, error } = useQuery(['tasks'], fetchTasks);
+// Patrón estándar React Query v5
+const { data, isPending, error } = useQuery({
+  queryKey: ['tasks'],
+  queryFn: fetchTasks
+});
 
 const { mutate } = useMutation({
   mutationFn: addTask,
-  onSettled: () => queryClient.invalidateQueries(['tasks'])
+  onSettled: () => queryClient.invalidateQueries({ queryKey: ['tasks'] })
 });
 ```
 
@@ -156,20 +164,30 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 
 ## Estado Actual y Problemas Conocidos
 
-### ✅ Limpieza Completada (Dic 2024)
+### ✅ Limpieza Completada (Dic 2025)
 - Eliminados archivos de ejemplo: EditableTable, makeData, Users, Comments
 - Eliminados servicios de ejemplo: usersService, commentsServices
 - Unificado DataTable (eliminado DataTableNew)
 - Removido @faker-js/faker
 - Actualizados metadatos del package.json
 
+### ✅ Stack Actualizado (Dic 2025)
+- Vite 2.8 → 7.2.6
+- @vitejs/plugin-react 1.2 → 5.1.1
+- TanStack React Query 4.x → 5.x (sintaxis migrada)
+- Tailwind CSS 3.0 → 3.4.18
+- ESLint 8 → 9.39.1 (migrado a flat config)
+- Prettier 2.6 → 3.7.4
+- typescript-eslint 5.x → 8.48.1
+
 ### ⚠️ Pendiente: Aclarar roles
 - `components/Tasks.tsx` - Componente de tabla de tareas
 - `pages/Tasks.tsx` - Página que agrupa TypeTasks, Tasks y TimeLogs
 
-### ⚠️ Problemas de Tipos
-- Muchos `any` en IPC handlers y forms
+### ⚠️ Errores de Linting Pendientes
+- Muchos `any` en IPC handlers y forms (tipar correctamente)
 - Variables `event` no usadas en handlers IPC (usar `_event`)
+- Algunos imports no utilizados
 
 ### ⚠️ Mejoras Pendientes
 - Encriptar credenciales en BD
@@ -192,43 +210,42 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **Limpieza**: Eliminar código de ejemplo
-2. **Actualización Stack**: Vite 6, TanStack Query v5, etc.
-3. **UI/UX**: Implementar sistema de diseño moderno (shadcn/ui recomendado)
-4. **Estabilidad**: Corregir errores TypeScript
-5. **Core**: Completar flujo de registro de tiempos
+1. **UI/UX**: Implementar sistema de diseño moderno (shadcn/ui recomendado)
+2. **Estabilidad**: Corregir errores de linting (ESLint 9)
+3. **Core**: Completar flujo de registro de tiempos
+4. **Integración**: Sincronización con TeamWork API
 
 ---
 
 ## Actualización del Stack Tecnológico
 
-### Dependencias Desactualizadas
+### ✅ Stack Completamente Actualizado (Dic 2025)
 
-| Paquete | Actual | Target | Riesgo |
-|---------|--------|--------|--------|
-| Vite | 2.8.6 | 6.x | ALTO |
-| @vitejs/plugin-react | 1.2.0 | 4.x | ALTO |
-| Electron | 30.0.7 | 33.x | MEDIO |
-| TanStack Query | 4.x | 5.x | BAJO |
-| Tailwind CSS | 3.0.23 | 3.4.x | MUY BAJO |
-| ESLint | 8.11.0 | 9.x | MEDIO |
+| Paquete | Versión Anterior | Versión Actual |
+|---------|------------------|----------------|
+| Vite | 2.8.6 | **7.2.6** |
+| @vitejs/plugin-react | 1.2.0 | **5.1.1** |
+| TanStack React Query | 4.x | **5.x** |
+| Tailwind CSS | 3.0.23 | **3.4.18** |
+| ESLint | 8.11.0 | **9.39.1** |
+| Prettier | 2.6.0 | **3.7.4** |
+| typescript-eslint | 5.16.0 | **8.48.1** |
 
-### Orden de Actualización Recomendado
+### Cambios importantes en la migración
 
-1. **Primero (seguro)**: Tailwind, date-fns, lucide-react, axios
-2. **Segundo (cuidado)**: React Query v5, React Hook Form
-3. **Tercero (arriesgado)**: Vite 6 + vite-plugin-electron
-4. **Último**: ESLint 9 (requiere migrar a flat config)
+#### React Query v5
+- Sintaxis de `useQuery` cambió a objeto: `useQuery({ queryKey, queryFn })`
+- `isLoading` → `isPending` para mutaciones
+- `invalidateQueries` usa objeto: `{ queryKey: ['tasks'] }`
 
-### Al actualizar dependencias
-- Hacer commits pequeños por grupo de dependencias
-- Probar después de cada actualización
-- Revisar CHANGELOG de breaking changes
-- Usar `pnpm update --interactive` para control granular
+#### ESLint 9 (Flat Config)
+- Archivo de configuración: `eslint.config.js` (no `.eslintrc.json`)
+- Usa `typescript-eslint` en lugar de `@typescript-eslint/*`
+- Scripts simplificados: `eslint .` (sin `--ext`)
 
 ---
 
-## Mejora de UI/UX
+## Mejora de UI/UX (Próxima Fase)
 
 ### Biblioteca Recomendada: shadcn/ui
 

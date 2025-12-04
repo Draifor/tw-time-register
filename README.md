@@ -24,17 +24,17 @@ Este proyecto fue diseñado para aprender tecnologías modernas y patrones de di
 - **Electron** v30 - Framework para aplicaciones de escritorio
 - **React** v18 - Biblioteca UI con Hooks
 - **TypeScript** v5 - Tipado estático
-- **Vite** v2.8 - Build tool y dev server
+- **Vite** v7 - Build tool y dev server ultrarrápido
 
 ### UI y Estilos
 
-- **Tailwind CSS** v3 - Framework de estilos utility-first
+- **Tailwind CSS** v3.4 - Framework de estilos utility-first
 - **Material Tailwind** - Componentes pre-diseñados
 - **Lucide React** - Iconos
 
 ### Gestión de Estado y Data
 
-- **TanStack React Query** v4 - Manejo de estado del servidor y caché
+- **TanStack React Query** v5 - Manejo de estado del servidor y caché
 - **TanStack React Table** v8 - Tablas avanzadas con filtrado, paginación, edición
 - **React Hook Form** v7 - Manejo de formularios con validación
 
@@ -46,6 +46,12 @@ Este proyecto fue diseñado para aprender tecnologías modernas y patrones de di
 
 - **SQLite3** - Base de datos local embebida
 - **sqlite** - Driver async para SQLite
+
+### Calidad de Código
+
+- **ESLint** v9 - Linting con flat config
+- **Prettier** v3 - Formateo de código
+- **typescript-eslint** v8 - Reglas TypeScript para ESLint
 
 ### Otros
 
@@ -84,8 +90,7 @@ tw-time-register/
 │   │   │   ├── AppBar.tsx          # Barra de título personalizada
 │   │   │   ├── NavBar.tsx          # Navegación principal
 │   │   │   ├── WorkTimeForm.tsx    # ⭐ Formulario principal de tiempos
-│   │   │   ├── DataTable.tsx       # Tabla genérica con formulario
-│   │   │   ├── DataTableNew.tsx    # Tabla genérica simplificada
+│   │   │   ├── DataTable.tsx       # Tabla genérica con TanStack Table
 │   │   │   ├── DynamicForm.tsx     # Formulario dinámico por columnas
 │   │   │   ├── Tasks.tsx           # Componente de tareas
 │   │   │   ├── TypeTasks.tsx       # Componente de tipos de tarea
@@ -93,8 +98,8 @@ tw-time-register/
 │   │   │   ├── TotalTimeDay.tsx    # Cálculo total diario
 │   │   │   └── ui/                 # Componentes UI reutilizables
 │   │   ├── hooks/
-│   │   │   ├── useTasks.tsx        # Hook para gestión de tareas
-│   │   │   ├── useTimeLogs.tsx     # Hook para logs de tiempo
+│   │   │   ├── useTasks.tsx        # Hook para gestión de tareas (React Query v5)
+│   │   │   ├── useTimeLogs.tsx     # Hook para logs de tiempo (React Query v5)
 │   │   │   ├── useTable.tsx        # Hook para TanStack Table
 │   │   │   └── useDarkMode.ts      # Hook para modo oscuro
 │   │   ├── services/
@@ -102,9 +107,7 @@ tw-time-register/
 │   │   │   ├── timesService.ts     # Servicio de tiempos (renderer)
 │   │   │   └── typeTasksService.ts # Servicio de tipos (renderer)
 │   │   ├── pages/
-│   │   │   ├── Tasks.tsx           # Página de gestión de tareas
-│   │   │   ├── EditableTable.tsx   # 🔧 Ejemplo de tabla editable
-│   │   │   └── makeData.ts         # 🔧 Generador de datos fake
+│   │   │   └── Tasks.tsx           # Página de gestión de tareas
 │   │   ├── locales/                # Traducciones i18n
 │   │   └── styles/                 # Estilos adicionales
 │   └── types/                  # Tipos TypeScript compartidos
@@ -197,41 +200,27 @@ CREATE TABLE users (
 
 ## 🐛 Problemas Conocidos
 
-### Código de Prueba/Ejemplos
+### Errores de Linting
 
-Archivos que son ejemplos o pruebas y no forman parte del flujo principal:
-
-- `src/renderer/pages/EditableTable.tsx` - Ejemplo de tabla editable con faker
-- `src/renderer/pages/makeData.ts` - Generador de datos falsos con faker
-- `src/renderer/hooks/Users.tsx` - Ejemplo con API externa (jsonplaceholder)
-- `src/renderer/hooks/Comments.tsx` - Ejemplo con API externa
-- `src/renderer/services/usersService.ts` - Servicio de ejemplo
-- `src/renderer/services/commentsServices.ts` - Servicio de ejemplo
-
-### Errores de TypeScript/ESLint
-
-- Uso excesivo de `any` en varios archivos
-- Variables `event` no usadas en handlers IPC
-- `console.log` y `alert` en código de producción
-- Algunos tipos incompletos en componentes
+Después de la migración a ESLint 9, hay varios errores de linting pendientes de corregir:
+- Uso de `any` en algunos archivos (se debe tipar correctamente)
+- Variables `event` no usadas en handlers IPC (usar `_event`)
+- Algunos imports no utilizados
 
 ### Arquitectura
 
-- Duplicación: `DataTable.tsx` y `DataTableNew.tsx` (similares)
-- Duplicación: `Tasks.tsx` en components/ y pages/
+- Duplicación: `Tasks.tsx` en components/ y pages/ (aclarar roles)
 - Modelos en `main/database/models/` vacíos (placeholders)
-- Mezcla de responsabilidades en algunos hooks
 
 ### Seguridad
 
-- Credenciales almacenadas en texto plano
-- Exposición directa de `ipcRenderer` al window
+- Credenciales almacenadas en texto plano (pendiente encriptar)
 
 ## 🚀 Desarrollo
 
 ### Requisitos
 
-- Node.js v18+
+- Node.js v20+ (recomendado v24+)
 - pnpm (recomendado) o npm
 
 ### Instalación
@@ -261,50 +250,31 @@ pnpm dist:linux # Linux
 
 ## 📋 Plan de Desarrollo
 
-### Fase 1: Limpieza (Prioridad: ALTA)
+### ✅ Fase 1: Limpieza (COMPLETADA - Dic 2025)
 
-1. Eliminar código de ejemplo (Users, Comments, faker, etc.)
-2. Unificar componentes duplicados (DataTable, Tasks)
-3. Remover dependencias innecesarias del package.json
+- [x] Eliminar código de ejemplo (Users, Comments, faker, EditableTable, makeData)
+- [x] Unificar componentes duplicados (DataTable)
+- [x] Remover dependencias innecesarias (@faker-js/faker)
+- [x] Actualizar metadatos del package.json
 
-### Fase 2: Actualización del Stack (Prioridad: ALTA)
+### ✅ Fase 2: Actualización del Stack (COMPLETADA - Dic 2025)
 
-> ⚠️ Esta fase es arriesgada pero necesaria para aprendizaje. Hacer backup antes.
+| Paquete | Antes | Después |
+|---------|-------|---------|
+| Vite | 2.8.6 | **7.2.6** ✅ |
+| @vitejs/plugin-react | 1.2.0 | **5.1.1** ✅ |
+| TanStack Query | 4.x | **5.x** ✅ |
+| Tailwind CSS | 3.0.23 | **3.4.18** ✅ |
+| ESLint | 8.11.0 | **9.39.1** ✅ |
+| Prettier | 2.6.0 | **3.7.4** ✅ |
+| typescript-eslint | 5.16.0 | **8.48.1** ✅ |
 
-#### Dependencias Desactualizadas vs Actuales
-
-| Paquete | Actual | Última | Notas |
-|---------|--------|--------|-------|
-| Vite | 2.8.6 | 6.x | Breaking changes significativos |
-| @vitejs/plugin-react | 1.2.0 | 4.x | Actualizar junto con Vite |
-| Electron | 30.0.7 | 33.x | Actualizar con cuidado |
-| TanStack Query | 4.x | 5.x | API changes menores |
-| Tailwind CSS | 3.0.23 | 3.4.x | Compatible, actualización segura |
-| ESLint | 8.11.0 | 9.x | Nueva config format (flat config) |
-| TypeScript | 5.8.3 | ✅ | Ya está actualizado |
-
-#### Pasos de Actualización
-
-1. **Grupo 1 - Seguro**: Tailwind, Autoprefixer, PostCSS, Lucide, date-fns
-2. **Grupo 2 - Moderado**: React Query v5, React Hook Form, React Router
-3. **Grupo 3 - Cuidado**: Vite 6 + plugins de Electron
-4. **Grupo 4 - Después**: ESLint 9 (nuevo formato de config)
-
-### Fase 3: Mejora de UI/UX (Prioridad: MEDIA-ALTA)
+### 🔄 Fase 3: Mejora de UI/UX (PENDIENTE)
 
 > 🎨 Transformar la interfaz para que sea atractiva y profesional
 
-1. **Definir sistema de diseño**
-   - Paleta de colores consistente
-   - Tipografía y espaciados
-   - Componentes base estilizados
-
-2. **Opciones de UI Library** (elegir una):
-   - **shadcn/ui** - Componentes copiables, muy personalizable, tendencia actual
-   - **Radix UI + Tailwind** - Accesible, sin estilos (base de shadcn)
-   - **Headless UI** - Por los creadores de Tailwind
-   - Mantener Material Tailwind (ya instalado, pero menos moderno)
-
+1. **Implementar shadcn/ui** - Componentes modernos basados en Radix UI
+2. **Sistema de diseño** - Paleta de colores, tipografía, espaciados
 3. **Áreas a mejorar**:
    - AppBar y navegación
    - Formulario de tiempos (WorkTimeForm)
@@ -313,27 +283,27 @@ pnpm dist:linux # Linux
    - Estados de carga y error
    - Tema oscuro completo
 
-### Fase 4: Estabilización de Código (Prioridad: MEDIA)
+### Fase 4: Estabilización de Código (PENDIENTE)
 
-1. Corregir errores de TypeScript/ESLint
+1. Corregir errores de linting (ESLint 9)
 2. Tipar correctamente todas las interfaces
 3. Crear types para TimeEntry, WorkTimeEntry
 4. Mejorar manejo de errores
 
-### Fase 5: Funcionalidad Core (Prioridad: MEDIA)
+### Fase 5: Funcionalidad Core (PENDIENTE)
 
 1. Completar flujo de registro de tiempos
 2. Mejorar cálculos dinámicos (fechas encadenadas, totales)
 3. Implementar edición/eliminación de tiempos
 4. Vista de resumen por día/tarea
 
-### Fase 6: Integración TeamWork (Prioridad: BAJA)
+### Fase 6: Integración TeamWork (PENDIENTE)
 
 1. Configuración segura de credenciales
 2. Sincronización con API de TeamWork
 3. Importación de proyectos/tareas desde TW
 
-### Fase 7: Pulido Final (Prioridad: BAJA)
+### Fase 7: Pulido Final (PENDIENTE)
 
 1. Completar i18n
 2. Tests unitarios
