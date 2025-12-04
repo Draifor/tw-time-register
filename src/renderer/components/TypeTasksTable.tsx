@@ -6,14 +6,13 @@ function TypeTasksTable() {
   const { data, isLoading, error, columns } = useTypeTasks();
 
   return (
-    <div>
-      <DataTable
-        data={data}
-        isLoading={isLoading}
-        error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
-        columns={columns}
-      />
-    </div>
+    <DataTable
+      title="Task Types"
+      data={data}
+      isLoading={isLoading}
+      error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
+      columns={columns}
+    />
   );
 }
 

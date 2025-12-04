@@ -4,6 +4,8 @@ import { FieldValues } from 'react-hook-form';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {
@@ -17,6 +19,7 @@ interface DataTableProps<T extends FieldValues> {
   isLoading: boolean;
   isEditable?: boolean;
   error: { message: string } | null;
+  title?: string;
   onAddRow?: () => void;
   formFunction?: (newData: any) => void;
   onEdit?: (rowData: T) => void;
@@ -29,6 +32,7 @@ function DataTable<T extends FieldValues>({
   isLoading,
   isEditable = false,
   error,
+  title,
   onAddRow,
   formFunction,
   onEdit,
@@ -39,81 +43,98 @@ function DataTable<T extends FieldValues>({
   if (isLoading)
     return (
       <div className="flex justify-center items-center py-8">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   if (error)
     return (
       <div className="flex justify-center items-center py-8">
-        <div className="text-red-500">Error: {error.message}</div>
+        <div className="text-destructive">Error: {error.message}</div>
       </div>
     );
 
   return (
-    <div className="p-4">
-      {isEditable && onAddRow && (
-        <div className="mb-4">
-          <button onClick={onAddRow}>Add Row</button>
-        </div>
+    <Card>
+      {title && (
+        <CardHeader className="pb-3">
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
       )}
-      <div className="mb-4 flex justify-center">
-        <Input
-          type="text"
-          name="globalFilter"
-          value={globalFilter || ''}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
-          placeholder="Filter..."
-          className="w-3/4"
-        />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse block md:table">
-          <thead className="block md:table-header-group">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border md:table-row">
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    className="border md:table-cell px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div className="flex flex-col">
-                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody className="block md:table-row-group">
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border md:table-row">
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="p-2 border md:table-cell">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {(table.getCanNextPage() || table.getCanPreviousPage()) && (
-        <div className="flex justify-around mt-4">
-          <Button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-            Previous
-          </Button>
-          <Button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-            Next
-          </Button>
-          <span className="px-4 py-2">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </span>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <Input
+            type="text"
+            value={globalFilter || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
+            placeholder="Search..."
+            className="max-w-sm"
+          />
+          {isEditable && onAddRow && (
+            <Button onClick={onAddRow} size="sm">
+              Add Row
+            </Button>
+          )}
         </div>
-      )}
-    </div>
+
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {(table.getCanNextPage() || table.getCanPreviousPage()) && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

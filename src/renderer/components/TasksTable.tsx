@@ -6,19 +6,18 @@ function TasksTable() {
   const { data, isLoading, isEditable, error, onSubmit, columns, onEdit, onDelete, handleAddRow } = useTasks();
 
   return (
-    <div>
-      <DataTable
-        data={data}
-        isLoading={isLoading}
-        isEditable={isEditable}
-        error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
-        columns={columns}
-        formFunction={onSubmit}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onAddRow={handleAddRow}
-      />
-    </div>
+    <DataTable
+      title="TeamWork Tasks"
+      data={data}
+      isLoading={isLoading}
+      isEditable={isEditable}
+      error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
+      columns={columns}
+      formFunction={onSubmit}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onAddRow={handleAddRow}
+    />
   );
 }
 
