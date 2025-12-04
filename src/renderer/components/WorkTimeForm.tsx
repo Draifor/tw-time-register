@@ -6,6 +6,7 @@ import Label from './ui/Label';
 import Select from './ui/Select';
 import TotalTimeDay from './TotalTimeDay';
 import InputTime from './ui/InputTime';
+import useTasks from '../hooks/useTasks';
 
 type WorkTimeEntry = {
   date: string;
@@ -13,7 +14,7 @@ type WorkTimeEntry = {
   endTime: Date[]; // Ajustado para react-flatpickr
   hours: Date[];
   startTime: Date[];
-  task: string;
+  task: { value: string; label: string } | string;
 };
 
 export default function WorkTimeForm() {
@@ -26,6 +27,24 @@ export default function WorkTimeForm() {
     endTime: [new Date('1970-01-01T09:00:00')]
   };
 
+  const getInitialValues = () => {
+    const saved = localStorage.getItem('workTimeFormEntries');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((entry: any) => ({
+          ...entry,
+          hours: entry.hours.map((d: string) => new Date(d)),
+          startTime: entry.startTime.map((d: string) => new Date(d)),
+          endTime: entry.endTime.map((d: string) => new Date(d))
+        }));
+      } catch (e) {
+        console.error('Failed to parse saved form data', e);
+      }
+    }
+    return [defaultValue];
+  };
+
   const {
     formState: { errors },
     control,
@@ -33,17 +52,21 @@ export default function WorkTimeForm() {
     reset,
     setValue
   } = useForm<{ entries: WorkTimeEntry[] }>({
-    defaultValues: { entries: [defaultValue] }
+    defaultValues: { entries: getInitialValues() }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
+  const { data: tasks } = useTasks();
 
-  const options = [
-    { value: '1', label: 'Project 1', link: 'https://link-to-task-1' },
-    { value: '2', label: 'Project 2', link: 'https://link-to-task-2' },
-    { value: '3', label: 'Project 3', link: 'https://link-to-task-3' },
-    { value: 'juju', label: 'Project juju', link: 'https://link-to-task-juju' }
-  ];
+  const options = React.useMemo(() => {
+    return (
+      tasks?.map((task: any) => ({
+        value: String(task.id),
+        label: task.taskName,
+        link: task.taskLink
+      })) || []
+    );
+  }, [tasks]);
 
   const previousValues = useRef<{ startTime: Date[]; hours: Date[] }[]>([]);
 
@@ -69,6 +92,10 @@ export default function WorkTimeForm() {
   };
 
   useEffect(() => {
+    localStorage.setItem('workTimeFormEntries', JSON.stringify(result));
+  }, [result]);
+
+  useEffect(() => {
     result.forEach((entry, index) => {
       const prevEntry = previousValues.current[index] || {};
       const newEndTime = calculateEndTime(entry.startTime, entry.hours);
@@ -85,9 +112,8 @@ export default function WorkTimeForm() {
   }, [result, setValue]);
 
   const onSubmit = async (data: { entries: WorkTimeEntry[] }) => {
-    console.log(data);
     try {
-      for (const entry of data.entries) {
+      const promises = data.entries.map((entry) => {
         // Format times for DB (HH:MM)
         const formatTime = (date: Date) => {
           if (!date) return '00:00';
@@ -98,16 +124,23 @@ export default function WorkTimeForm() {
         const endTimeStr = formatTime(entry.endTime[0]);
 
         // Save locally
-        await window.Main.addTimeEntry({
-          taskId: Number(entry.task),
+        const taskId = typeof entry.task === 'object' ? Number(entry.task.value) : Number(entry.task);
+
+        return window.Main.addTimeEntry({
+          taskId,
           description: entry.description,
           date: entry.date,
           startTime: startTimeStr,
           endTime: endTimeStr,
           isBillable: true
         });
-      }
+      });
+
+      await Promise.all(promises);
+
       alert('Entries saved successfully!');
+      localStorage.removeItem('workTimeFormEntries');
+      reset({ entries: [defaultValue] });
     } catch (error) {
       console.error('Error saving entries:', error);
       alert('Error saving entries');
