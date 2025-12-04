@@ -1,37 +1,26 @@
-import React, { useMemo } from 'react';
+import React from 'react';
+import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
-import { Row, flexRender } from '@tanstack/react-table';
-import Button from './ui/Button';
-import Input from './ui/InputForm';
-import { Column, DataTableProps } from '../../types/dataTable';
-import DynamicForm from './DynamicForm';
 import useTable from '../hooks/useTable';
+import Button from './ui/Button';
+import Input from './ui/Input';
 
-// Define interfaces for better type safety
-interface ActionCellProps<T> {
-  row: Row<T>;
-  onEdit: (data: T) => void;
-  onDelete: (data: T) => void;
+declare module '@tanstack/react-table' {
+  interface TableMeta<TData extends RowData> {
+    updateData: (rowIndex: number, columnId: string, value: keyof TData) => void;
+  }
 }
 
-// Define ActionCell outside of DataTable
-function ActionCell<T>({ row, onEdit, onDelete }: ActionCellProps<T>) {
-  return (
-    <div className="flex space-x-2">
-      <button
-        onClick={() => onEdit(row.original)}
-        className="px-3 py-1 text-sm text-blue-500 hover:text-blue-700 transition-colors"
-      >
-        Editar
-      </button>
-      <button
-        onClick={() => onDelete(row.original)}
-        className="px-3 py-1 text-sm text-red-500 hover:text-red-700 transition-colors"
-      >
-        Eliminar
-      </button>
-    </div>
-  );
+interface DataTableProps<T extends FieldValues> {
+  columns: ColumnDef<T>[];
+  data: T[];
+  isLoading: boolean;
+  isEditable?: boolean;
+  error: { message: string } | null;
+  onAddRow?: () => void;
+  formFunction?: (newData: any) => void;
+  onEdit?: (rowData: T) => void;
+  onDelete?: (rowData: T) => void;
 }
 
 function DataTable<T extends FieldValues>({
@@ -40,34 +29,12 @@ function DataTable<T extends FieldValues>({
   isLoading,
   isEditable = false,
   error,
+  onAddRow,
   formFunction,
   onEdit,
   onDelete
 }: DataTableProps<T>) {
-  interface RowActionT<TField> {
-    row: Row<TField>;
-  }
-  const handleActionCell = ({ row }: RowActionT<T>) =>
-    onEdit && onDelete ? <ActionCell<T> row={row} onEdit={onEdit} onDelete={onDelete} /> : null;
-
-  const actionColumn = useMemo<Column>(
-    () => ({
-      id: 'actions',
-      header: 'Acciones',
-      accessorKey: 'actions',
-      cell: handleActionCell
-    }),
-    [onEdit, onDelete]
-  );
-
-  const tableColumns = useMemo(() => {
-    if (onEdit && onDelete) {
-      return [...columns, actionColumn];
-    }
-    return columns;
-  }, [columns, actionColumn, onEdit, onDelete]);
-
-  const { table, globalFilter, setGlobalFilter } = useTable({ columns: tableColumns, data, isEditable });
+  const { table, globalFilter, setGlobalFilter } = useTable({ columns, data, isEditable });
 
   if (isLoading)
     return (
@@ -84,6 +51,11 @@ function DataTable<T extends FieldValues>({
 
   return (
     <div className="p-4">
+      {isEditable && onAddRow && (
+        <div className="mb-4">
+          <button onClick={onAddRow}>Add Row</button>
+        </div>
+      )}
       <div className="mb-4 flex justify-center">
         <Input
           type="text"
@@ -94,7 +66,6 @@ function DataTable<T extends FieldValues>({
           className="w-3/4"
         />
       </div>
-      {formFunction && <DynamicForm fields={columns} onSubmit={formFunction} />}
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse block md:table">
           <thead className="block md:table-header-group">
@@ -103,11 +74,12 @@ function DataTable<T extends FieldValues>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
+                    colSpan={header.colSpan}
                     className="border md:table-cell px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider"
                   >
                     {header.isPlaceholder ? null : (
                       <div className="flex flex-col">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                       </div>
                     )}
                   </th>

@@ -1,5 +1,5 @@
 import React from 'react';
-import DataTable from './DataTableNew';
+import DataTable from './DataTable';
 import useTimeLogs from '../hooks/useTimeLogs';
 
 function TimeLogs() {

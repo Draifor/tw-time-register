@@ -1,5 +1,5 @@
 import React from 'react';
-import DataTable from './DataTableNew';
+import DataTable from './DataTable';
 import useTasks from '../hooks/useTasks';
 
 function TasksTable() {
