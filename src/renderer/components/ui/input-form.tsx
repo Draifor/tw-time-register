@@ -1,6 +1,5 @@
 import React from 'react';
 import { Controller } from 'react-hook-form';
-import useDarkMode from '../../hooks/useDarkMode';
 
 interface InputProps {
   className?: string;
@@ -12,17 +11,14 @@ interface InputProps {
 }
 
 function InputForm({ className, control, name, rules, ...rest }: InputProps) {
-  const { isDark } = useDarkMode();
+  const baseStyles =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
   const inputElement = (field: any, fieldState: any) => (
-    <>
-      <input
-        className={`${isDark ? 'text-gray-800' : ''} border border-gray-300 rounded px-2 py-1 h-10 ${className}`}
-        {...rest}
-        {...field}
-      />
-      {fieldState?.error && <p className="text-red-500">{fieldState.error.message}</p>}
-    </>
+    <div className="w-full">
+      <input className={`${baseStyles} ${className || ''}`} {...rest} {...field} />
+      {fieldState?.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+    </div>
   );
 
   if (control) {

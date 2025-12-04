@@ -8,7 +8,7 @@ import { Label } from './ui/label';
 import Select from './ui/select-custom';
 import TotalTimeDay from './TotalTimeDay';
 import InputTime from './ui/input-time';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import useTasks from '../hooks/useTasks';
 
 type WorkTimeEntry = {
@@ -194,92 +194,98 @@ export default function WorkTimeForm() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-                <div className="lg:col-span-2">
-                  <Label htmlFor={`entries.${index}.description`}>Description</Label>
-                  <Input
-                    type="text"
-                    placeholder="What did you work on?"
-                    className="w-full"
-                    name={`entries.${index}.description`}
-                    control={control}
-                    rules={{ required: 'Description is required' }}
-                  />
+              <div className="grid gap-4">
+                {/* Row 1: Description, Task, Date, Duration */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-4 space-y-2">
+                    <Label htmlFor={`entries.${index}.description`}>Description</Label>
+                    <Input
+                      type="text"
+                      placeholder="What did you work on?"
+                      className="w-full"
+                      name={`entries.${index}.description`}
+                      control={control}
+                      rules={{ required: 'Description is required' }}
+                    />
+                  </div>
+                  <div className="lg:col-span-4 space-y-2">
+                    <Label htmlFor={`entries.${index}.task`}>Task</Label>
+                    <Select
+                      name={`entries.${index}.task`}
+                      control={control}
+                      options={options}
+                      placeholder="Select a task"
+                      rules={{ required: 'Task is required' }}
+                    />
+                    {errors?.entries?.[index]?.task && (
+                      <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>
+                    )}
+                  </div>
+                  <div className="lg:col-span-2 space-y-2">
+                    <Label htmlFor={`entries.${index}.date`}>Date</Label>
+                    <Input
+                      type="date"
+                      name={`entries.${index}.date`}
+                      control={control}
+                      rules={{ required: 'Date is required' }}
+                    />
+                    {errors?.entries?.[index]?.date && (
+                      <span className="text-sm text-destructive">{errors.entries[index].date.message}</span>
+                    )}
+                  </div>
+                  <div className="lg:col-span-2 space-y-2">
+                    <Label htmlFor={`entries.${index}.hours`}>Duration</Label>
+                    <InputTime
+                      name={`entries.${index}.hours`}
+                      control={control}
+                      className="w-full"
+                      rules={{ required: 'Duration is required' }}
+                      options={{
+                        enableTime: true,
+                        noCalendar: true,
+                        time_24hr: true,
+                        dateFormat: 'H:i',
+                        defaultDate: '00:00'
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="lg:col-span-2">
-                  <Label htmlFor={`entries.${index}.task`}>Task</Label>
-                  <Select
-                    name={`entries.${index}.task`}
-                    control={control}
-                    options={options}
-                    placeholder="Select a task"
-                    rules={{ required: 'Task is required' }}
-                  />
-                  {errors?.entries?.[index]?.task && (
-                    <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor={`entries.${index}.date`}>Date</Label>
-                  <Input
-                    type="date"
-                    name={`entries.${index}.date`}
-                    control={control}
-                    rules={{ required: 'Date is required' }}
-                  />
-                  {errors?.entries?.[index]?.date && (
-                    <span className="text-sm text-destructive">{errors.entries[index].date.message}</span>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor={`entries.${index}.hours`}>Duration</Label>
-                  <InputTime
-                    name={`entries.${index}.hours`}
-                    control={control}
-                    className="w-full"
-                    rules={{ required: 'Duration is required' }}
-                    options={{
-                      enableTime: true,
-                      noCalendar: true,
-                      time_24hr: true,
-                      dateFormat: 'H:i',
-                      defaultDate: '00:00'
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`entries.${index}.startTime`}>Start</Label>
-                  <InputTime
-                    name={`entries.${index}.startTime`}
-                    control={control}
-                    className="w-full"
-                    rules={{ required: 'Start time is required' }}
-                    options={{
-                      enableTime: true,
-                      noCalendar: true,
-                      dateFormat: 'h:i K',
-                      defaultDate: '09:00'
-                    }}
-                  />
-                  {errors?.entries?.[index]?.startTime && (
-                    <span className="text-sm text-destructive">{errors.entries[index].startTime.message}</span>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor={`entries.${index}.endTime`}>End</Label>
-                  <InputTime
-                    name={`entries.${index}.endTime`}
-                    control={control}
-                    className="w-full"
-                    options={{
-                      enableTime: true,
-                      noCalendar: true,
-                      dateFormat: 'h:i K',
-                      time_24hr: false,
-                      defaultDate: '09:00',
-                      clickOpens: false
-                    }}
-                  />
+                {/* Row 2: Start, End */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-2 space-y-2">
+                    <Label htmlFor={`entries.${index}.startTime`}>Start</Label>
+                    <InputTime
+                      name={`entries.${index}.startTime`}
+                      control={control}
+                      className="w-full"
+                      rules={{ required: 'Start time is required' }}
+                      options={{
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: 'h:i K',
+                        defaultDate: '09:00'
+                      }}
+                    />
+                    {errors?.entries?.[index]?.startTime && (
+                      <span className="text-sm text-destructive">{errors.entries[index].startTime.message}</span>
+                    )}
+                  </div>
+                  <div className="lg:col-span-2 space-y-2">
+                    <Label htmlFor={`entries.${index}.endTime`}>End</Label>
+                    <InputTime
+                      name={`entries.${index}.endTime`}
+                      control={control}
+                      className="w-full"
+                      options={{
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: 'h:i K',
+                        time_24hr: false,
+                        defaultDate: '09:00',
+                        clickOpens: false
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>

@@ -2,7 +2,6 @@ import React from 'react';
 import { Controller } from 'react-hook-form';
 import DateTimePicker from 'react-flatpickr';
 import 'flatpickr/dist/flatpickr.css';
-import useDarkMode from '../../hooks/useDarkMode';
 
 interface InputTimeProps {
   className?: string;
@@ -13,8 +12,9 @@ interface InputTimeProps {
 }
 
 function InputTime({ className, control, name, rules, options }: InputTimeProps) {
-  const { isDark } = useDarkMode();
   const DateTimePickerAny = DateTimePicker as any;
+  const baseStyles =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <Controller
@@ -24,9 +24,9 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
       render={({ field }) => (
         <DateTimePickerAny
           {...field}
-          value={field.value || []} // Asignamos un valor inicial si `field.value` es `undefined`
-          onChange={(date: any) => field.onChange(date)} // Actualiza el valor en react-hook-form
-          className={`${isDark ? 'text-gray-800' : ''} border border-gray-300 rounded px-2 py-1 h-10 ${className}`}
+          value={field.value || []}
+          onChange={(date: any) => field.onChange(date)}
+          className={`${baseStyles} ${className || ''}`}
           options={options}
         />
       )}
