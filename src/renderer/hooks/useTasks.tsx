@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
+import { toast } from 'sonner';
 import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
 import { Task } from '../../types/tasks';
 import Select from '../components/ui/select-custom';
-// import { TypeTasks } from '../../types/typeTasks';
+import DeleteButton from '../components/DeleteButton';
 
 function useTasks() {
   const {
@@ -34,6 +35,12 @@ function useTasks() {
     onError: (err, _variables, context) => {
       console.error(err);
       queryClient.setQueryData(['tasks'], context?.previousTasks);
+      toast.error('Failed to add task', {
+        description: err.message
+      });
+    },
+    onSuccess: () => {
+      toast.success('Task added successfully');
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -44,9 +51,13 @@ function useTasks() {
     mutationFn: editTask,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task updated successfully');
     },
     onError: (error) => {
       console.error('Error updating task:', error);
+      toast.error('Failed to update task', {
+        description: error.message
+      });
     }
   });
 
@@ -54,6 +65,12 @@ function useTasks() {
     mutationFn: deleteTask,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task deleted successfully');
+    },
+    onError: (error) => {
+      toast.error('Failed to delete task', {
+        description: error.message
+      });
     }
   });
 
@@ -151,7 +168,12 @@ function useTasks() {
                 {
                   id: 'delete',
                   header: 'Delete',
-                  cell: ({ row }: RowT) => <button onClick={() => handleDelete(row.original)}>Eliminar</button>
+                  cell: ({ row }: RowT) => (
+                    <DeleteButton
+                      itemName={row.original.taskName || 'this task'}
+                      onConfirm={() => handleDelete(row.original)}
+                    />
+                  )
                 }
               ]
             }

@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { Plus, Trash2, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from './ui/button';
 import Input from './ui/input-form';
 import { Label } from './ui/label';
 import Select from './ui/select-custom';
 import TotalTimeDay from './TotalTimeDay';
 import InputTime from './ui/input-time';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import useTasks from '../hooks/useTasks';
 
 type WorkTimeEntry = {
@@ -138,12 +141,16 @@ export default function WorkTimeForm() {
 
       await Promise.all(promises);
 
-      alert('Entries saved successfully!');
+      toast.success('Entries saved successfully!', {
+        description: `${data.entries.length} time entries registered.`
+      });
       localStorage.removeItem('workTimeFormEntries');
       reset({ entries: [defaultValue] });
     } catch (error) {
       console.error('Error saving entries:', error);
-      alert('Error saving entries');
+      toast.error('Error saving entries', {
+        description: 'Please try again later.'
+      });
     }
   };
 
@@ -159,104 +166,137 @@ export default function WorkTimeForm() {
   };
 
   return (
-    <>
-      <TotalTimeDay control={control} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Time Registration</h1>
+          <p className="text-muted-foreground">Register your work hours for TeamWork</p>
+        </div>
+        <TotalTimeDay control={control} />
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {fields.map((field, index) => (
-          <div key={field.id} className="flex items-end space-x-2">
-            <div className="flex-1">
-              <Label htmlFor={`entries.${index}.description`}>Description Task</Label>
-              <Input
-                type="text"
-                placeholder="Task description"
-                className="w-full"
-                name={`entries.${index}.description`}
-                control={control}
-                rules={{ required: 'Description is required' }}
-              />
-            </div>
-            <div className="flex-1">
-              <Label htmlFor={`entries.${index}.task`}>Task</Label>
-              <Select
-                name={`entries.${index}.task`}
-                control={control}
-                options={options}
-                placeholder="Select a task"
-                rules={{ required: 'Task is required' }}
-              />
-              {errors?.entries?.[index]?.task && <span>{errors.entries[index].task.message}</span>}
-            </div>
-            <div className="w-40">
-              <Label htmlFor={`entries.${index}.date`}>Date</Label>
-              <Input
-                type="date"
-                name={`entries.${index}.date`}
-                control={control}
-                rules={{ required: 'Date is required' }}
-              />
-              {errors?.entries?.[index]?.date && <span>{errors.entries[index].date.message}</span>}
-            </div>
-            <div className="w-28">
-              <Label htmlFor={`entries.${index}.hours`}>Hours</Label>
-              <InputTime
-                name={`entries.${index}.hours`}
-                control={control}
-                className="w-full"
-                rules={{ required: 'Hours are required' }}
-                options={{
-                  enableTime: true,
-                  noCalendar: true,
-                  time_24hr: true,
-                  dateFormat: 'H:i',
-                  defaultDate: '00:00'
-                }}
-              />
-            </div>
-            <div className="w-32">
-              <Label htmlFor={`entries.${index}.startTime`}>Start Time</Label>
-              <InputTime
-                name={`entries.${index}.startTime`}
-                control={control}
-                className="w-full"
-                rules={{ required: 'Start time is required' }}
-                options={{
-                  enableTime: true,
-                  noCalendar: true,
-                  dateFormat: 'h:i K',
-                  defaultDate: '09:00'
-                }}
-              />
-              {errors?.entries?.[index]?.startTime && <span>{errors.entries[index].startTime.message}</span>}
-            </div>
-            <div className="w-28">
-              <Label htmlFor={`entries.${index}.endTime`}>End Time</Label>
-              <InputTime
-                name={`entries.${index}.endTime`}
-                control={control}
-                className="w-full"
-                options={{
-                  enableTime: true,
-                  noCalendar: true,
-                  dateFormat: 'h:i K',
-                  time_24hr: false,
-                  defaultDate: '09:00',
-                  clickOpens: false
-                }}
-              />
-            </div>
-            <Button type="button" className="destructive" onClick={() => remove(index)} disabled={fields.length === 1}>
-              Remove
-            </Button>
-          </div>
+          <Card key={field.id}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Entry {index + 1}</CardTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => remove(index)}
+                  disabled={fields.length === 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div className="lg:col-span-2">
+                  <Label htmlFor={`entries.${index}.description`}>Description</Label>
+                  <Input
+                    type="text"
+                    placeholder="What did you work on?"
+                    className="w-full"
+                    name={`entries.${index}.description`}
+                    control={control}
+                    rules={{ required: 'Description is required' }}
+                  />
+                </div>
+                <div className="lg:col-span-2">
+                  <Label htmlFor={`entries.${index}.task`}>Task</Label>
+                  <Select
+                    name={`entries.${index}.task`}
+                    control={control}
+                    options={options}
+                    placeholder="Select a task"
+                    rules={{ required: 'Task is required' }}
+                  />
+                  {errors?.entries?.[index]?.task && (
+                    <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor={`entries.${index}.date`}>Date</Label>
+                  <Input
+                    type="date"
+                    name={`entries.${index}.date`}
+                    control={control}
+                    rules={{ required: 'Date is required' }}
+                  />
+                  {errors?.entries?.[index]?.date && (
+                    <span className="text-sm text-destructive">{errors.entries[index].date.message}</span>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor={`entries.${index}.hours`}>Duration</Label>
+                  <InputTime
+                    name={`entries.${index}.hours`}
+                    control={control}
+                    className="w-full"
+                    rules={{ required: 'Duration is required' }}
+                    options={{
+                      enableTime: true,
+                      noCalendar: true,
+                      time_24hr: true,
+                      dateFormat: 'H:i',
+                      defaultDate: '00:00'
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`entries.${index}.startTime`}>Start</Label>
+                  <InputTime
+                    name={`entries.${index}.startTime`}
+                    control={control}
+                    className="w-full"
+                    rules={{ required: 'Start time is required' }}
+                    options={{
+                      enableTime: true,
+                      noCalendar: true,
+                      dateFormat: 'h:i K',
+                      defaultDate: '09:00'
+                    }}
+                  />
+                  {errors?.entries?.[index]?.startTime && (
+                    <span className="text-sm text-destructive">{errors.entries[index].startTime.message}</span>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor={`entries.${index}.endTime`}>End</Label>
+                  <InputTime
+                    name={`entries.${index}.endTime`}
+                    control={control}
+                    className="w-full"
+                    options={{
+                      enableTime: true,
+                      noCalendar: true,
+                      dateFormat: 'h:i K',
+                      time_24hr: false,
+                      defaultDate: '09:00',
+                      clickOpens: false
+                    }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-        <Button type="button" onClick={handleAddEntry}>
-          Add Entry
-        </Button>
-        <Button type="submit">Register in TW</Button>
+
+        <div className="flex items-center gap-4">
+          <Button type="button" variant="outline" onClick={handleAddEntry}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Entry
+          </Button>
+          <Button type="submit">
+            <Send className="h-4 w-4 mr-2" />
+            Register in TeamWork
+          </Button>
+        </div>
       </form>
-      <pre>{JSON.stringify(fields, null, 2)}</pre>
-      <hr />
-      <pre>{JSON.stringify(errors, null, 2)}</pre>
-    </>
+    </div>
   );
 }

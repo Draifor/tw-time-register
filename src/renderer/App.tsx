@@ -4,7 +4,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AppBar from './components/AppBar';
 import WorkTimeForm from './components/WorkTimeForm';
 import TasksPage from './pages/TasksPage';
+import HomePage from './pages/HomePage';
 import NavBar from './components/NavBar';
+import { Toaster } from './components/ui/sonner';
 
 const queryClient = new QueryClient();
 
@@ -23,9 +25,9 @@ function App() {
         )}
         <NavBar />
 
-        <div className="container mx-auto p-4">
+        <div className="container mx-auto p-6">
           <Routes>
-            <Route path="/" element={<h1>Bienvenido al TeamWork Time Tracker</h1>} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/worktime" element={<WorkTimeForm />} />
             <Route path="/tasks" element={<TasksPage />} />
           </Routes>
@@ -39,6 +41,7 @@ export default function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
       <App />
+      <Toaster position="bottom-right" richColors />
     </QueryClientProvider>
   );
 }
