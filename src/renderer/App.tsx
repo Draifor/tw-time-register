@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AppBar from './components/AppBar';
 import WorkTimeForm from './components/WorkTimeForm';
-import Tasks from './pages/Tasks';
+import TasksPage from './pages/TasksPage';
 import NavBar from './components/NavBar';
 
 const queryClient = new QueryClient();
@@ -27,7 +27,7 @@ function App() {
           <Routes>
             <Route path="/" element={<h1>Bienvenido al TeamWork Time Tracker</h1>} />
             <Route path="/worktime" element={<WorkTimeForm />} />
-            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/tasks" element={<TasksPage />} />
           </Routes>
         </div>
       </div>
