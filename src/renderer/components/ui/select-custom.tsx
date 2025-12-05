@@ -1,6 +1,7 @@
 import React from 'react';
-import { Controller } from 'react-hook-form';
-import Select, { StylesConfig } from 'react-select';
+import { Controller, Control, RegisterOptions } from 'react-hook-form';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Option {
   value: string;
@@ -11,66 +12,16 @@ interface SelectComponentProps {
   name?: string;
   options: Option[];
   placeholder?: string;
-  value?: Option;
+  value?: Option | null;
   onChange?: (option: Option | null) => void;
-  control?: any;
-  rules?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control?: Control<any>;
+  rules?: RegisterOptions;
   className?: string;
 }
 
-const customStyles: StylesConfig<Option, false> = {
-  control: (base, state) => ({
-    ...base,
-    minHeight: '36px',
-    height: '36px',
-    borderRadius: '0.375rem',
-    borderColor: state.isFocused ? 'hsl(var(--ring))' : 'hsl(var(--input))',
-    boxShadow: state.isFocused ? '0 0 0 1px hsl(var(--ring))' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-    backgroundColor: 'transparent',
-    '&:hover': {
-      borderColor: 'hsl(var(--ring))'
-    }
-  }),
-  valueContainer: (base) => ({
-    ...base,
-    padding: '0 8px',
-    height: '34px'
-  }),
-  input: (base) => ({
-    ...base,
-    margin: 0,
-    padding: 0,
-    color: 'hsl(var(--foreground))'
-  }),
-  singleValue: (base) => ({
-    ...base,
-    color: 'hsl(var(--foreground))'
-  }),
-  placeholder: (base) => ({
-    ...base,
-    color: 'hsl(var(--muted-foreground))'
-  }),
-  indicatorsContainer: (base) => ({
-    ...base,
-    height: '34px'
-  }),
-  menu: (base) => ({
-    ...base,
-    backgroundColor: 'hsl(var(--popover))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '0.375rem',
-    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
-  }),
-  option: (base, state) => ({
-    ...base,
-    backgroundColor: state.isFocused ? 'hsl(var(--accent))' : 'transparent',
-    color: state.isFocused ? 'hsl(var(--accent-foreground))' : 'hsl(var(--popover-foreground))',
-    cursor: 'pointer',
-    '&:active': {
-      backgroundColor: 'hsl(var(--accent))'
-    }
-  })
-};
+const selectStyles =
+  'flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer';
 
 function SelectComponent({
   name,
@@ -80,29 +31,68 @@ function SelectComponent({
   rules,
   className,
   value,
-  onChange,
-  ...rest
+  onChange
 }: SelectComponentProps) {
-  return control ? (
-    <Controller
-      name={name ?? ''}
-      control={control}
-      defaultValue={options[0]}
-      rules={rules}
-      render={({ field }) => (
-        <Select {...field} options={options} placeholder={placeholder} styles={customStyles} className={className} />
-      )}
-    />
-  ) : (
-    <Select
-      options={options}
-      placeholder={placeholder}
-      value={value}
-      styles={customStyles}
-      className={className}
-      onChange={onChange}
-      {...rest}
-    />
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    const selectedOption = options.find((opt) => opt.value === selectedValue) || null;
+    onChange?.(selectedOption);
+  };
+
+  const selectElement = (fieldValue?: Option, onFieldChange?: (option: Option | null) => void) => (
+    <div className="relative">
+      <select
+        className={cn(selectStyles, className)}
+        value={fieldValue?.value || ''}
+        onChange={(e) => {
+          const selectedValue = e.target.value;
+          const selectedOption = options.find((opt) => opt.value === selectedValue) || null;
+          onFieldChange?.(selectedOption);
+        }}
+      >
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 pointer-events-none" />
+    </div>
+  );
+
+  if (control && name) {
+    return (
+      <Controller
+        name={name}
+        control={control}
+        defaultValue={options[0]}
+        rules={rules}
+        render={({ field }) => selectElement(field.value, field.onChange)}
+      />
+    );
+  }
+
+  return (
+    <div className="relative">
+      <select className={cn(selectStyles, className)} value={value?.value || ''} onChange={handleChange}>
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 pointer-events-none" />
+    </div>
   );
 }
 

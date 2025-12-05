@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { Controller, ControllerRenderProps, ControllerFieldState, FieldValues } from 'react-hook-form';
+import { Controller, ControllerRenderProps, ControllerFieldState, FieldValues, Control } from 'react-hook-form';
 
 interface TextareaProps {
   className?: string;
   name: string;
-  control?: unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control?: Control<any>;
   required?: boolean;
   rules?: Record<string, unknown>;
   rows?: number;
