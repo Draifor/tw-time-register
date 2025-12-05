@@ -29,13 +29,15 @@ Desarrollador que necesita registrar su tiempo de trabajo diario en TeamWork de 
 - **TypeScript v5** - Todo el código debe estar tipado
 - **Vite v7** - Bundler y dev server ultrarrápido
 - **TanStack React Query v5** - Cache y estado del servidor
-- **TanStack React Table v8** - Tablas con filtrado, paginación, edición
+- **TanStack React Table v8** - Tablas con infinite scroll y edición inline
 - **React Hook Form v7** - Formularios con validación
 - **Tailwind CSS v3.4** - Estilos utility-first
+- **shadcn/ui** - Componentes accesibles (basados en Radix UI)
 - **React Router DOM v6** - Navegación SPA
 - **i18next** - Internacionalización (ES/EN)
 - **date-fns** - Manipulación de fechas
 - **Flatpickr** - Selector de tiempo
+- **Sonner** - Notificaciones toast
 
 ### Calidad de Código
 - **ESLint v9** - Linting con flat config (`eslint.config.js`)
@@ -52,28 +54,56 @@ src/
 │   ├── index.ts            # Punto de entrada, crea BrowserWindow
 │   ├── preload.ts          # Expone API segura al renderer via contextBridge
 │   ├── database/
-│   │   └── database.ts     # Conexión SQLite y queries básicas
+│   │   ├── database.ts     # Conexión SQLite y queries básicas
+│   │   ├── migrations.ts   # Migraciones de esquema
+│   │   └── models/         # Modelos de datos
 │   ├── ipc/
-│   │   └── databaseIpc.ts  # Handlers IPC para BD (ipcMain.handle)
+│   │   ├── index.ts        # Registro central de handlers
+│   │   ├── databaseIpc.ts  # Handlers IPC para BD
+│   │   ├── windowIpc.ts    # Handlers para ventana
+│   │   └── anotherIpc.ts   # Otros handlers
 │   └── services/
-│       ├── taskService.ts  # CRUD de tareas
-│       └── apiService.ts   # Cliente API TeamWork
+│       ├── taskService.ts      # CRUD de tareas
+│       ├── typeTasksService.ts # CRUD de tipos de tareas
+│       ├── timeLogService.ts   # CRUD de registros de tiempo
+│       ├── credentialService.ts # Gestión de credenciales
+│       ├── apiService.ts       # Cliente API TeamWork
+│       └── ...
 ├── renderer/               # Proceso React (Browser)
 │   ├── App.tsx             # Rutas y providers
 │   ├── components/
 │   │   ├── WorkTimeForm.tsx    # ⭐ Formulario principal de tiempos
-│   │   ├── DataTable.tsx       # Tabla genérica con TanStack
-│   │   └── ui/                 # Componentes UI base
+│   │   ├── DataTable.tsx       # Tabla genérica con TanStack + infinite scroll
+│   │   ├── TimeLogsTable.tsx   # Tabla de registros de tiempo
+│   │   ├── TasksTable.tsx      # Tabla de tareas
+│   │   ├── TypeTasksTable.tsx  # Tabla de tipos de tareas
+│   │   └── ui/                 # Componentes shadcn/ui
+│   │       ├── button.tsx, card.tsx, dialog.tsx
+│   │       ├── input.tsx, label.tsx, textarea-form.tsx
+│   │       ├── select.tsx, select-custom.tsx
+│   │       ├── table.tsx, tabs.tsx, separator.tsx
+│   │       ├── tooltip.tsx, badge.tsx, skeleton.tsx
+│   │       ├── alert-dialog.tsx, dropdown-menu.tsx
+│   │       └── sonner.tsx
 │   ├── hooks/
-│   │   ├── useTasks.tsx        # React Query + mutaciones para tareas
-│   │   └── useTable.tsx        # Hook para configurar TanStack Table
+│   │   ├── useTasks.tsx            # React Query para tareas
+│   │   ├── useTypeTasks.tsx        # React Query para tipos
+│   │   ├── useTimeLogs.tsx         # React Query para time logs
+│   │   ├── useTable.tsx            # Configuración TanStack Table
+│   │   ├── useKeyboardShortcuts.ts # ⭐ Atajos de teclado
+│   │   └── useDarkMode.ts          # Toggle tema oscuro
 │   ├── services/
-│   │   └── tasksService.ts     # Llama a window.Main.* (IPC)
+│   │   ├── tasksService.ts     # Llama a window.Main.* (IPC)
+│   │   ├── typeTasksService.ts
+│   │   └── timesService.ts
 │   └── pages/
-│       └── Tasks.tsx           # Página de gestión de tareas
-└── types/                  # Tipos compartidos entre main y renderer
+│       ├── HomePage.tsx        # Página principal de registro
+│       └── TasksPage.tsx       # Gestión de tareas y tipos
+└── types/                  # Tipos compartidos
     ├── tasks.ts
-    └── dataTable.ts
+    ├── typeTasks.ts
+    ├── dataTable.ts
+    └── ...
 ```
 
 ### Flujo de Datos (IPC)
@@ -127,6 +157,18 @@ const { mutate } = useMutation({
 - **useTable hook**: Centraliza configuración de tabla
 - **Columnas definidas por entidad**: En `types/*.ts` junto con el tipo
 - **Edición inline**: Usar `meta.updateData` para actualizar estado local
+- **Infinite scroll**: DataTable usa `fetchNextPage` y observadores de intersección
+
+### Componentes shadcn/ui
+- **Ubicación**: `components/ui/` - Componentes copiados de shadcn
+- **Basados en Radix UI**: Accesibilidad garantizada
+- **Estilizados con Tailwind**: Personalizables via className
+- **Primitivos instalados**: Select, Dialog, AlertDialog, DropdownMenu, Tooltip, Tabs, etc.
+
+### Atajos de Teclado
+- **useKeyboardShortcuts hook**: Centraliza manejo de shortcuts
+- **Shortcuts actuales**: Ctrl+N (nuevo), Ctrl+S (guardar), Esc (limpiar)
+- **Tooltips**: Muestran atajos disponibles en los botones
 
 ### React Hook Form
 - **useForm**: Para formularios simples
@@ -164,14 +206,14 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 
 ## Estado Actual y Problemas Conocidos
 
-### ✅ Limpieza Completada (Dic 2025)
+### ✅ Fase 1: Limpieza (COMPLETADA - Dic 2025)
 - Eliminados archivos de ejemplo: EditableTable, makeData, Users, Comments
 - Eliminados servicios de ejemplo: usersService, commentsServices
 - Unificado DataTable (eliminado DataTableNew)
 - Removido @faker-js/faker
 - Actualizados metadatos del package.json
 
-### ✅ Stack Actualizado (Dic 2025)
+### ✅ Fase 2: Stack Actualizado (COMPLETADA - Dic 2025)
 - Vite 2.8 → 7.2.6
 - @vitejs/plugin-react 1.2 → 5.1.1
 - TanStack React Query 4.x → 5.x (sintaxis migrada)
@@ -180,9 +222,17 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - Prettier 2.6 → 3.7.4
 - typescript-eslint 5.x → 8.48.1
 
-### ⚠️ Pendiente: Aclarar roles
-- `components/Tasks.tsx` - Componente de tabla de tareas
-- `pages/Tasks.tsx` - Página que agrupa TypeTasks, Tasks y TimeLogs
+### ✅ Fase 3: UI/UX con shadcn/ui (COMPLETADA - Dic 2025)
+- Instalados componentes shadcn/ui (Button, Card, Dialog, Select, etc.)
+- Tema claro/oscuro completo con variables CSS
+- Infinite scroll en tablas (reemplaza paginación)
+- Skeleton loaders durante carga de datos
+- Empty states atractivos para tablas vacías
+- Keyboard shortcuts (Ctrl+N, Ctrl+S, Esc)
+- Tooltips con indicadores de shortcuts
+- Notificaciones toast con Sonner
+- Eliminada dependencia de Material Tailwind
+- Eliminada dependencia de react-select
 
 ### ⚠️ Errores de Linting Pendientes
 - Muchos `any` en IPC handlers y forms (tipar correctamente)
@@ -210,10 +260,10 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **UI/UX**: Implementar sistema de diseño moderno (shadcn/ui recomendado)
-2. **Estabilidad**: Corregir errores de linting (ESLint 9)
-3. **Core**: Completar flujo de registro de tiempos
-4. **Integración**: Sincronización con TeamWork API
+1. **Core**: Completar flujo de registro de tiempos (cálculos automáticos)
+2. **Integración**: Sincronización con TeamWork API
+3. **Estabilidad**: Corregir errores de linting (ESLint 9)
+4. **Reportes**: Visualización de tiempo por tarea/día
 
 ---
 
@@ -245,35 +295,62 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 
 ---
 
-## Mejora de UI/UX (Próxima Fase)
+## Sistema de UI/UX (shadcn/ui)
 
-### Biblioteca Recomendada: shadcn/ui
+### Componentes Instalados
 
-**Razones**:
-- Componentes copiables (no dependencia)
-- Basado en Radix UI (accesible)
-- Estilizado con Tailwind (ya lo usamos)
-- Muy popular y documentado
-- Fácil de personalizar
+Los siguientes componentes de shadcn/ui están disponibles en `components/ui/`:
 
-### Instalación
-```bash
-pnpm dlx shadcn@latest init
+| Componente | Uso |
+|------------|-----|
+| `Button` | Botones con variantes (default, destructive, outline, ghost) |
+| `Card` | Contenedores con header, content, footer |
+| `Dialog` | Modales para formularios y confirmaciones |
+| `AlertDialog` | Confirmación de acciones destructivas |
+| `DropdownMenu` | Menús contextuales (selector de idioma) |
+| `Input`, `Label` | Campos de formulario |
+| `Select` | Selector con Radix UI (dark mode compatible) |
+| `Table` | Estructura de tabla HTML estilizada |
+| `Tabs` | Navegación por pestañas |
+| `Tooltip` | Información emergente (muestra shortcuts) |
+| `Badge` | Etiquetas de estado |
+| `Skeleton` | Placeholders de carga |
+| `Separator` | Líneas divisorias |
+| `Sonner` | Notificaciones toast |
+
+### Personalización
+
+- **Tema**: Variables CSS en `index.css` (`:root` y `.dark`)
+- **Colores**: Slate para neutros, primarios en HSL
+- **Dark mode**: Toggle con `useDarkMode` hook, clase `dark` en `<html>`
+- **Path alias**: `@/` apunta a `src/renderer/`
+
+### Patrones de UX Implementados
+
+```typescript
+// Skeleton loader durante carga
+{isPending ? <Skeleton className="h-8 w-full" /> : <Content />}
+
+// Empty state cuando no hay datos
+{data.length === 0 && <EmptyState message="No hay registros" />}
+
+// Keyboard shortcuts con tooltips
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button onClick={handleSave}>
+      Guardar <kbd>Ctrl+S</kbd>
+    </Button>
+  </TooltipTrigger>
+</Tooltip>
+
+// Confirmación de eliminación
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="destructive">Eliminar</Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent>...</AlertDialogContent>
+</AlertDialog>
 ```
-
-### Componentes a agregar primero
-- Button, Input, Label (reemplazar los actuales en ui/)
-- Select (reemplazar react-select)
-- Table (para DataTable)
-- Card (para contenedores)
-- Dialog/AlertDialog (para modales)
-- Toast (para notificaciones, reemplazar alert())
-
-### Diseño sugerido
-- **Colores**: Slate para neutros, Blue/Indigo para primarios
-- **Modo oscuro**: Usar las variables CSS de shadcn
-- **Tipografía**: Inter (popular) o sistema
-- **Espaciado**: Consistente con scale de Tailwind
 
 ---
 
