@@ -82,10 +82,15 @@ function TotalTimeDay({ control }: TotalTimeDayProps) {
 
   // Determine status color
   const getStatusColor = () => {
-    if (totalMinutes >= maxMinutes) return 'text-green-600 dark:text-green-400';
-    if (totalMinutes >= maxMinutes * 0.75) return 'text-yellow-600 dark:text-yellow-400';
+    if (totalMinutes > maxMinutes) return 'text-red-600 dark:text-red-400'; // Over limit
+    if (totalMinutes >= maxMinutes) return 'text-green-600 dark:text-green-400'; // Complete
+    if (totalMinutes >= maxMinutes * 0.75) return 'text-yellow-600 dark:text-yellow-400'; // Almost there
     return 'text-primary';
   };
+
+  const isOverLimit = totalMinutes > maxMinutes;
+  const overMinutes = isOverLimit ? totalMinutes - maxMinutes : 0;
+  const over = minutesToHoursMinutes(overMinutes);
 
   return (
     <TooltipProvider>
@@ -137,19 +142,26 @@ function TotalTimeDay({ control }: TotalTimeDayProps) {
                   <TooltipTrigger asChild>
                     <div
                       className={`flex items-center gap-1 cursor-help ${
-                        remainingMinutes === 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                        isOverLimit
+                          ? 'text-red-600 dark:text-red-400 font-semibold'
+                          : remainingMinutes === 0
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-muted-foreground'
                       }`}
                     >
                       <span>
-                        {remainingMinutes === 0
-                          ? '✓ Complete'
-                          : `${remaining.hours}h${remaining.minutes.toString().padStart(2, '0')}m left`}
+                        {isOverLimit
+                          ? `⚠ +${over.hours}h${over.minutes.toString().padStart(2, '0')}m over`
+                          : remainingMinutes === 0
+                            ? '✓ Complete'
+                            : `${remaining.hours}h${remaining.minutes.toString().padStart(2, '0')}m left`}
                       </span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
                       Max for day: {maxTime.hours}h{maxTime.minutes.toString().padStart(2, '0')}m
+                      {isOverLimit && ' - You are registering overtime!'}
                     </p>
                   </TooltipContent>
                 </Tooltip>

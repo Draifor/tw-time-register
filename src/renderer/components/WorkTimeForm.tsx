@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { getNextAvailableSlot, NextSlotSuggestion } from '../services/timesService';
+import { getNextAvailableSlot, getDailyTimeInfo, NextSlotSuggestion } from '../services/timesService';
 
 type WorkTimeEntry = {
   date: string;
@@ -162,6 +162,35 @@ export default function WorkTimeForm() {
 
   const onSubmit = async (data: { entries: WorkTimeEntry[] }) => {
     try {
+      // Group entries by date and validate against max hours
+      const entriesByDate: Record<string, number> = {};
+      for (const entry of data.entries) {
+        const startTime = entry.startTime[0];
+        const endTime = entry.endTime[0];
+        if (startTime && endTime) {
+          const durationMinutes =
+            endTime.getHours() * 60 + endTime.getMinutes() - (startTime.getHours() * 60 + startTime.getMinutes());
+          entriesByDate[entry.date] = (entriesByDate[entry.date] || 0) + durationMinutes;
+        }
+      }
+
+      // Check each date for over-limit
+      for (const [date, draftMinutes] of Object.entries(entriesByDate)) {
+        const dailyInfo = await getDailyTimeInfo(date);
+        const totalAfterSave = dailyInfo.totalMinutes + draftMinutes;
+
+        if (totalAfterSave > dailyInfo.maxMinutes && dailyInfo.maxMinutes > 0) {
+          const overMinutes = totalAfterSave - dailyInfo.maxMinutes;
+          const overHours = Math.floor(overMinutes / 60);
+          const overMins = overMinutes % 60;
+
+          // Show warning but still allow save
+          toast.warning(`Overtime on ${date}`, {
+            description: `You are registering ${overHours}h ${overMins}m over the ${dailyInfo.maxMinutes / 60}h limit.`
+          });
+        }
+      }
+
       const promises = data.entries.map((entry) => {
         // Format times for DB (HH:MM)
         const formatTime = (date: Date) => {
@@ -210,6 +239,49 @@ export default function WorkTimeForm() {
 
   const handleAddEntry = async () => {
     const lastEntry = result[result.length - 1];
+    const currentDate = lastEntry?.date || new Date().toISOString().split('T')[0];
+
+    // Calculate draft time already in the form for this date
+    const draftMinutes = result.reduce((acc, entry) => {
+      if (entry.date !== currentDate) return acc;
+      const hours = entry.hours?.[0]?.getHours() ?? 0;
+      const minutes = entry.hours?.[0]?.getMinutes() ?? 0;
+      return acc + hours * 60 + minutes;
+    }, 0);
+
+    // Smart duration suggestion based on remaining time
+    // - More than 2 hours left → suggest 1 hour (standard)
+    // - Between 30 min and 2 hours → suggest remaining time
+    // - Less than 30 min → suggest 30 minutes (minimum useful)
+    let suggestedDuration = new Date('1970-01-01T01:00:00'); // Default 1 hour
+    try {
+      const dailyInfo = await getDailyTimeInfo(currentDate);
+      // Subtract both saved time AND draft time from form
+      const remaining = dailyInfo.remainingMinutes - draftMinutes;
+
+      let suggestedMinutes = 60; // Default: 1 hour
+
+      if (remaining <= 0) {
+        // Day is complete, suggest 1 hour anyway (overtime)
+        suggestedMinutes = 60;
+      } else if (remaining <= 30) {
+        // Less than 30 min left, suggest 30 min (minimum useful block)
+        suggestedMinutes = 30;
+      } else if (remaining <= 120) {
+        // Between 30 min and 2 hours, suggest the exact remaining time
+        suggestedMinutes = remaining;
+      } else {
+        // More than 2 hours left, suggest 1 hour (standard block)
+        suggestedMinutes = 60;
+      }
+
+      const hours = Math.floor(suggestedMinutes / 60);
+      const minutes = suggestedMinutes % 60;
+      suggestedDuration = new Date('1970-01-01T00:00:00');
+      suggestedDuration.setHours(hours, minutes, 0, 0);
+    } catch (error) {
+      console.error('Error getting daily info:', error);
+    }
 
     // If last entry has endTime, use it as the next startTime
     if (lastEntry?.endTime?.[0]) {
@@ -217,14 +289,17 @@ export default function WorkTimeForm() {
         ...defaultValue,
         date: lastEntry.date,
         startTime: lastEntry.endTime,
-        endTime: lastEntry.endTime
+        endTime: lastEntry.endTime,
+        hours: [suggestedDuration]
       };
       append(newEntry);
     } else {
       // Fetch fresh suggestion from DB
       try {
         const slot = await getNextAvailableSlot();
-        append(createDefaultEntry(slot));
+        const entry = createDefaultEntry(slot);
+        entry.hours = [suggestedDuration];
+        append(entry);
       } catch {
         append(defaultValue);
       }
