@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -37,7 +37,40 @@ function DataTable<T extends FieldValues>({
   title,
   onAddRow
 }: DataTableProps<T>) {
-  const { table, globalFilter, setGlobalFilter } = useTable({ columns, data, isEditable });
+  const { table, globalFilter, setGlobalFilter, loadMoreRows, hasMoreRows, visibleRowCount, totalRows } = useTable({
+    columns,
+    data,
+    isEditable
+  });
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef(false);
+
+  // Handle scroll to load more rows
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container || loadingRef.current || !hasMoreRows) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const scrollThreshold = 100; // pixels from bottom
+
+    if (scrollHeight - scrollTop - clientHeight < scrollThreshold) {
+      loadingRef.current = true;
+      loadMoreRows();
+      // Reset loading flag after a short delay
+      setTimeout(() => {
+        loadingRef.current = false;
+      }, 100);
+    }
+  }, [hasMoreRows, loadMoreRows]);
+
+  // Attach scroll listener
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
 
   if (isLoading)
     return (
@@ -76,9 +109,9 @@ function DataTable<T extends FieldValues>({
           )}
         </div>
 
-        <div className="rounded-md border">
+        <div ref={scrollContainerRef} className="rounded-md border max-h-[60vh] overflow-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-background z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -109,33 +142,18 @@ function DataTable<T extends FieldValues>({
           </Table>
         </div>
 
-        {(table.getCanNextPage() || table.getCanPreviousPage()) && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="gap-1"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="gap-1"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+        {/* Infinite scroll status */}
+        {totalRows > 0 && (
+          <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
+            <span>
+              Showing {visibleRowCount} of {totalRows} rows
+            </span>
+            {hasMoreRows && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Scroll for more...</span>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

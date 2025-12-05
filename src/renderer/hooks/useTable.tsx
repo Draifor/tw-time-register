@@ -5,11 +5,13 @@ import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel
 } from '@tanstack/react-table';
 import { UseTableProps } from '../../types/dataTable';
 import { Input } from '../components/ui/input';
+
+const INITIAL_ROWS = 20;
+const ROWS_PER_LOAD = 10;
 
 function useSkipper() {
   const shouldSkipRef = useRef(true);
@@ -64,14 +66,33 @@ function useTable<T extends FieldValues>({ columns, data, isEditable }: UseTable
   const [localData, setLocalData] = useState(data || []);
   const { shouldSkip: autoResetPageIndex, skip: skipAutoResetPageIndex } = useSkipper();
   const [globalFilter, setGlobalFilter] = useState('');
+  const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
 
   const saveDataToDB = (rowIndex: number, columnId: string, value: unknown) => {
     // Simulate an API call
     console.log(`Saving data to DB: row ${rowIndex}, column ${columnId}, value ${value}`);
   };
 
+  // Get visible data slice for infinite scroll
+  const visibleData = useMemo(() => {
+    return localData.slice(0, visibleRowCount);
+  }, [localData, visibleRowCount]);
+
+  const hasMoreRows = visibleRowCount < localData.length;
+
+  const loadMoreRows = useCallback(() => {
+    if (hasMoreRows) {
+      setVisibleRowCount((prev) => Math.min(prev + ROWS_PER_LOAD, localData.length));
+    }
+  }, [hasMoreRows, localData.length]);
+
+  // Reset visible count when data changes
+  useEffect(() => {
+    setVisibleRowCount(INITIAL_ROWS);
+  }, [data]);
+
   const table = useReactTable<T>({
-    data: localData,
+    data: visibleData,
     columns: memoColumns as ColumnDef<T>[],
     defaultColumn: defaultColumn(isEditable ?? false),
     state: {
@@ -81,7 +102,6 @@ function useTable<T extends FieldValues>({ columns, data, isEditable }: UseTable
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: 'includesString',
     autoResetPageIndex,
     meta: {
@@ -107,7 +127,11 @@ function useTable<T extends FieldValues>({ columns, data, isEditable }: UseTable
   return {
     table,
     globalFilter,
-    setGlobalFilter
+    setGlobalFilter,
+    loadMoreRows,
+    hasMoreRows,
+    visibleRowCount,
+    totalRows: localData.length
   };
 }
 
