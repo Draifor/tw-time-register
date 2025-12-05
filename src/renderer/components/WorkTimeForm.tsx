@@ -3,12 +3,12 @@ import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { Plus, Trash2, Send, Keyboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import Input from './ui/input-form';
 import Textarea from './ui/textarea-form';
 import { Label } from './ui/label';
 import Select from './ui/select-custom';
 import TotalTimeDay from './TotalTimeDay';
 import InputTime from './ui/input-time';
+import InputDate from './ui/input-date';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTasks from '../hooks/useTasks';
@@ -255,15 +255,11 @@ export default function WorkTimeForm() {
                 </div>
                 <div className="w-[140px] space-y-2">
                   <Label htmlFor={`entries.${index}.date`}>Date</Label>
-                  <Input
-                    type="date"
+                  <InputDate
                     name={`entries.${index}.date`}
                     control={control}
                     rules={{ required: 'Date is required' }}
                   />
-                  {errors?.entries?.[index]?.date && (
-                    <span className="text-sm text-destructive">{errors.entries[index].date.message}</span>
-                  )}
                 </div>
                 <div className="w-[90px] space-y-2">
                   <Label htmlFor={`entries.${index}.hours`}>Duration</Label>
