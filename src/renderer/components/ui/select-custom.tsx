@@ -1,7 +1,6 @@
 import React from 'react';
 import { Controller, Control, RegisterOptions } from 'react-hook-form';
-import { ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 
 interface Option {
   value: string;
@@ -20,9 +19,6 @@ interface SelectComponentProps {
   className?: string;
 }
 
-const selectStyles =
-  'flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer';
-
 function SelectComponent({
   name,
   control,
@@ -33,36 +29,30 @@ function SelectComponent({
   value,
   onChange
 }: SelectComponentProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedValue = e.target.value;
+  const handleChange = (selectedValue: string) => {
     const selectedOption = options.find((opt) => opt.value === selectedValue) || null;
     onChange?.(selectedOption);
   };
 
   const selectElement = (fieldValue?: Option, onFieldChange?: (option: Option | null) => void) => (
-    <div className="relative">
-      <select
-        className={cn(selectStyles, className)}
-        value={fieldValue?.value || ''}
-        onChange={(e) => {
-          const selectedValue = e.target.value;
-          const selectedOption = options.find((opt) => opt.value === selectedValue) || null;
-          onFieldChange?.(selectedOption);
-        }}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
+    <Select
+      value={fieldValue?.value || ''}
+      onValueChange={(val) => {
+        const selectedOption = options.find((opt) => opt.value === val) || null;
+        onFieldChange?.(selectedOption);
+      }}
+    >
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <SelectItem key={option.value} value={option.value}>
             {option.label}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-      <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 pointer-events-none" />
-    </div>
+      </SelectContent>
+    </Select>
   );
 
   if (control && name) {
@@ -78,21 +68,18 @@ function SelectComponent({
   }
 
   return (
-    <div className="relative">
-      <select className={cn(selectStyles, className)} value={value?.value || ''} onChange={handleChange}>
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
+    <Select value={value?.value || ''} onValueChange={handleChange}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <SelectItem key={option.value} value={option.value}>
             {option.label}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-      <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 pointer-events-none" />
-    </div>
+      </SelectContent>
+    </Select>
   );
 }
 
