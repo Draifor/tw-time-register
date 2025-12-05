@@ -143,6 +143,7 @@ function useLoading() {
   };
 }
 
+// eslint-disable-next-line react-hooks/rules-of-hooks
 const { appendLoading, removeLoading } = useLoading();
 
 domReady().then(appendLoading);
@@ -244,6 +245,10 @@ const api = {
   addHoliday: (date: string, description: string) => ipcRenderer.invoke('addHoliday', date, description),
   deleteHoliday: (holidayId: number) => ipcRenderer.invoke('deleteHoliday', holidayId),
   isWorkDay: (date: string) => ipcRenderer.invoke('isWorkDay', date),
+
+  // Language
+  getLanguage: () => ipcRenderer.invoke('getLanguage'),
+  setLanguage: (language: string) => ipcRenderer.invoke('setLanguage', language),
 
   // User auth
   registerUser: (username: string, password: string) => ipcRenderer.invoke('registerUser', username, password),

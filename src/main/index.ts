@@ -8,6 +8,7 @@ import isDev from 'electron-is-dev';
 import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc';
 import './database/database';
+import { runMigrations } from './database/migrations';
 
 const height = 600;
 const width = 800;
@@ -75,7 +76,10 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Run database migrations
+  await runMigrations();
+
   createWindow();
 
   app.on('activate', () => {

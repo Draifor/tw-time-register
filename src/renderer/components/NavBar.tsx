@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Clock, ListTodo, Home } from 'lucide-react';
+import { Clock, ListTodo, Home, Settings } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
 import { Button } from './ui/button';
@@ -12,7 +12,8 @@ function NavBar() {
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
     { to: '/worktime', label: 'Work Time', icon: Clock },
-    { to: '/tasks', label: 'Tasks', icon: ListTodo }
+    { to: '/tasks', label: 'Tasks', icon: ListTodo },
+    { to: '/settings', label: 'Settings', icon: Settings }
   ];
 
   return (

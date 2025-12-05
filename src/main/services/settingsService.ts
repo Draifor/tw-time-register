@@ -137,3 +137,16 @@ export async function isWorkDay(date: string): Promise<boolean> {
   const holiday = await isHoliday(date);
   return !holiday;
 }
+
+// Get the UI language setting
+export async function getLanguage(): Promise<string> {
+  const db = await openDb();
+  const row = await db.get("SELECT setting_value FROM work_settings WHERE setting_key = 'language'");
+  return row?.setting_value || 'es';
+}
+
+// Set the UI language setting
+export async function setLanguage(language: string): Promise<void> {
+  const db = await openDb();
+  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'language'", [language]);
+}

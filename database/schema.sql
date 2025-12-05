@@ -77,6 +77,10 @@ INSERT INTO work_settings (setting_key, setting_value, description)
 SELECT 'work_days', '1,2,3,4,5', 'Work days (1=Monday, 7=Sunday)'
 WHERE NOT EXISTS (SELECT 1 FROM work_settings WHERE setting_key = 'work_days');
 
+INSERT INTO work_settings (setting_key, setting_value, description)
+SELECT 'language', 'es', 'UI language (en, es)'
+WHERE NOT EXISTS (SELECT 1 FROM work_settings WHERE setting_key = 'language');
+
 -- Holidays table (Colombian holidays + custom)
 CREATE TABLE IF NOT EXISTS holidays (
     holiday_id INTEGER PRIMARY KEY AUTOINCREMENT,

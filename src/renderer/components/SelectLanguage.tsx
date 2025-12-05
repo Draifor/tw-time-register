@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 import { Button } from './ui/button';
@@ -18,15 +18,35 @@ const languages = [
 ];
 
 function SelectLanguage() {
-  const [language, setLanguage] = React.useState('en');
   const { i18n } = useTranslation();
 
-  const languageHandler = (lang: string) => {
-    setLanguage(lang);
+  // Load language from DB on mount (only once)
+  useEffect(() => {
+    const loadLanguage = async () => {
+      try {
+        const savedLanguage = await window.Main.getLanguage();
+        if (savedLanguage && savedLanguage !== i18n.language) {
+          i18n.changeLanguage(savedLanguage);
+        }
+      } catch (error) {
+        console.error('Error loading language:', error);
+      }
+    };
+    loadLanguage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const languageHandler = async (lang: string) => {
     i18n.changeLanguage(lang);
+    try {
+      await window.Main.setLanguage(lang);
+    } catch (error) {
+      console.error('Error saving language:', error);
+    }
   };
 
-  const currentLanguage = languages.find((l) => l.key === language);
+  // Use i18n.language directly as source of truth
+  const currentLanguage = languages.find((l) => l.key === i18n.language);
 
   return (
     <DropdownMenu>
@@ -45,7 +65,7 @@ function SelectLanguage() {
           <DropdownMenuItem
             key={key}
             onClick={() => languageHandler(key)}
-            className={`gap-2 cursor-pointer ${language === key ? 'bg-accent' : ''}`}
+            className={`gap-2 cursor-pointer ${i18n.language === key ? 'bg-accent' : ''}`}
           >
             <img src={iconPath} alt={value} className="h-4 w-4 rounded-full" />
             {value}

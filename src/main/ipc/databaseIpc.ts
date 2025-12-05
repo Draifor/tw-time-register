@@ -30,6 +30,8 @@ import {
   addHoliday,
   deleteHoliday,
   isWorkDay,
+  getLanguage,
+  setLanguage,
   WorkSettings
 } from '../services/settingsService';
 
@@ -105,6 +107,14 @@ ipcMain.handle('deleteHoliday', async (_event, holidayId: number) => {
 
 ipcMain.handle('isWorkDay', async (_event, date: string) => {
   return isWorkDay(date);
+});
+
+ipcMain.handle('getLanguage', async () => {
+  return getLanguage();
+});
+
+ipcMain.handle('setLanguage', async (_event, language: string) => {
+  return setLanguage(language);
 });
 
 // User handlers

@@ -5,6 +5,7 @@ import AppBar from './components/AppBar';
 import WorkTimeForm from './components/WorkTimeForm';
 import TasksPage from './pages/TasksPage';
 import HomePage from './pages/HomePage';
+import SettingsPage from './pages/SettingsPage';
 import NavBar from './components/NavBar';
 import { Toaster } from './components/ui/sonner';
 
@@ -30,6 +31,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/worktime" element={<WorkTimeForm />} />
             <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </div>
       </div>
