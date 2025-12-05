@@ -330,8 +330,11 @@ export default function WorkTimeForm() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  Add new entry <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-xs">Ctrl+N</kbd>
+                <p className="flex items-center gap-1">
+                  Add new entry
+                  <kbd className="ml-1 px-1.5 py-0.5 bg-background/20 border border-border/50 rounded text-xs font-mono">
+                    Ctrl+N
+                  </kbd>
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -345,8 +348,11 @@ export default function WorkTimeForm() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  Save entries <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-xs">Ctrl+S</kbd>
+                <p className="flex items-center gap-1">
+                  Save entries
+                  <kbd className="ml-1 px-1.5 py-0.5 bg-background/20 border border-border/50 rounded text-xs font-mono">
+                    Ctrl+S
+                  </kbd>
                 </p>
               </TooltipContent>
             </Tooltip>
