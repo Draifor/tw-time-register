@@ -1,12 +1,13 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Inbox, AlertCircle } from 'lucide-react';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Skeleton } from './ui/skeleton';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {
@@ -22,10 +23,91 @@ interface DataTableProps<T extends FieldValues> {
   error: { message: string } | null;
   title?: string;
   onAddRow?: () => void;
-  // TODO: Implement these handlers for inline editing
-  // formFunction?: (newData: T) => void;
-  // onEdit?: (rowData: T) => void;
-  // onDelete?: (rowData: T) => void;
+}
+
+// Skeleton loader component
+function SkeletonTable({
+  title,
+  columnCount,
+  showAddButton
+}: {
+  title?: string;
+  columnCount: number;
+  showAddButton: boolean;
+}) {
+  return (
+    <Card>
+      {title && (
+        <CardHeader className="pb-3">
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <Skeleton className="h-9 w-[200px]" />
+          {showAddButton && <Skeleton className="h-9 w-[100px]" />}
+        </div>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {[...Array(columnCount)].map((_, i) => (
+                  <TableHead key={i}>
+                    <Skeleton className="h-4 w-20" />
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(5)].map((_, rowIndex) => (
+                <TableRow key={rowIndex}>
+                  {[...Array(columnCount)].map((_, colIndex) => (
+                    <TableCell key={colIndex}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Empty state component
+function EmptyState({ onAddRow }: { onAddRow?: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="rounded-full bg-muted p-4 mb-4">
+        <Inbox className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-1">No data yet</h3>
+      <p className="text-sm text-muted-foreground mb-4 max-w-[300px]">
+        Get started by adding your first entry. Your data will appear here.
+      </p>
+      {onAddRow && (
+        <Button onClick={onAddRow} size="sm" className="gap-1">
+          <Plus className="h-4 w-4" />
+          Add First Entry
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// Error state component
+function ErrorState({ message }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="rounded-full bg-destructive/10 p-4 mb-4">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+      </div>
+      <h3 className="text-lg font-semibold mb-1">Something went wrong</h3>
+      <p className="text-sm text-muted-foreground max-w-[300px]">{message || 'An unexpected error occurred'}</p>
+    </div>
+  );
 }
 
 function DataTable<T extends FieldValues>({
@@ -72,18 +154,8 @@ function DataTable<T extends FieldValues>({
     }
   }, [handleScroll]);
 
-  if (isLoading)
-    return (
-      <div className="flex justify-center items-center py-8">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    );
-  if (error)
-    return (
-      <div className="flex justify-center items-center py-8">
-        <div className="text-destructive">Error: {error.message}</div>
-      </div>
-    );
+  if (isLoading) return <SkeletonTable title={title} columnCount={columns.length} showAddButton={isEditable} />;
+  if (error) return <ErrorState message={error.message} />;
 
   return (
     <Card>
@@ -125,7 +197,11 @@ function DataTable<T extends FieldValues>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    className="transition-colors hover:bg-muted/50"
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
@@ -133,8 +209,17 @@ function DataTable<T extends FieldValues>({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
+                  <TableCell colSpan={columns.length} className="h-32">
+                    {globalFilter ? (
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <p className="text-muted-foreground mb-1">No results found for "{globalFilter}"</p>
+                        <Button variant="ghost" size="sm" onClick={() => setGlobalFilter('')}>
+                          Clear search
+                        </Button>
+                      </div>
+                    ) : (
+                      <EmptyState onAddRow={isEditable ? onAddRow : undefined} />
+                    )}
                   </TableCell>
                 </TableRow>
               )}

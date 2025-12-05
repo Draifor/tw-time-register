@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
-import { Plus, Trash2, Send } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import Input from './ui/input-form';
@@ -10,7 +10,9 @@ import Select from './ui/select-custom';
 import TotalTimeDay from './TotalTimeDay';
 import InputTime from './ui/input-time';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTasks from '../hooks/useTasks';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 type WorkTimeEntry = {
   date: string;
@@ -166,6 +168,37 @@ export default function WorkTimeForm() {
     append(newEntry);
   };
 
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: 'n',
+        ctrl: true,
+        action: handleAddEntry,
+        description: 'Add new entry'
+      },
+      {
+        key: 's',
+        ctrl: true,
+        action: () => formRef.current?.requestSubmit(),
+        description: 'Save/Register entries'
+      },
+      {
+        key: 'Escape',
+        action: () => {
+          // Clear the last entry if there's more than one
+          if (fields.length > 1) {
+            remove(fields.length - 1);
+            toast.info('Last entry removed');
+          }
+        },
+        description: 'Remove last entry'
+      }
+    ]
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -176,9 +209,9 @@ export default function WorkTimeForm() {
         <TotalTimeDay control={control} />
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {fields.map((field, index) => (
-          <Card key={field.id}>
+          <Card key={field.id} className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Entry {index + 1}</CardTitle>
@@ -186,7 +219,7 @@ export default function WorkTimeForm() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
                   onClick={() => remove(index)}
                   disabled={fields.length === 1}
                 >
@@ -288,14 +321,40 @@ export default function WorkTimeForm() {
         ))}
 
         <div className="flex items-center gap-4">
-          <Button type="button" variant="outline" onClick={handleAddEntry}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Entry
-          </Button>
-          <Button type="submit">
-            <Send className="h-4 w-4 mr-2" />
-            Register in TeamWork
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="button" variant="outline" onClick={handleAddEntry}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Entry
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  Add new entry <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-xs">Ctrl+N</kbd>
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="submit">
+                  <Send className="h-4 w-4 mr-2" />
+                  Register in TeamWork
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  Save entries <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-xs">Ctrl+S</kbd>
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            <Keyboard className="h-3 w-3 inline mr-1" />
+            Press Esc to remove last entry
+          </span>
         </div>
       </form>
     </div>
