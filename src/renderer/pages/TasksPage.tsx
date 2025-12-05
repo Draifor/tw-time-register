@@ -13,7 +13,7 @@ function TasksPage() {
         <p className="text-muted-foreground">Manage your task types, TeamWork tasks, and time logs.</p>
       </div>
 
-      <Tabs defaultValue="tasks" className="w-full">
+      <Tabs defaultValue="logs" className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
           <TabsTrigger value="logs" className="gap-2">
             <Clock className="h-4 w-4" />

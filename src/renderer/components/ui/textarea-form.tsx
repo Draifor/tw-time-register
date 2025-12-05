@@ -1,36 +1,75 @@
-import React from 'react';
-import { Controller } from 'react-hook-form';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { Controller, ControllerRenderProps, ControllerFieldState, FieldValues } from 'react-hook-form';
 
 interface TextareaProps {
   className?: string;
   name: string;
-  control?: any;
+  control?: unknown;
   required?: boolean;
-  rules?: any;
+  rules?: Record<string, unknown>;
   rows?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-function TextareaForm({ className, control, name, rules, rows = 1, ...rest }: TextareaProps) {
-  const baseStyles =
-    'flex min-h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-auto';
+interface TextareaFieldProps {
+  field: ControllerRenderProps<FieldValues, string>;
+  fieldState: ControllerFieldState;
+  className?: string;
+  baseStyles: string;
+  rows: number;
+  rest: Record<string, unknown>;
+}
 
-  const textareaElement = (field: any, fieldState: any) => (
+function TextareaField({ field, fieldState, className, baseStyles, rows, rest }: TextareaFieldProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = useCallback(() => {
+    const element = textareaRef.current;
+    if (element) {
+      element.style.height = 'auto';
+      element.style.height = `${element.scrollHeight}px`;
+    }
+  }, []);
+
+  // Adjust height when value changes or on mount
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      adjustHeight();
+    });
+  }, [field.value, adjustHeight]);
+
+  // Combine refs: our ref + react-hook-form's ref
+  const setRefs = useCallback(
+    (element: HTMLTextAreaElement | null) => {
+      // Set our internal ref
+      (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element;
+      // Call react-hook-form's ref
+      field.ref(element);
+    },
+    [field]
+  );
+
+  return (
     <div className="w-full">
       <textarea
+        ref={setRefs}
         className={`${baseStyles} ${className || ''}`}
         rows={rows}
-        onInput={(e) => {
-          const target = e.target as HTMLTextAreaElement;
-          target.style.height = 'auto';
-          target.style.height = `${target.scrollHeight}px`;
-        }}
+        onInput={adjustHeight}
+        name={field.name}
+        value={field.value}
+        onChange={field.onChange}
+        onBlur={field.onBlur}
         {...rest}
-        {...field}
       />
       {fieldState?.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
     </div>
   );
+}
+
+function TextareaForm({ className, control, name, rules, rows = 1, ...rest }: TextareaProps) {
+  const baseStyles =
+    'flex min-h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
   if (control) {
     return (
@@ -38,12 +77,26 @@ function TextareaForm({ className, control, name, rules, rows = 1, ...rest }: Te
         name={name}
         control={control}
         rules={rules}
-        render={({ field, fieldState }) => textareaElement(field, fieldState)}
+        render={({ field, fieldState }) => (
+          <TextareaField
+            field={field}
+            fieldState={fieldState}
+            className={className}
+            baseStyles={baseStyles}
+            rows={rows}
+            rest={rest}
+          />
+        )}
       />
     );
   }
 
-  return textareaElement({}, {});
+  // Fallback for uncontrolled usage
+  return (
+    <div className="w-full">
+      <textarea className={`${baseStyles} ${className || ''}`} rows={rows} {...rest} />
+    </div>
+  );
 }
 
 export default TextareaForm;
