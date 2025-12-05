@@ -183,20 +183,73 @@ const api = {
   removeLoading: () => {
     removeLoading();
   },
+
+  // Legacy work time (deprecated)
   addWorkTime: (entry: { description: string; hours: number; date: string }) =>
     ipcRenderer.invoke('addWorkTime', entry),
   getWorkTimes: () => ipcRenderer.invoke('getWorkTimes'),
+
+  // Time Entries
   addTimeEntry: (entry: {
     taskId: number;
     description: string;
     date: string;
     startTime: string;
     endTime: string;
-    isBillable: boolean;
+    isBillable?: boolean;
   }) => ipcRenderer.invoke('addTimeEntry', entry),
+  addTimeEntries: (
+    entries: {
+      taskId: number;
+      description: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      isBillable?: boolean;
+    }[]
+  ) => ipcRenderer.invoke('addTimeEntries', entries),
   getTimeEntries: () => ipcRenderer.invoke('getTimeEntries'),
+  getTimeEntriesByDate: (date: string) => ipcRenderer.invoke('getTimeEntriesByDate', date),
+  getTotalMinutesForDate: (date: string) => ipcRenderer.invoke('getTotalMinutesForDate', date),
+  getDailyTimeInfo: (date: string) => ipcRenderer.invoke('getDailyTimeInfo', date),
+  getNextAvailableSlot: () => ipcRenderer.invoke('getNextAvailableSlot'),
+  updateTimeEntry: (
+    entryId: number,
+    entry: {
+      taskId?: number;
+      description?: string;
+      date?: string;
+      startTime?: string;
+      endTime?: string;
+      isBillable?: boolean;
+    }
+  ) => ipcRenderer.invoke('updateTimeEntry', entryId, entry),
+  deleteTimeEntry: (entryId: number) => ipcRenderer.invoke('deleteTimeEntry', entryId),
+  markEntriesAsSent: (entryIds: number[]) => ipcRenderer.invoke('markEntriesAsSent', entryIds),
+
+  // Work Settings
+  getWorkSettings: () => ipcRenderer.invoke('getWorkSettings'),
+  updateWorkSettings: (settings: {
+    defaultStartTime?: string;
+    maxHoursMonday?: number;
+    maxHoursTuesday?: number;
+    maxHoursWednesday?: number;
+    maxHoursThursday?: number;
+    maxHoursFriday?: number;
+    workDays?: number[];
+  }) => ipcRenderer.invoke('updateWorkSettings', settings),
+
+  // Holidays
+  getHolidays: () => ipcRenderer.invoke('getHolidays'),
+  addHoliday: (date: string, description: string) => ipcRenderer.invoke('addHoliday', date, description),
+  deleteHoliday: (holidayId: number) => ipcRenderer.invoke('deleteHoliday', holidayId),
+  isWorkDay: (date: string) => ipcRenderer.invoke('isWorkDay', date),
+
+  // User auth
   registerUser: (username: string, password: string) => ipcRenderer.invoke('registerUser', username, password),
   loginUser: (username: string, password: string) => ipcRenderer.invoke('loginUser', username, password),
+
+  // TeamWork API
   registerTimeEntry: (entry: {
     taskId: string;
     description: string;
@@ -206,20 +259,25 @@ const api = {
     date: string;
     isBillable: boolean;
   }) => ipcRenderer.invoke('registerTimeEntry', entry),
-  addTypeTasks: (typeTasks: any) => ipcRenderer.invoke('addTypeTasks', typeTasks),
+
+  // Type Tasks
+  addTypeTasks: (typeTasks: { typeName: string }) => ipcRenderer.invoke('addTypeTasks', typeTasks),
   getTypeTasks: () => ipcRenderer.invoke('getTypeTasks'),
   getTypeTaskById: (id: number) => ipcRenderer.invoke('getTypeTaskById', id),
   updateTypeTask: (id: number, typeName: string) => ipcRenderer.invoke('updateTypeTask', id, typeName),
   deleteTypeTask: (id: number) => ipcRenderer.invoke('deleteTypeTask', id),
+
+  // Tasks
   addTask: (task: Task) => ipcRenderer.invoke('addTask', task),
   getTasks: () => ipcRenderer.invoke('getTasks'),
   getTaskById: (id: number) => ipcRenderer.invoke('getTaskById', id),
   updateTask: (task: Task) => ipcRenderer.invoke('updateTask', task),
   deleteTask: (id: number) => ipcRenderer.invoke('deleteTask', id),
+
   /**
    * Provide an easier way to listen to events
    */
-  on: (channel: string, callback: (data: any) => void) => {
+  on: (channel: string, callback: (data: unknown) => void) => {
     ipcRenderer.on(channel, (_, data) => callback(data));
   }
 };

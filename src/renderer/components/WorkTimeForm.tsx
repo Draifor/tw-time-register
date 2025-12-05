@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { Plus, Trash2, Send, Keyboard } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { getNextAvailableSlot, NextSlotSuggestion } from '../services/timesService';
 
 type WorkTimeEntry = {
   date: string;
@@ -24,6 +25,25 @@ type WorkTimeEntry = {
 };
 
 export default function WorkTimeForm() {
+  const [nextSlot, setNextSlot] = useState<NextSlotSuggestion | null>(null);
+  const [isLoadingSlot, setIsLoadingSlot] = useState(true);
+
+  // Create default entry from next available slot
+  const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
+    const [hours, minutes] = (slot?.startTime || '09:00').split(':').map(Number);
+    const startTimeDate = new Date('1970-01-01T00:00:00');
+    startTimeDate.setHours(hours, minutes, 0, 0);
+
+    return {
+      description: '',
+      hours: [new Date('1970-01-01T00:00:00')],
+      date: slot?.date || new Date().toISOString().split('T')[0],
+      task: '',
+      startTime: [startTimeDate],
+      endTime: [startTimeDate]
+    };
+  }, []);
+
   const defaultValue: WorkTimeEntry = {
     description: '',
     hours: [new Date('1970-01-01T00:00:00')],
@@ -48,7 +68,7 @@ export default function WorkTimeForm() {
         console.error('Failed to parse saved form data', e);
       }
     }
-    return [defaultValue];
+    return null; // Return null to indicate we should use smart defaults
   };
 
   const {
@@ -58,11 +78,34 @@ export default function WorkTimeForm() {
     reset,
     setValue
   } = useForm<{ entries: WorkTimeEntry[] }>({
-    defaultValues: { entries: getInitialValues() }
+    defaultValues: { entries: getInitialValues() || [defaultValue] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
   const { data: tasks } = useTasks();
+
+  // Fetch next available slot on mount
+  useEffect(() => {
+    const fetchNextSlot = async () => {
+      try {
+        const slot = await getNextAvailableSlot();
+        setNextSlot(slot);
+
+        // If no saved entries, update form with smart defaults
+        const saved = localStorage.getItem('workTimeFormEntries');
+        if (!saved && slot) {
+          const smartEntry = createDefaultEntry(slot);
+          reset({ entries: [smartEntry] });
+        }
+      } catch (error) {
+        console.error('Error fetching next slot:', error);
+      } finally {
+        setIsLoadingSlot(false);
+      }
+    };
+
+    fetchNextSlot();
+  }, [createDefaultEntry, reset]);
 
   const options = React.useMemo(() => {
     return (
@@ -148,7 +191,15 @@ export default function WorkTimeForm() {
         description: `${data.entries.length} time entries registered.`
       });
       localStorage.removeItem('workTimeFormEntries');
-      reset({ entries: [defaultValue] });
+
+      // Fetch new slot suggestion after saving
+      try {
+        const newSlot = await getNextAvailableSlot();
+        setNextSlot(newSlot);
+        reset({ entries: [createDefaultEntry(newSlot)] });
+      } catch {
+        reset({ entries: [defaultValue] });
+      }
     } catch (error) {
       console.error('Error saving entries:', error);
       toast.error('Error saving entries', {
@@ -157,15 +208,27 @@ export default function WorkTimeForm() {
     }
   };
 
-  const handleAddEntry = () => {
+  const handleAddEntry = async () => {
     const lastEntry = result[result.length - 1];
-    const newEntry = {
-      ...defaultValue,
-      date: lastEntry?.date || new Date().toISOString().split('T')[0],
-      startTime: lastEntry?.endTime || [new Date('1970-01-01T09:00:00')],
-      endTime: [new Date('1970-01-01T09:00:00')]
-    };
-    append(newEntry);
+
+    // If last entry has endTime, use it as the next startTime
+    if (lastEntry?.endTime?.[0]) {
+      const newEntry = {
+        ...defaultValue,
+        date: lastEntry.date,
+        startTime: lastEntry.endTime,
+        endTime: lastEntry.endTime
+      };
+      append(newEntry);
+    } else {
+      // Fetch fresh suggestion from DB
+      try {
+        const slot = await getNextAvailableSlot();
+        append(createDefaultEntry(slot));
+      } catch {
+        append(defaultValue);
+      }
+    }
   };
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -253,7 +316,7 @@ export default function WorkTimeForm() {
                     <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>
                   )}
                 </div>
-                <div className="w-[140px] space-y-2">
+                <div className="w-[170px] space-y-2">
                   <Label htmlFor={`entries.${index}.date`}>Date</Label>
                   <InputDate
                     name={`entries.${index}.date`}
