@@ -91,6 +91,11 @@ function useTable<T extends FieldValues>({ columns, data, isEditable }: UseTable
     setVisibleRowCount(INITIAL_ROWS);
   }, [data]);
 
+  // Sync localData when external data changes (e.g. after query loads)
+  useEffect(() => {
+    setLocalData(data || []);
+  }, [data]);
+
   const table = useReactTable<T>({
     data: visibleData,
     columns: memoColumns as ColumnDef<T>[],
