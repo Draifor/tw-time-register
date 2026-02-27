@@ -18,6 +18,7 @@ import {
   testTWConnection,
   Holiday
 } from '../services/timesService';
+import { TW_SESSION_UPDATED_EVENT } from '../hooks/useTWSession';
 import { useForm, Controller } from 'react-hook-form';
 import {
   AlertDialog,
@@ -142,6 +143,7 @@ export default function SettingsPage() {
     setTwTestResult(null);
     try {
       await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), twUserId.trim());
+      window.dispatchEvent(new Event(TW_SESSION_UPDATED_EVENT));
       toast.success(isSpanish ? 'Credenciales de TeamWork guardadas' : 'TeamWork credentials saved');
     } catch (error) {
       console.error('Error saving TW credentials:', error);
@@ -165,6 +167,7 @@ export default function SettingsPage() {
           setTwUserId(result.userId);
           await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), result.userId);
         }
+        window.dispatchEvent(new Event(TW_SESSION_UPDATED_EVENT));
         toast.success(
           isSpanish ? `Conexión exitosa. Hola, ${result.name}!` : `Connected successfully. Hello, ${result.name}!`
         );
