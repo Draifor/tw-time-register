@@ -135,18 +135,30 @@ export const getTimeStats = async (): Promise<TimeStats> => {
 // TeamWork credentials & sync
 export interface TWCredentials {
   domain: string;
-  apiToken: string;
+  username: string;
+  password: string;
+  userId: string;
 }
 
 export const getTWCredentials = async (): Promise<TWCredentials> => {
   return window.Main.getTWCredentials();
 };
 
-export const saveTWCredentials = async (domain: string, apiToken: string): Promise<void> => {
-  return window.Main.saveTWCredentials(domain, apiToken);
+export const saveTWCredentials = async (
+  domain: string,
+  username: string,
+  password: string,
+  userId: string
+): Promise<void> => {
+  return window.Main.saveTWCredentials(domain, username, password, userId);
 };
 
-export const testTWConnection = async (): Promise<{ success: boolean; name?: string; message?: string }> => {
+export const testTWConnection = async (): Promise<{
+  success: boolean;
+  name?: string;
+  userId?: string;
+  message?: string;
+}> => {
   return window.Main.testTWConnection();
 };
 

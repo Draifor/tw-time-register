@@ -22,11 +22,27 @@ export async function runMigrations(): Promise<void> {
     console.log('Migration: Added tw_domain setting');
   }
 
-  const twApiToken = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_api_token'");
-  if (!twApiToken) {
+  const twUsername = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_username'");
+  if (!twUsername) {
     await db.run(
-      "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_api_token', '', 'TeamWork API token')"
+      "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_username', '', 'TeamWork username / email')"
     );
-    console.log('Migration: Added tw_api_token setting');
+    console.log('Migration: Added tw_username setting');
+  }
+
+  const twPassword = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_password'");
+  if (!twPassword) {
+    await db.run(
+      "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_password', '', 'TeamWork password')"
+    );
+    console.log('Migration: Added tw_password setting');
+  }
+
+  const twUserId = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_user_id'");
+  if (!twUserId) {
+    await db.run(
+      "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_user_id', '', 'TeamWork user ID (numeric)')"
+    );
+    console.log('Migration: Added tw_user_id setting');
   }
 }

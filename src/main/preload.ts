@@ -253,7 +253,8 @@ const api = {
 
   // TeamWork credentials & sync
   getTWCredentials: () => ipcRenderer.invoke('getTWCredentials'),
-  saveTWCredentials: (domain: string, apiToken: string) => ipcRenderer.invoke('saveTWCredentials', domain, apiToken),
+  saveTWCredentials: (domain: string, username: string, password: string, userId: string) =>
+    ipcRenderer.invoke('saveTWCredentials', domain, username, password, userId),
   testTWConnection: () => ipcRenderer.invoke('testTWConnection'),
   syncTimeEntryToTW: (entry: {
     twTaskId: string;

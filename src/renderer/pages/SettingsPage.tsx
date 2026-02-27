@@ -67,10 +67,12 @@ export default function SettingsPage() {
 
   // TeamWork credentials state
   const [twDomain, setTwDomain] = useState('');
-  const [twApiToken, setTwApiToken] = useState('');
+  const [twUsername, setTwUsername] = useState('');
+  const [twPassword, setTwPassword] = useState('');
+  const [twUserId, setTwUserId] = useState('');
   const [twSaving, setTwSaving] = useState(false);
   const [twTesting, setTwTesting] = useState(false);
-  const [twTestResult, setTwTestResult] = useState<{ success: boolean; name?: string; message?: string } | null>(null);
+  const [twTestResult, setTwTestResult] = useState<{ success: boolean; name?: string; userId?: string; message?: string } | null>(null);
 
   const { control, handleSubmit, reset, watch, setValue } = useForm<SettingsFormData>({
     defaultValues: {
@@ -108,7 +110,9 @@ export default function SettingsPage() {
 
         setHolidays(holidayList);
         setTwDomain(twCreds.domain || '');
-        setTwApiToken(twCreds.apiToken || '');
+        setTwUsername(twCreds.username || '');
+        setTwPassword(twCreds.password || '');
+        setTwUserId(twCreds.userId || '');
       } catch (error) {
         console.error('Error loading settings:', error);
         toast.error('Error loading settings');
@@ -137,7 +141,7 @@ export default function SettingsPage() {
     setTwSaving(true);
     setTwTestResult(null);
     try {
-      await saveTWCredentials(twDomain.trim(), twApiToken.trim());
+      await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), twUserId.trim());
       toast.success(isSpanish ? 'Credenciales de TeamWork guardadas' : 'TeamWork credentials saved');
     } catch (error) {
       console.error('Error saving TW credentials:', error);
@@ -152,10 +156,15 @@ export default function SettingsPage() {
     setTwTestResult(null);
     try {
       // Save first so the test uses the current values
-      await saveTWCredentials(twDomain.trim(), twApiToken.trim());
+      await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), twUserId.trim());
       const result = await testTWConnection();
       setTwTestResult(result);
       if (result.success) {
+        // Auto-populate userId if it was returned and not yet set
+        if (result.userId && !twUserId.trim()) {
+          setTwUserId(result.userId);
+          await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), result.userId);
+        }
         toast.success(
           isSpanish ? `Conexión exitosa. Hola, ${result.name}!` : `Connected successfully. Hello, ${result.name}!`
         );
@@ -292,7 +301,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="twDomain">
                 {isSpanish ? 'Dominio de TeamWork' : 'TeamWork Domain'}
               </Label>
@@ -304,8 +313,11 @@ export default function SettingsPage() {
                   id="twDomain"
                   placeholder="miempresa"
                   value={twDomain}
-                  onChange={(e) => { setTwDomain(e.target.value); setTwTestResult(null); }}
-                  className="rounded-l-none"
+                  onChange={(e) => {
+                    setTwDomain(e.target.value);
+                    setTwTestResult(null);
+                  }}
+                  className="rounded-none"
                 />
                 <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-l-0 border-input bg-muted text-muted-foreground text-sm select-none">
                   .teamwork.com
@@ -313,15 +325,53 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twApiToken">
-                {isSpanish ? 'Token de API' : 'API Token'}
+              <Label htmlFor="twUsername">
+                {isSpanish ? 'Usuario / Email' : 'Username / Email'}
               </Label>
               <Input
-                id="twApiToken"
+                id="twUsername"
+                type="text"
+                placeholder="usuario@empresa.com"
+                autoComplete="username"
+                value={twUsername}
+                onChange={(e) => {
+                  setTwUsername(e.target.value);
+                  setTwTestResult(null);
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="twPassword">
+                {isSpanish ? 'Contraseña' : 'Password'}
+              </Label>
+              <Input
+                id="twPassword"
                 type="password"
                 placeholder="••••••••••••••••"
-                value={twApiToken}
-                onChange={(e) => { setTwApiToken(e.target.value); setTwTestResult(null); }}
+                autoComplete="current-password"
+                value={twPassword}
+                onChange={(e) => {
+                  setTwPassword(e.target.value);
+                  setTwTestResult(null);
+                }}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="twUserId">
+                {isSpanish ? 'ID de usuario en TW' : 'TW User ID'}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {isSpanish
+                    ? '(se auto-rellena al probar la conexión)'
+                    : '(auto-filled when testing connection)'}
+                </span>
+              </Label>
+              <Input
+                id="twUserId"
+                type="text"
+                placeholder="123456"
+                value={twUserId}
+                onChange={(e) => setTwUserId(e.target.value)}
+                className="max-w-[180px]"
               />
             </div>
           </div>
@@ -354,7 +404,7 @@ export default function SettingsPage() {
               variant="outline"
               className="gap-2"
               onClick={handleTestTWConnection}
-              disabled={twTesting || !twDomain.trim() || !twApiToken.trim()}
+              disabled={twTesting || !twDomain.trim() || !twUsername.trim() || !twPassword.trim()}
             >
               {twTesting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

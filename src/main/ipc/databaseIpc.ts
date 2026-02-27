@@ -129,9 +129,12 @@ ipcMain.handle('getTWCredentials', async () => {
   return getTWCredentials();
 });
 
-ipcMain.handle('saveTWCredentials', async (_event, domain: string, apiToken: string) => {
-  return saveTWCredentials(domain, apiToken);
-});
+ipcMain.handle(
+  'saveTWCredentials',
+  async (_event, domain: string, username: string, password: string, userId: string) => {
+    return saveTWCredentials(domain, username, password, userId);
+  }
+);
 
 ipcMain.handle('testTWConnection', async () => {
   return testTWConnection();
