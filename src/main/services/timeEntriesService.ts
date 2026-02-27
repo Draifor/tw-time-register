@@ -11,6 +11,7 @@ export interface TimeEntry {
   isBillable: boolean;
   isSent: boolean;
   taskName?: string;
+  taskLink?: string;
 }
 
 export interface TimeEntryInput {
@@ -71,7 +72,8 @@ export async function getAllTimeEntries(): Promise<TimeEntry[]> {
       te.hora_fin as endTime,
       te.facturable as isBillable,
       te.send as isSent,
-      t.task_name as taskName
+      t.task_name as taskName,
+      t.task_link as taskLink
     FROM time_entries te
     LEFT JOIN tasks t ON te.task_id = t.task_id
     ORDER BY te.entry_date DESC, te.hora_inicio DESC

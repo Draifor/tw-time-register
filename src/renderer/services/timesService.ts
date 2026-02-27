@@ -9,6 +9,7 @@ export interface TimeEntry {
   isBillable: boolean;
   isSent: boolean;
   taskName?: string;
+  taskLink?: string;
 }
 
 export interface TimeEntryInput {
@@ -129,6 +130,40 @@ export interface TimeStats {
 
 export const getTimeStats = async (): Promise<TimeStats> => {
   return window.Main.getTimeStats();
+};
+
+// TeamWork credentials & sync
+export interface TWCredentials {
+  domain: string;
+  apiToken: string;
+}
+
+export const getTWCredentials = async (): Promise<TWCredentials> => {
+  return window.Main.getTWCredentials();
+};
+
+export const saveTWCredentials = async (domain: string, apiToken: string): Promise<void> => {
+  return window.Main.saveTWCredentials(domain, apiToken);
+};
+
+export const testTWConnection = async (): Promise<{ success: boolean; name?: string; message?: string }> => {
+  return window.Main.testTWConnection();
+};
+
+export const syncTimeEntryToTW = async (entry: {
+  twTaskId: string;
+  description: string;
+  date: string;
+  startTime: string;
+  hours: number;
+  minutes: number;
+  isBillable: boolean;
+}): Promise<{ success: boolean; twEntryId?: number; message?: string }> => {
+  return window.Main.syncTimeEntryToTW(entry);
+};
+
+export const extractTWTaskId = async (taskLink: string): Promise<string | null> => {
+  return window.Main.extractTWTaskId(taskLink);
 };
 
 // Helper to convert minutes to hours:minutes format

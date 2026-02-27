@@ -150,3 +150,30 @@ export async function setLanguage(language: string): Promise<void> {
   const db = await openDb();
   await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'language'", [language]);
 }
+
+// TeamWork credentials
+export interface TWCredentials {
+  domain: string;
+  apiToken: string;
+}
+
+export async function getTWCredentials(): Promise<TWCredentials> {
+  const db = await openDb();
+  const rows = await db.all(
+    "SELECT setting_key, setting_value FROM work_settings WHERE setting_key IN ('tw_domain', 'tw_api_token')"
+  );
+  const map: Record<string, string> = {};
+  rows.forEach((r: { setting_key: string; setting_value: string }) => {
+    map[r.setting_key] = r.setting_value;
+  });
+  return {
+    domain: map['tw_domain'] || '',
+    apiToken: map['tw_api_token'] || ''
+  };
+}
+
+export async function saveTWCredentials(domain: string, apiToken: string): Promise<void> {
+  const db = await openDb();
+  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_domain'", [domain]);
+  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_api_token'", [apiToken]);
+}

@@ -251,6 +251,21 @@ const api = {
   getLanguage: () => ipcRenderer.invoke('getLanguage'),
   setLanguage: (language: string) => ipcRenderer.invoke('setLanguage', language),
 
+  // TeamWork credentials & sync
+  getTWCredentials: () => ipcRenderer.invoke('getTWCredentials'),
+  saveTWCredentials: (domain: string, apiToken: string) => ipcRenderer.invoke('saveTWCredentials', domain, apiToken),
+  testTWConnection: () => ipcRenderer.invoke('testTWConnection'),
+  syncTimeEntryToTW: (entry: {
+    twTaskId: string;
+    description: string;
+    date: string;
+    startTime: string;
+    hours: number;
+    minutes: number;
+    isBillable: boolean;
+  }) => ipcRenderer.invoke('syncTimeEntryToTW', entry),
+  extractTWTaskId: (taskLink: string) => ipcRenderer.invoke('extractTWTaskId', taskLink),
+
   // User auth
   registerUser: (username: string, password: string) => ipcRenderer.invoke('registerUser', username, password),
   loginUser: (username: string, password: string) => ipcRenderer.invoke('loginUser', username, password),

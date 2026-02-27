@@ -33,8 +33,11 @@ import {
   isWorkDay,
   getLanguage,
   setLanguage,
+  getTWCredentials,
+  saveTWCredentials,
   WorkSettings
 } from '../services/settingsService';
+import { testTWConnection, sendTimeEntryToTW, extractTWTaskId } from '../services/apiService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
@@ -122,6 +125,40 @@ ipcMain.handle('setLanguage', async (_event, language: string) => {
   return setLanguage(language);
 });
 
+ipcMain.handle('getTWCredentials', async () => {
+  return getTWCredentials();
+});
+
+ipcMain.handle('saveTWCredentials', async (_event, domain: string, apiToken: string) => {
+  return saveTWCredentials(domain, apiToken);
+});
+
+ipcMain.handle('testTWConnection', async () => {
+  return testTWConnection();
+});
+
+ipcMain.handle(
+  'syncTimeEntryToTW',
+  async (
+    _event,
+    entry: {
+      twTaskId: string;
+      description: string;
+      date: string;
+      startTime: string;
+      hours: number;
+      minutes: number;
+      isBillable: boolean;
+    }
+  ) => {
+    return sendTimeEntryToTW(entry);
+  }
+);
+
+ipcMain.handle('extractTWTaskId', (_event, taskLink: string) => {
+  return extractTWTaskId(taskLink);
+});
+
 // User handlers
 ipcMain.handle('registerUser', async (_event, username: string, password: string) => {
   return registerUser(username, password);
@@ -139,7 +176,7 @@ ipcMain.handle(
     description: string,
     hours: number,
     minutes: number,
-    time: number,
+    time: string,
     date: string,
     isBillable: boolean
   ) => {

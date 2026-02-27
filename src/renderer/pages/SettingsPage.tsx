@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Save, Plus, Trash2, Calendar, Clock, Briefcase, Globe } from 'lucide-react';
+import { Save, Plus, Trash2, Calendar, Clock, Briefcase, Globe, Link2, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -13,6 +13,9 @@ import {
   getHolidays,
   addHoliday,
   deleteHoliday,
+  getTWCredentials,
+  saveTWCredentials,
+  testTWConnection,
   Holiday
 } from '../services/timesService';
 import { useForm, Controller } from 'react-hook-form';
@@ -62,6 +65,13 @@ export default function SettingsPage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [newHoliday, setNewHoliday] = useState<NewHolidayForm>({ date: '', description: '' });
 
+  // TeamWork credentials state
+  const [twDomain, setTwDomain] = useState('');
+  const [twApiToken, setTwApiToken] = useState('');
+  const [twSaving, setTwSaving] = useState(false);
+  const [twTesting, setTwTesting] = useState(false);
+  const [twTestResult, setTwTestResult] = useState<{ success: boolean; name?: string; message?: string } | null>(null);
+
   const { control, handleSubmit, reset, watch, setValue } = useForm<SettingsFormData>({
     defaultValues: {
       defaultStartTime: '09:00',
@@ -80,7 +90,11 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [settings, holidayList] = await Promise.all([getWorkSettings(), getHolidays()]);
+        const [settings, holidayList, twCreds] = await Promise.all([
+          getWorkSettings(),
+          getHolidays(),
+          getTWCredentials()
+        ]);
 
         reset({
           defaultStartTime: settings.defaultStartTime,
@@ -93,6 +107,8 @@ export default function SettingsPage() {
         });
 
         setHolidays(holidayList);
+        setTwDomain(twCreds.domain || '');
+        setTwApiToken(twCreds.apiToken || '');
       } catch (error) {
         console.error('Error loading settings:', error);
         toast.error('Error loading settings');
@@ -114,6 +130,45 @@ export default function SettingsPage() {
       toast.error(isSpanish ? 'Error al guardar' : 'Error saving settings');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveTWCredentials = async () => {
+    setTwSaving(true);
+    setTwTestResult(null);
+    try {
+      await saveTWCredentials(twDomain.trim(), twApiToken.trim());
+      toast.success(isSpanish ? 'Credenciales de TeamWork guardadas' : 'TeamWork credentials saved');
+    } catch (error) {
+      console.error('Error saving TW credentials:', error);
+      toast.error(isSpanish ? 'Error al guardar credenciales' : 'Error saving credentials');
+    } finally {
+      setTwSaving(false);
+    }
+  };
+
+  const handleTestTWConnection = async () => {
+    setTwTesting(true);
+    setTwTestResult(null);
+    try {
+      // Save first so the test uses the current values
+      await saveTWCredentials(twDomain.trim(), twApiToken.trim());
+      const result = await testTWConnection();
+      setTwTestResult(result);
+      if (result.success) {
+        toast.success(
+          isSpanish ? `Conexión exitosa. Hola, ${result.name}!` : `Connected successfully. Hello, ${result.name}!`
+        );
+      } else {
+        toast.error(result.message || (isSpanish ? 'Error de conexión' : 'Connection failed'));
+      }
+    } catch (error) {
+      console.error('TW test error:', error);
+      const msg = String(error);
+      setTwTestResult({ success: false, message: msg });
+      toast.error(msg);
+    } finally {
+      setTwTesting(false);
     }
   };
 
@@ -217,6 +272,109 @@ export default function SettingsPage() {
               }}
             >
               🇬🇧 English
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* TeamWork Credentials Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" />
+            TeamWork
+          </CardTitle>
+          <CardDescription>
+            {isSpanish
+              ? 'Configura tus credenciales de API para sincronizar tiempos'
+              : 'Configure your API credentials to sync time entries'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="twDomain">
+                {isSpanish ? 'Dominio de TeamWork' : 'TeamWork Domain'}
+              </Label>
+              <div className="flex items-center">
+                <span className="inline-flex items-center px-3 h-9 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm select-none">
+                  https://
+                </span>
+                <Input
+                  id="twDomain"
+                  placeholder="miempresa"
+                  value={twDomain}
+                  onChange={(e) => { setTwDomain(e.target.value); setTwTestResult(null); }}
+                  className="rounded-l-none"
+                />
+                <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-l-0 border-input bg-muted text-muted-foreground text-sm select-none">
+                  .teamwork.com
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="twApiToken">
+                {isSpanish ? 'Token de API' : 'API Token'}
+              </Label>
+              <Input
+                id="twApiToken"
+                type="password"
+                placeholder="••••••••••••••••"
+                value={twApiToken}
+                onChange={(e) => { setTwApiToken(e.target.value); setTwTestResult(null); }}
+              />
+            </div>
+          </div>
+
+          {/* Test result banner */}
+          {twTestResult && (
+            <div
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+                twTestResult.success
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-destructive/10 text-destructive'
+              }`}
+            >
+              {twTestResult.success ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 shrink-0" />
+              )}
+              <span>
+                {twTestResult.success
+                  ? (isSpanish ? `Conectado como ${twTestResult.name}` : `Connected as ${twTestResult.name}`)
+                  : (twTestResult.message || (isSpanish ? 'Error de conexión' : 'Connection failed'))}
+              </span>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={handleTestTWConnection}
+              disabled={twTesting || !twDomain.trim() || !twApiToken.trim()}
+            >
+              {twTesting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Link2 className="h-4 w-4" />
+              )}
+              {isSpanish ? 'Probar conexión' : 'Test connection'}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              onClick={handleSaveTWCredentials}
+              disabled={twSaving}
+            >
+              {twSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {isSpanish ? 'Guardar' : 'Save'}
             </Button>
           </div>
         </CardContent>
