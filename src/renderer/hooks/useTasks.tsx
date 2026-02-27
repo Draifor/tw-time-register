@@ -84,23 +84,6 @@ function useTasks() {
     queryKey: ['typeTasks'],
     queryFn: fetchTypeTasks
   });
-
-  // const taskTypes = queryClient.getQueryData<TypeTasks[]>(['typeTasks']);
-
-  // const columns = originalColumns.map((column) => {
-  //   if (column.type === 'select') {
-  //     return {
-  //       ...column,
-  //       options: taskTypes?.map((type: TypeTasks) => ({
-  //         value: type.typeName,
-  //         label: type.typeName
-  //       }))
-  //     };
-  //   }
-  //   return column;
-  // });
-  console.log(data); // AQUI VOY
-
   interface RowT {
     row: Row<Task>;
   }

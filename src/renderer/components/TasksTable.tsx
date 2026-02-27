@@ -1,9 +1,10 @@
 import React from 'react';
 import DataTable from './DataTable';
 import useTasks from '../hooks/useTasks';
+import { Task } from '../../types/tasks';
 
 function TasksTable() {
-  const { data, isLoading, isEditable, error, columns, handleAddRow } = useTasks();
+  const { data, isLoading, isEditable, error, columns, handleAddRow, onEdit } = useTasks();
 
   return (
     <DataTable
@@ -14,6 +15,7 @@ function TasksTable() {
       error={error ? { message: String((error as Error)?.message) || 'An error occurred' } : null}
       columns={columns}
       onAddRow={handleAddRow}
+      onPersist={(row: Task) => onEdit(row)}
     />
   );
 }

@@ -29,6 +29,7 @@ export interface UseTableProps<T extends FieldValues> {
   columns: ColumnDef<T>[];
   data: T[];
   isEditable: boolean;
+  onPersist?: (row: T) => void;
 }
 
 export interface FormFieldProps<T extends FieldValues> {

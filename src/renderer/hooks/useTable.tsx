@@ -61,7 +61,7 @@ const defaultColumn = <T,>(isEditable: boolean): Partial<ColumnDef<T>> => ({
   }
 });
 
-function useTable<T extends FieldValues>({ columns, data, isEditable }: UseTableProps<T>) {
+function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist }: UseTableProps<T>) {
   const memoColumns = useMemo(() => columns, [columns]);
   const [localData, setLocalData] = useState(data || []);
   const { shouldSkip: autoResetPageIndex, skip: skipAutoResetPageIndex } = useSkipper();
@@ -112,19 +112,21 @@ function useTable<T extends FieldValues>({ columns, data, isEditable }: UseTable
     meta: {
       updateData: (rowIndex, columnId, value) => {
         skipAutoResetPageIndex();
+        let updatedRow: T | undefined;
         setLocalData((old) =>
           old.map((row, index) => {
             if (index === rowIndex) {
-              return {
-                ...old[rowIndex],
-                [columnId]: value
-              };
+              updatedRow = { ...old[rowIndex], [columnId]: value };
+              return updatedRow;
             }
             return row;
           })
         );
-        // Simulate API call to save data
-        saveDataToDB(rowIndex, columnId, value);
+        if (updatedRow && onPersist) {
+          onPersist(updatedRow);
+        } else {
+          saveDataToDB(rowIndex, columnId, value);
+        }
       }
     },
     debugTable: true

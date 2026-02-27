@@ -23,6 +23,7 @@ interface DataTableProps<T extends FieldValues> {
   error: { message: string } | null;
   title?: string;
   onAddRow?: () => void;
+  onPersist?: (row: T) => void;
 }
 
 // Skeleton loader component
@@ -117,12 +118,14 @@ function DataTable<T extends FieldValues>({
   isEditable = false,
   error,
   title,
-  onAddRow
+  onAddRow,
+  onPersist
 }: DataTableProps<T>) {
   const { table, globalFilter, setGlobalFilter, loadMoreRows, hasMoreRows, visibleRowCount, totalRows } = useTable({
     columns,
     data,
-    isEditable
+    isEditable,
+    onPersist
   });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
