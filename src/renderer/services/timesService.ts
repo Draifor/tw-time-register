@@ -120,6 +120,17 @@ export const isWorkDay = async (date: string): Promise<boolean> => {
   return window.Main.isWorkDay(date);
 };
 
+// Statistics
+export interface TimeStats {
+  todayMinutes: number;
+  weekMinutes: number;
+  pendingEntries: number;
+}
+
+export const getTimeStats = async (): Promise<TimeStats> => {
+  return window.Main.getTimeStats();
+};
+
 // Helper to convert minutes to hours:minutes format
 export const minutesToHoursMinutes = (minutes: number): { hours: number; minutes: number } => {
   return {

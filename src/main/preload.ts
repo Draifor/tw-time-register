@@ -227,6 +227,7 @@ const api = {
   ) => ipcRenderer.invoke('updateTimeEntry', entryId, entry),
   deleteTimeEntry: (entryId: number) => ipcRenderer.invoke('deleteTimeEntry', entryId),
   markEntriesAsSent: (entryIds: number[]) => ipcRenderer.invoke('markEntriesAsSent', entryIds),
+  getTimeStats: () => ipcRenderer.invoke('getTimeStats'),
 
   // Work Settings
   getWorkSettings: () => ipcRenderer.invoke('getWorkSettings'),

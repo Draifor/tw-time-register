@@ -1,10 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, ListTodo, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
+import { getTimeStats, TimeStats, minutesToHoursMinutes } from '../services/timesService';
 
 function HomePage() {
+  const [stats, setStats] = useState<TimeStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await getTimeStats();
+        setStats(data);
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStats();
+  }, []);
+
+  const formatTime = (minutes: number) => {
+    const { hours, minutes: mins } = minutesToHoursMinutes(minutes);
+    return `${hours}h ${mins.toString().padStart(2, '0')}m`;
+  };
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -62,15 +86,33 @@ function HomePage() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="text-center p-4 rounded-lg bg-muted">
-              <div className="text-2xl font-bold">0h</div>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16 mx-auto mb-1" />
+              ) : (
+                <div className="text-2xl font-bold">{formatTime(stats?.todayMinutes || 0)}</div>
+              )}
               <div className="text-sm text-muted-foreground">Today</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted">
-              <div className="text-2xl font-bold">0h</div>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16 mx-auto mb-1" />
+              ) : (
+                <div className="text-2xl font-bold">{formatTime(stats?.weekMinutes || 0)}</div>
+              )}
               <div className="text-sm text-muted-foreground">This Week</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted">
-              <div className="text-2xl font-bold">0</div>
+              {isLoading ? (
+                <Skeleton className="h-8 w-20 mx-auto mb-1" />
+              ) : (
+                <div
+                  className={`text-2xl font-bold ${
+                    (stats?.pendingEntries || 0) > 0 ? 'text-yellow-600 dark:text-yellow-400' : ''
+                  }`}
+                >
+                  {stats?.pendingEntries || 0}
+                </div>
+              )}
               <div className="text-sm text-muted-foreground">Pending Entries</div>
             </div>
           </div>

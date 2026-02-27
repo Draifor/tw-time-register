@@ -285,3 +285,53 @@ export async function markEntriesAsSent(entryIds: number[]): Promise<void> {
   const placeholders = entryIds.map(() => '?').join(',');
   await db.run(`UPDATE time_entries SET send = 1 WHERE entry_id IN (${placeholders})`, entryIds);
 }
+
+// Statistics interfaces
+export interface TimeStats {
+  todayMinutes: number;
+  weekMinutes: number;
+  pendingEntries: number;
+}
+
+// Get time statistics (today, this week, pending)
+export async function getTimeStats(): Promise<TimeStats> {
+  const db = await openDb();
+  const today = new Date().toISOString().split('T')[0];
+
+  // Calculate week start (Monday)
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diffToMonday);
+  const weekStart = monday.toISOString().split('T')[0];
+
+  // Get today's total minutes
+  const todayResult = await db.get(
+    `SELECT COALESCE(SUM(
+      (CAST(substr(hora_fin, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_fin, 4, 2) AS INTEGER)) -
+      (CAST(substr(hora_inicio, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_inicio, 4, 2) AS INTEGER))
+    ), 0) as totalMinutes
+    FROM time_entries WHERE entry_date = ?`,
+    [today]
+  );
+
+  // Get this week's total minutes
+  const weekResult = await db.get(
+    `SELECT COALESCE(SUM(
+      (CAST(substr(hora_fin, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_fin, 4, 2) AS INTEGER)) -
+      (CAST(substr(hora_inicio, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_inicio, 4, 2) AS INTEGER))
+    ), 0) as totalMinutes
+    FROM time_entries WHERE entry_date >= ?`,
+    [weekStart]
+  );
+
+  // Get pending entries count (not sent to TeamWork)
+  const pendingResult = await db.get('SELECT COUNT(*) as count FROM time_entries WHERE send = 0');
+
+  return {
+    todayMinutes: todayResult?.totalMinutes || 0,
+    weekMinutes: weekResult?.totalMinutes || 0,
+    pendingEntries: pendingResult?.count || 0
+  };
+}
