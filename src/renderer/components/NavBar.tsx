@@ -1,13 +1,17 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Clock, ListTodo, Home, Settings } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Clock, ListTodo, Home, Settings, WifiOff, Loader2 } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { cn } from '../lib/utils';
+import useTWSession from '../hooks/useTWSession';
 
 function NavBar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isConfigured, username, domain, isLoading } = useTWSession();
 
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
@@ -41,6 +45,49 @@ function NavBar() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          {/* TW Session badge */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'gap-2 text-sm font-normal',
+                    isConfigured
+                      ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  onClick={() => navigate('/settings')}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isConfigured ? (
+                    <>
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      <span>{username}</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="h-4 w-4" />
+                      <span className="hidden sm:inline">Sin sesión TW</span>
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="end">
+                {isLoading
+                  ? 'Verificando credenciales...'
+                  : isConfigured
+                    ? `Conectado como ${username} · ${domain}.teamwork.com`
+                    : 'Sin credenciales de TeamWork. Haz clic para configurar.'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <SwitchDarkMode />
           <SelectLanguage />
         </div>

@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Save, Plus, Trash2, Calendar, Clock, Briefcase, Globe, Link2, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import {
+  Save,
+  Plus,
+  Trash2,
+  Calendar,
+  Clock,
+  Briefcase,
+  Globe,
+  Link2,
+  CheckCircle2,
+  XCircle,
+  Loader2
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -73,7 +85,12 @@ export default function SettingsPage() {
   const [twUserId, setTwUserId] = useState('');
   const [twSaving, setTwSaving] = useState(false);
   const [twTesting, setTwTesting] = useState(false);
-  const [twTestResult, setTwTestResult] = useState<{ success: boolean; name?: string; userId?: string; message?: string } | null>(null);
+  const [twTestResult, setTwTestResult] = useState<{
+    success: boolean;
+    name?: string;
+    userId?: string;
+    message?: string;
+  } | null>(null);
 
   const { control, handleSubmit, reset, watch, setValue } = useForm<SettingsFormData>({
     defaultValues: {
@@ -305,9 +322,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="twDomain">
-                {isSpanish ? 'Dominio de TeamWork' : 'TeamWork Domain'}
-              </Label>
+              <Label htmlFor="twDomain">{isSpanish ? 'Dominio de TeamWork' : 'TeamWork Domain'}</Label>
               <div className="flex items-center">
                 <span className="inline-flex items-center px-3 h-9 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm select-none">
                   https://
@@ -328,9 +343,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twUsername">
-                {isSpanish ? 'Usuario / Email' : 'Username / Email'}
-              </Label>
+              <Label htmlFor="twUsername">{isSpanish ? 'Usuario / Email' : 'Username / Email'}</Label>
               <Input
                 id="twUsername"
                 type="text"
@@ -344,9 +357,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twPassword">
-                {isSpanish ? 'Contraseña' : 'Password'}
-              </Label>
+              <Label htmlFor="twPassword">{isSpanish ? 'Contraseña' : 'Password'}</Label>
               <Input
                 id="twPassword"
                 type="password"
@@ -363,9 +374,7 @@ export default function SettingsPage() {
               <Label htmlFor="twUserId">
                 {isSpanish ? 'ID de usuario en TW' : 'TW User ID'}
                 <span className="ml-2 text-xs text-muted-foreground">
-                  {isSpanish
-                    ? '(se auto-rellena al probar la conexión)'
-                    : '(auto-filled when testing connection)'}
+                  {isSpanish ? '(se auto-rellena al probar la conexión)' : '(auto-filled when testing connection)'}
                 </span>
               </Label>
               <Input
@@ -395,8 +404,10 @@ export default function SettingsPage() {
               )}
               <span>
                 {twTestResult.success
-                  ? (isSpanish ? `Conectado como ${twTestResult.name}` : `Connected as ${twTestResult.name}`)
-                  : (twTestResult.message || (isSpanish ? 'Error de conexión' : 'Connection failed'))}
+                  ? isSpanish
+                    ? `Conectado como ${twTestResult.name}`
+                    : `Connected as ${twTestResult.name}`
+                  : twTestResult.message || (isSpanish ? 'Error de conexión' : 'Connection failed')}
               </span>
             </div>
           )}
@@ -409,24 +420,11 @@ export default function SettingsPage() {
               onClick={handleTestTWConnection}
               disabled={twTesting || !twDomain.trim() || !twUsername.trim() || !twPassword.trim()}
             >
-              {twTesting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Link2 className="h-4 w-4" />
-              )}
+              {twTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               {isSpanish ? 'Probar conexión' : 'Test connection'}
             </Button>
-            <Button
-              type="button"
-              className="gap-2"
-              onClick={handleSaveTWCredentials}
-              disabled={twSaving}
-            >
-              {twSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
+            <Button type="button" className="gap-2" onClick={handleSaveTWCredentials} disabled={twSaving}>
+              {twSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {isSpanish ? 'Guardar' : 'Save'}
             </Button>
           </div>
