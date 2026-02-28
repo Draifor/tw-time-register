@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
-import { Plus, Trash2, Send, Keyboard } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import Textarea from './ui/textarea-form';
@@ -22,6 +22,7 @@ type WorkTimeEntry = {
   hours: Date[];
   startTime: Date[];
   task: { value: string; label: string } | string;
+  isBillable: boolean;
 };
 
 export default function WorkTimeForm() {
@@ -40,7 +41,8 @@ export default function WorkTimeForm() {
       date: slot?.date || new Date().toISOString().split('T')[0],
       task: '',
       startTime: [startTimeDate],
-      endTime: [startTimeDate]
+      endTime: [startTimeDate],
+      isBillable: false
     };
   }, []);
 
@@ -50,7 +52,8 @@ export default function WorkTimeForm() {
     date: new Date().toISOString().split('T')[0],
     task: '',
     startTime: [new Date('1970-01-01T09:00:00')],
-    endTime: [new Date('1970-01-01T09:00:00')]
+    endTime: [new Date('1970-01-01T09:00:00')],
+    isBillable: false
   };
 
   const getInitialValues = () => {
@@ -76,7 +79,8 @@ export default function WorkTimeForm() {
     control,
     handleSubmit,
     reset,
-    setValue
+    setValue,
+    register
   } = useForm<{ entries: WorkTimeEntry[] }>({
     defaultValues: { entries: getInitialValues() || [defaultValue] }
   });
@@ -210,7 +214,7 @@ export default function WorkTimeForm() {
           date: entry.date,
           startTime: startTimeStr,
           endTime: endTimeStr,
-          isBillable: true
+          isBillable: entry.isBillable
         });
       });
 
@@ -448,6 +452,29 @@ export default function WorkTimeForm() {
                       clickOpens: false
                     }}
                   />
+                </div>
+                <div className="flex flex-col justify-end space-y-2">
+                  <Label
+                    htmlFor={`entries.${index}.isBillable`}
+                    className="flex items-center gap-1.5 cursor-pointer select-none"
+                  >
+                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                    Billable
+                  </Label>
+                  <div className="h-10 flex items-center">
+                    <label
+                      htmlFor={`entries.${index}.isBillable`}
+                      className="relative inline-flex items-center cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`entries.${index}.isBillable`}
+                        {...register(`entries.${index}.isBillable`)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+                    </label>
+                  </div>
                 </div>
               </div>
             </CardContent>
