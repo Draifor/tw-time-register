@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
-import { Plus, Trash2, Send, Keyboard, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import Textarea from './ui/textarea-form';
@@ -18,17 +18,15 @@ import { getNextAvailableSlot, getDailyTimeInfo, NextSlotSuggestion } from '../s
 type WorkTimeEntry = {
   date: string;
   description: string;
-  endTime: Date[]; // Ajustado para react-flatpickr
+  endTime: Date[];
   hours: Date[];
   startTime: Date[];
   task: { value: string; label: string } | string;
   isBillable: boolean;
+  afterLunch: boolean;
 };
 
 export default function WorkTimeForm() {
-  const [nextSlot, setNextSlot] = useState<NextSlotSuggestion | null>(null);
-  const [isLoadingSlot, setIsLoadingSlot] = useState(true);
-
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
     const [hours, minutes] = (slot?.startTime || '09:00').split(':').map(Number);
@@ -42,7 +40,8 @@ export default function WorkTimeForm() {
       task: '',
       startTime: [startTimeDate],
       endTime: [startTimeDate],
-      isBillable: false
+      isBillable: false,
+      afterLunch: false
     };
   }, []);
 
@@ -53,7 +52,8 @@ export default function WorkTimeForm() {
     task: '',
     startTime: [new Date('1970-01-01T09:00:00')],
     endTime: [new Date('1970-01-01T09:00:00')],
-    isBillable: false
+    isBillable: false,
+    afterLunch: false
   };
 
   const getInitialValues = () => {
@@ -93,7 +93,6 @@ export default function WorkTimeForm() {
     const fetchNextSlot = async () => {
       try {
         const slot = await getNextAvailableSlot();
-        setNextSlot(slot);
 
         // If no saved entries, update form with smart defaults
         const saved = localStorage.getItem('workTimeFormEntries');
@@ -103,8 +102,6 @@ export default function WorkTimeForm() {
         }
       } catch (error) {
         console.error('Error fetching next slot:', error);
-      } finally {
-        setIsLoadingSlot(false);
       }
     };
 
@@ -121,7 +118,7 @@ export default function WorkTimeForm() {
     );
   }, [tasks]);
 
-  const previousValues = useRef<{ startTime: Date[]; hours: Date[] }[]>([]);
+  const previousValues = useRef<{ startTime: Date[]; hours: Date[]; afterLunch: boolean }[]>([]);
 
   const calculateEndTime = (startTimeArray: Date[], hoursArray: Date[]) => {
     const startTime = startTimeArray[0];
@@ -151,6 +148,20 @@ export default function WorkTimeForm() {
   useEffect(() => {
     result.forEach((entry, index) => {
       const prevEntry = previousValues.current[index] || {};
+
+      // Detect afterLunch toggle: shift startTime ±1 hour
+      if (entry.afterLunch !== prevEntry.afterLunch && entry.startTime?.[0]) {
+        const shifted = new Date(entry.startTime[0]);
+        shifted.setHours(shifted.getHours() + (entry.afterLunch ? 1 : -1));
+        setValue(`entries.${index}.startTime`, [shifted]);
+        previousValues.current[index] = {
+          ...previousValues.current[index],
+          afterLunch: entry.afterLunch,
+          startTime: [shifted]
+        };
+        return; // endTime will recalculate in the next render cycle
+      }
+
       const newEndTime = calculateEndTime(entry.startTime, entry.hours);
 
       // Solo actualiza si startTime o hours cambiaron
@@ -159,7 +170,11 @@ export default function WorkTimeForm() {
         entry.hours[0]?.getTime() !== prevEntry.hours?.[0]?.getTime()
       ) {
         setValue(`entries.${index}.endTime`, newEndTime);
-        previousValues.current[index] = { startTime: entry.startTime, hours: entry.hours };
+        previousValues.current[index] = {
+          startTime: entry.startTime,
+          hours: entry.hours,
+          afterLunch: entry.afterLunch ?? false
+        };
       }
     });
   }, [result, setValue]);
@@ -228,7 +243,6 @@ export default function WorkTimeForm() {
       // Fetch new slot suggestion after saving
       try {
         const newSlot = await getNextAvailableSlot();
-        setNextSlot(newSlot);
         reset({ entries: [createDefaultEntry(newSlot)] });
       } catch {
         reset({ entries: [defaultValue] });
@@ -452,6 +466,29 @@ export default function WorkTimeForm() {
                       clickOpens: false
                     }}
                   />
+                </div>
+                <div className="flex flex-col justify-end space-y-2">
+                  <Label
+                    htmlFor={`entries.${index}.afterLunch`}
+                    className="flex items-center gap-1.5 cursor-pointer select-none"
+                  >
+                    <UtensilsCrossed className="h-3.5 w-3.5 text-muted-foreground" />
+                    Post-lunch
+                  </Label>
+                  <div className="h-10 flex items-center">
+                    <label
+                      htmlFor={`entries.${index}.afterLunch`}
+                      className="relative inline-flex items-center cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`entries.${index}.afterLunch`}
+                        {...register(`entries.${index}.afterLunch`)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+                    </label>
+                  </div>
                 </div>
                 <div className="flex flex-col justify-end space-y-2">
                   <Label
