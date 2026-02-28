@@ -70,7 +70,7 @@ export async function sendTimeEntryToTW(
       {
         'time-entry': {
           description: entry.description,
-          date: entry.date,
+          date: entry.date.replace(/-/g, ''), // YYYY-MM-DD → YYYYMMDD
           time: entry.startTime,
           hours: entry.hours,
           minutes: entry.minutes,
