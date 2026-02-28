@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from './ui/button';
 import Textarea from './ui/textarea-form';
 import { Label } from './ui/label';
-import Select from './ui/select-custom';
+import Combobox from './ui/combobox';
 import TotalTimeDay from './TotalTimeDay';
 import InputTime from './ui/input-time';
 import InputDate from './ui/input-date';
@@ -398,11 +398,12 @@ export default function WorkTimeForm() {
                 </div>
                 <div className="w-[200px] space-y-2">
                   <Label htmlFor={`entries.${index}.task`}>Task</Label>
-                  <Select
+                  <Combobox
                     name={`entries.${index}.task`}
                     control={control}
                     options={options}
                     placeholder="Select a task"
+                    searchPlaceholder="Search tasks..."
                     rules={{ required: 'Task is required' }}
                   />
                   {errors?.entries?.[index]?.task && (
