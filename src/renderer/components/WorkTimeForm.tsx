@@ -147,7 +147,17 @@ export default function WorkTimeForm() {
 
   useEffect(() => {
     result.forEach((entry, index) => {
-      const prevEntry = previousValues.current[index] || {};
+      const prevEntry = previousValues.current[index];
+
+      // New entry: initialize tracking state without modifying anything
+      if (!prevEntry) {
+        previousValues.current[index] = {
+          startTime: entry.startTime,
+          hours: entry.hours,
+          afterLunch: entry.afterLunch ?? false
+        };
+        return;
+      }
 
       // Detect afterLunch toggle: shift startTime ±1 hour
       if (entry.afterLunch !== prevEntry.afterLunch && entry.startTime?.[0]) {
