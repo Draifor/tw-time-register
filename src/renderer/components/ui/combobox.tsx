@@ -125,13 +125,16 @@ function ComboboxInner({
         aria-haspopup="listbox"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+          'flex min-h-9 w-full items-start justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
           !value && 'text-muted-foreground'
         )}
       >
-        <span className="line-clamp-1 text-left">{value ? value.label : placeholder}</span>
+        <span className="whitespace-normal break-words text-left">{value ? value.label : placeholder}</span>
         <ChevronDown
-          className={cn('h-4 w-4 opacity-50 shrink-0 ml-2 transition-transform duration-150', open && 'rotate-180')}
+          className={cn(
+            'h-4 w-4 opacity-50 shrink-0 ml-2 mt-0.5 transition-transform duration-150',
+            open && 'rotate-180'
+          )}
         />
       </button>
 
