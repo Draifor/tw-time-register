@@ -137,7 +137,7 @@ function ComboboxInner({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+        <div className="absolute z-50 mt-1 min-w-full w-max max-w-[480px] rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
           {/* Search input */}
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -175,7 +175,7 @@ function ComboboxInner({
                     value?.value === option.value && i !== highlightedIndex && 'bg-accent/40'
                   )}
                 >
-                  <span className="line-clamp-1">{option.label}</span>
+                  <span className="whitespace-normal break-words pr-2">{option.label}</span>
                   {value?.value === option.value && <Check className="h-3.5 w-3.5 shrink-0 ml-2 text-primary" />}
                 </li>
               ))
