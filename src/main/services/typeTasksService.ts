@@ -10,7 +10,7 @@ interface Database {
 // Function to add a task type
 export async function addTypeTask(typeName: string): Promise<void> {
   const db: Database = await openDB();
-  const query = 'INSERT INTO type_tasks (nombre) VALUES (?)';
+  const query = 'INSERT INTO type_tasks (type_name) VALUES (?)';
   return db.run(query, [typeName]);
 }
 
@@ -30,7 +30,7 @@ export async function getTypeTasks(): Promise<TypeTasks[]> {
 // Function to get a task type by id
 export async function getTypeTaskById(id: number): Promise<any> {
   const db: Database = await openDB();
-  const query = 'SELECT * FROM type_tasks WHERE id = ?';
+  const query = 'SELECT * FROM type_tasks WHERE type_id = ?';
   const response: TypeTasksDB = await db.get(query, [id]);
   return {
     id: response.type_id,
@@ -41,13 +41,13 @@ export async function getTypeTaskById(id: number): Promise<any> {
 // Funxtion to update a task type
 export async function updateTypeTask(id: number, typeName: string): Promise<void> {
   const db: Database = await openDB();
-  const query = 'UPDATE type_tasks SET nombre = ? WHERE id = ?';
+  const query = 'UPDATE type_tasks SET type_name = ? WHERE type_id = ?';
   return db.run(query, [typeName, id]);
 }
 
 // Function to delete a task type
 export async function deleteTypeTask(id: number): Promise<void> {
   const db: Database = await openDB();
-  const query = 'DELETE FROM type_tasks WHERE id = ?';
+  const query = 'DELETE FROM type_tasks WHERE type_id = ?';
   return db.run(query, [id]);
 }
