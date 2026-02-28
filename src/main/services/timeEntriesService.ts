@@ -281,6 +281,13 @@ export async function deleteTimeEntry(entryId: number): Promise<boolean> {
   return result.changes > 0;
 }
 
+// Reset a time entry back to "unsent" (pending) so it can be re-synced after editing
+export async function resetTimeEntryToUnsent(entryId: number): Promise<boolean> {
+  const db = await openDb();
+  const result = await db.run('UPDATE time_entries SET send = 0 WHERE entry_id = ?', [entryId]);
+  return result.changes > 0;
+}
+
 // Mark entries as sent to TeamWork
 export async function markEntriesAsSent(entryIds: number[]): Promise<void> {
   const db = await openDb();

@@ -21,6 +21,7 @@ import {
   updateTimeEntry,
   deleteTimeEntry,
   markEntriesAsSent,
+  resetTimeEntryToUnsent,
   getTimeStats,
   TimeEntryInput
 } from '../services/timeEntriesService';
@@ -86,6 +87,10 @@ ipcMain.handle('deleteTimeEntry', async (_event, entryId: number) => {
 
 ipcMain.handle('markEntriesAsSent', async (_event, entryIds: number[]) => {
   return markEntriesAsSent(entryIds);
+});
+
+ipcMain.handle('resetTimeEntryToUnsent', async (_event, entryId: number) => {
+  return resetTimeEntryToUnsent(entryId);
 });
 
 ipcMain.handle('getTimeStats', async () => {

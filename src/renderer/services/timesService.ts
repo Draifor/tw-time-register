@@ -82,6 +82,10 @@ export const markEntriesAsSent = async (entryIds: number[]): Promise<void> => {
   return window.Main.markEntriesAsSent(entryIds);
 };
 
+export const resetTimeEntryToUnsent = async (entryId: number): Promise<boolean> => {
+  return window.Main.resetTimeEntryToUnsent(entryId);
+};
+
 // Daily Time Info API
 export const getTotalMinutesForDate = async (date: string): Promise<number> => {
   return window.Main.getTotalMinutesForDate(date);
