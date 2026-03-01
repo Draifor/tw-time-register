@@ -56,6 +56,12 @@ export default function WorkTimeForm() {
     afterLunch: false
   };
 
+  // Capture synchronously whether a real draft exists at mount time.
+  // The localStorage save-on-render effect fires AFTER this line, so this
+  // correctly reflects pre-render state and avoids a race condition where
+  // the async slot fetch would always find data written by the first render.
+  const hasDraftRef = useRef(!!localStorage.getItem('workTimeFormEntries'));
+
   const getInitialValues = () => {
     const saved = localStorage.getItem('workTimeFormEntries');
     if (saved) {
@@ -71,7 +77,7 @@ export default function WorkTimeForm() {
         console.error('Failed to parse saved form data', e);
       }
     }
-    return null; // Return null to indicate we should use smart defaults
+    return null;
   };
 
   const {
@@ -90,18 +96,20 @@ export default function WorkTimeForm() {
   // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
   const typedControl = control as unknown as Control<FieldValues>;
 
-  // Fetch next available slot on mount
+  // Fetch next available slot on mount and apply it as the smart start time.
+  // Logic (handled by getNextAvailableSlot on the backend):
+  //   - Today has remaining hours → startTime = last saved entry's endTime
+  //   - Today is complete          → startTime = next working day's default start
+  //   - No entries at all today    → startTime = configured default start time
+  // Only applies when there is no pre-existing draft in localStorage.
   useEffect(() => {
+    if (hasDraftRef.current) return; // Draft restored from localStorage — leave it as-is
+
     const fetchNextSlot = async () => {
       try {
         const slot = await getNextAvailableSlot();
-
-        // If no saved entries, update form with smart defaults
-        const saved = localStorage.getItem('workTimeFormEntries');
-        if (!saved && slot) {
-          const smartEntry = createDefaultEntry(slot);
-          reset({ entries: [smartEntry] });
-        }
+        const smartEntry = createDefaultEntry(slot);
+        reset({ entries: [smartEntry] });
       } catch (error) {
         console.error('Error fetching next slot:', error);
       }
