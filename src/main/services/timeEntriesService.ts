@@ -173,65 +173,70 @@ export async function getDailyTimeInfo(date: string): Promise<DailyTimeInfo> {
 // Calculate the next available time slot
 export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
   const settings = await getWorkSettings();
-  const currentDate = new Date();
-  currentDate.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
 
   // Format date as YYYY-MM-DD
   const formatDate = (d: Date): string => {
     return d.toISOString().split('T')[0];
   };
 
-  // Try to find a slot within the next 30 days
-  for (let i = 0; i < 30; i++) {
-    const dateStr = formatDate(currentDate);
-    const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+  const today = new Date();
+  today.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
+  const todayStr = formatDate(today);
+  const todayDow = today.getDay() === 0 ? 7 : today.getDay();
 
-    // Check if it's a work day
+  // Priority 1: if today already has entries, always continue from here regardless of
+  // whether today is a configured work day (user may work on weekends/holidays).
+  // Only advance to the next day if the configured max hours have been fully reached.
+  const todayInfo = await getDailyTimeInfo(todayStr);
+  if (todayInfo.lastEndTime !== null) {
+    const maxMinutesToday = getMaxHoursForDay(settings, todayDow) * 60;
+    const todayComplete = maxMinutesToday > 0 && todayInfo.totalMinutes >= maxMinutesToday;
+
+    if (!todayComplete) {
+      // Still time left today (or no upper limit configured) → continue from last end time
+      return {
+        date: todayStr,
+        startTime: todayInfo.lastEndTime,
+        dayOfWeek: todayDow,
+        maxHoursForDay: getMaxHoursForDay(settings, todayDow)
+      };
+    }
+    // Today is complete → fall through and look for the next work day
+  }
+
+  // Priority 2: find the next work day (starting from today if it's a work day with no entries yet)
+  const searchDate = new Date(today);
+  for (let i = 0; i < 30; i++) {
+    const dateStr = formatDate(searchDate);
+    const dayOfWeek = searchDate.getDay() === 0 ? 7 : searchDate.getDay();
+
     const workDay = await isWorkDay(dateStr);
     if (!workDay) {
-      currentDate.setDate(currentDate.getDate() + 1);
+      searchDate.setDate(searchDate.getDate() + 1);
       continue;
     }
 
-    // Get daily info
     const dailyInfo = await getDailyTimeInfo(dateStr);
     const maxHours = getMaxHoursForDay(settings, dayOfWeek);
 
-    // Check if there's remaining time for this day
     if (dailyInfo.remainingMinutes > 0) {
-      // Determine start time
-      let startTime: string;
-      if (dailyInfo.lastEndTime) {
-        // Continue from last end time
-        startTime = dailyInfo.lastEndTime;
-      } else {
-        // Start at default time
-        startTime = settings.defaultStartTime;
-      }
-
-      return {
-        date: dateStr,
-        startTime,
-        dayOfWeek,
-        maxHoursForDay: maxHours
-      };
+      const startTime = dailyInfo.lastEndTime || settings.defaultStartTime;
+      return { date: dateStr, startTime, dayOfWeek, maxHoursForDay: maxHours };
     }
 
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
+    searchDate.setDate(searchDate.getDate() + 1);
   }
 
-  // Fallback: return tomorrow with default start time
-  const fallbackDate = new Date();
+  // Fallback: next calendar day with default start time
+  const fallbackDate = new Date(today);
   fallbackDate.setDate(fallbackDate.getDate() + 1);
-  fallbackDate.setHours(12, 0, 0, 0);
-  const dayOfWeek = fallbackDate.getDay() === 0 ? 7 : fallbackDate.getDay();
+  const fallbackDow = fallbackDate.getDay() === 0 ? 7 : fallbackDate.getDay();
 
   return {
     date: formatDate(fallbackDate),
     startTime: settings.defaultStartTime,
-    dayOfWeek,
-    maxHoursForDay: getMaxHoursForDay(settings, dayOfWeek)
+    dayOfWeek: fallbackDow,
+    maxHoursForDay: getMaxHoursForDay(settings, fallbackDow)
   };
 }
 
