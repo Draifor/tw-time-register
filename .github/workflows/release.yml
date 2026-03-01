@@ -33,7 +33,7 @@ jobs:
           version: 10
 
       - name: Install dependencies
-        run: pnpm install --ignore-scripts
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
 
       - name: Build and publish
         env:
