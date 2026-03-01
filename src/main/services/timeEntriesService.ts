@@ -173,38 +173,41 @@ export async function getDailyTimeInfo(date: string): Promise<DailyTimeInfo> {
 // Calculate the next available time slot
 export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
   const settings = await getWorkSettings();
+  const db = await openDb();
 
   // Format date as YYYY-MM-DD
-  const formatDate = (d: Date): string => {
-    return d.toISOString().split('T')[0];
-  };
+  const formatDate = (d: Date): string => d.toISOString().split('T')[0];
 
   const today = new Date();
-  today.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
-  const todayStr = formatDate(today);
-  const todayDow = today.getDay() === 0 ? 7 : today.getDay();
+  today.setHours(12, 0, 0, 0);
 
-  // Priority 1: if today already has entries, always continue from here regardless of
-  // whether today is a configured work day (user may work on weekends/holidays).
-  // Only advance to the next day if the configured max hours have been fully reached.
-  const todayInfo = await getDailyTimeInfo(todayStr);
-  if (todayInfo.lastEndTime !== null) {
-    const maxMinutesToday = getMaxHoursForDay(settings, todayDow) * 60;
-    const todayComplete = maxMinutesToday > 0 && todayInfo.totalMinutes >= maxMinutesToday;
+  // Priority 1: find the most recent date that has saved entries (could be today,
+  // yesterday, last week, etc. — user often registers past days retroactively).
+  const lastEntryRow = await db.get(
+    `SELECT entry_date as date FROM time_entries ORDER BY entry_date DESC, hora_fin DESC LIMIT 1`
+  );
+  const lastEntryDate: string | null = lastEntryRow?.date ?? null;
 
-    if (!todayComplete) {
-      // Still time left today (or no upper limit configured) → continue from last end time
+  if (lastEntryDate) {
+    const lastDate = new Date(lastEntryDate + 'T12:00:00');
+    const lastDow = lastDate.getDay() === 0 ? 7 : lastDate.getDay();
+    const lastInfo = await getDailyTimeInfo(lastEntryDate);
+    const maxMinutes = getMaxHoursForDay(settings, lastDow) * 60;
+    const isComplete = maxMinutes > 0 && lastInfo.totalMinutes >= maxMinutes;
+
+    if (!isComplete && lastInfo.lastEndTime) {
+      // The most recently used date still has remaining hours → continue from there
       return {
-        date: todayStr,
-        startTime: todayInfo.lastEndTime,
-        dayOfWeek: todayDow,
-        maxHoursForDay: getMaxHoursForDay(settings, todayDow)
+        date: lastEntryDate,
+        startTime: lastInfo.lastEndTime,
+        dayOfWeek: lastDow,
+        maxHoursForDay: getMaxHoursForDay(settings, lastDow)
       };
     }
-    // Today is complete → fall through and look for the next work day
   }
 
-  // Priority 2: find the next work day (starting from today if it's a work day with no entries yet)
+  // Priority 2: the last used date is complete (or there are no entries at all).
+  // Find the next configured work day starting from today.
   const searchDate = new Date(today);
   for (let i = 0; i < 30; i++) {
     const dateStr = formatDate(searchDate);
@@ -227,7 +230,7 @@ export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
     searchDate.setDate(searchDate.getDate() + 1);
   }
 
-  // Fallback: next calendar day with default start time
+  // Fallback: tomorrow with default start time
   const fallbackDate = new Date(today);
   fallbackDate.setDate(fallbackDate.getDate() + 1);
   const fallbackDow = fallbackDate.getDay() === 0 ? 7 : fallbackDate.getDay();
