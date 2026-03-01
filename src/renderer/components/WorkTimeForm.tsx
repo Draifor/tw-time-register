@@ -185,6 +185,14 @@ export default function WorkTimeForm() {
           hours: entry.hours,
           afterLunch: entry.afterLunch ?? false
         };
+
+        // Cascade: propagate endTime → startTime of the next entry.
+        // We intentionally do NOT update previousValues[index+1].startTime here,
+        // so the next render detects it as a change and recalculates endTime[index+1]
+        // (which in turn cascades to index+2, etc.).
+        if (result[index + 1] !== undefined) {
+          setValue(`entries.${index + 1}.startTime`, newEndTime);
+        }
       }
     });
   }, [result, setValue]);
