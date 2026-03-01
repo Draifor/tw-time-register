@@ -176,7 +176,13 @@ function useTasks() {
   }
 
   return {
-    data,
+    data: useMemo(
+      () =>
+        [...(data ?? [])].sort(
+          (a, b) => a.typeName.localeCompare(b.typeName) || a.taskName.localeCompare(b.taskName)
+        ),
+      [data]
+    ),
     isLoading,
     error,
     columns,

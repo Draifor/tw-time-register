@@ -99,8 +99,13 @@ function useTypeTasks() {
     onAdd('New Type');
   }
 
+  const sortedData = useMemo(
+    () => [...data].sort((a, b) => a.typeName.localeCompare(b.typeName)),
+    [data]
+  );
+
   return {
-    data,
+    data: sortedData,
     isLoading,
     error,
     columns,
