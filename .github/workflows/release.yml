@@ -30,44 +30,6 @@ jobs:
       - name: Rebuild native modules for Electron
         run: pnpm exec electron-builder install-app-deps
 
-      - name: Generate icon
-        run: |
-          if (!(Test-Path resources)) { New-Item -ItemType Directory -Path resources }
-          Add-Type -AssemblyName System.Drawing
-          $bmp = New-Object System.Drawing.Bitmap 256,256
-          $g = [System.Drawing.Graphics]::FromImage($bmp)
-          $g.Clear([System.Drawing.Color]::FromArgb(59,130,246))
-          $font = New-Object System.Drawing.Font("Segoe UI",72,[System.Drawing.FontStyle]::Bold)
-          $sf = New-Object System.Drawing.StringFormat
-          $sf.Alignment = [System.Drawing.StringAlignment]::Center
-          $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
-          $rect = New-Object System.Drawing.RectangleF(0,0,256,256)
-          $g.DrawString("TW",$font,[System.Drawing.Brushes]::White,$rect,$sf)
-          $g.Dispose()
-          $bmp.Save("resources/icon.png",[System.Drawing.Imaging.ImageFormat]::Png)
-          $bmp.Dispose()
-          # Convert PNG to ICO (256x256)
-          $ms = New-Object System.IO.MemoryStream
-          $bmp2 = New-Object System.Drawing.Bitmap "resources/icon.png"
-          $bmp2.Save($ms,[System.Drawing.Imaging.ImageFormat]::Png)
-          $bmp2.Dispose()
-          $pngBytes = $ms.ToArray()
-          $ms.Dispose()
-          $ico = New-Object System.IO.FileStream "resources/icon.ico", "Create"
-          $bw = New-Object System.IO.BinaryWriter $ico
-          $bw.Write([UInt16]0)
-          $bw.Write([UInt16]1)
-          $bw.Write([UInt16]1)
-          $bw.Write([byte]0)
-          $bw.Write([byte]0)
-          $bw.Write([UInt16]0)
-          $bw.Write([UInt16]32)
-          $bw.Write([UInt32]($pngBytes.Length + 0))
-          $bw.Write([UInt32]22)
-          $bw.Write($pngBytes)
-          $bw.Close()
-          $ico.Close()
-
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
