@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import { addWorkTime, getWorkTimes } from '../database/database';
 import { registerTimeEntry } from '../services/apiService';
 import { registerUser, loginUser } from '../services/credentialService';
+import { exportDatabase, importDatabase } from '../services/backupService';
 import {
   addTypeTask,
   getTypeTasks,
@@ -271,4 +272,13 @@ ipcMain.handle('importTasksFromTW', async (_event, input: ImportTasksInput) => {
 
 ipcMain.handle('importTasksFromCSV', async (_event, rows: CSVTaskRow[]) => {
   return importTasksFromCSV(rows);
+});
+
+// Database backup handlers
+ipcMain.handle('exportDatabase', async () => {
+  return exportDatabase();
+});
+
+ipcMain.handle('importDatabase', async () => {
+  return importDatabase();
 });

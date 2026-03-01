@@ -309,6 +309,10 @@ const api = {
   importTasksFromCSV: (rows: { taskName: string; typeName: string; taskLink: string }[]) =>
     ipcRenderer.invoke('importTasksFromCSV', rows),
 
+  // Database backup
+  exportDatabase: () => ipcRenderer.invoke('exportDatabase'),
+  importDatabase: () => ipcRenderer.invoke('importDatabase'),
+
   // Auto-updater
   installUpdate: () => ipcRenderer.invoke('install-update'),
 

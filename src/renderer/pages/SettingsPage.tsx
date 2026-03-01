@@ -11,7 +11,10 @@ import {
   Link2,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Database,
+  Upload,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -28,6 +31,8 @@ import {
   getTWCredentials,
   saveTWCredentials,
   testTWConnection,
+  exportDatabase,
+  importDatabase,
   Holiday
 } from '../services/timesService';
 import { TW_SESSION_UPDATED_EVENT } from '../hooks/useTWSession';
@@ -91,6 +96,10 @@ export default function SettingsPage() {
     userId?: string;
     message?: string;
   } | null>(null);
+
+  // Database backup state
+  const [dbExporting, setDbExporting] = useState(false);
+  const [dbImporting, setDbImporting] = useState(false);
 
   const { control, handleSubmit, reset, watch, setValue } = useForm<SettingsFormData>({
     defaultValues: {
@@ -243,6 +252,42 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error deleting holiday:', error);
       toast.error(isSpanish ? 'Error al eliminar' : 'Error deleting holiday');
+    }
+  };
+
+  const handleExportDatabase = async () => {
+    setDbExporting(true);
+    try {
+      const result = await exportDatabase();
+      if (result.success) {
+        toast.success(isSpanish ? 'Base de datos exportada correctamente' : 'Database exported successfully');
+      } else if (result.message !== 'Cancelled') {
+        toast.error(result.message || (isSpanish ? 'Error al exportar' : 'Export failed'));
+      }
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      setDbExporting(false);
+    }
+  };
+
+  const handleImportDatabase = async () => {
+    setDbImporting(true);
+    try {
+      const result = await importDatabase();
+      if (result.success) {
+        toast.success(
+          isSpanish
+            ? 'Base de datos importada. Reinicia la app para ver los cambios.'
+            : 'Database imported. Restart the app to see the changes.'
+        );
+      } else if (result.message !== 'Cancelled') {
+        toast.error(result.message || (isSpanish ? 'Error al importar' : 'Import failed'));
+      }
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      setDbImporting(false);
     }
   };
 
@@ -636,6 +681,79 @@ export default function SettingsPage() {
               ))
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Database Backup Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            {isSpanish ? 'Base de datos' : 'Database'}
+          </CardTitle>
+          <CardDescription>
+            {isSpanish
+              ? 'Exporta tu BD para hacer una copia de seguridad o para llevarla a otra instalación'
+              : 'Export your database as a backup or to transfer it to another installation'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={handleExportDatabase}
+              disabled={dbExporting}
+            >
+              {dbExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isSpanish ? 'Exportar BD' : 'Export DB'}
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="outline" className="gap-2" disabled={dbImporting}>
+                  {dbImporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {isSpanish ? 'Importar BD' : 'Import DB'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {isSpanish ? '¿Importar base de datos?' : 'Import database?'}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {isSpanish
+                      ? 'Esto reemplazará completamente tu base de datos actual con el archivo seleccionado. Los datos actuales se perderán. ¿Continuar?'
+                      : 'This will completely replace your current database with the selected file. Current data will be lost. Continue?'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{isSpanish ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleImportDatabase}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isSpanish ? 'Importar' : 'Import'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {isSpanish
+              ? 'El archivo exportado contiene todas tus tareas, tipos, registros de tiempo y configuración.'
+              : 'The exported file contains all your tasks, types, time entries and settings.'}
+          </p>
         </CardContent>
       </Card>
     </div>

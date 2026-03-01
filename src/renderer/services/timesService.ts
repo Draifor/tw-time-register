@@ -226,3 +226,13 @@ export const columns = [
     enableColumnFilter: false
   }
 ];
+
+// Database backup
+export interface BackupResult {
+  success: boolean;
+  filePath?: string;
+  message?: string;
+}
+
+export const exportDatabase = async (): Promise<BackupResult> => window.Main.exportDatabase();
+export const importDatabase = async (): Promise<BackupResult> => window.Main.importDatabase();
