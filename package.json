@@ -105,7 +105,10 @@
     "files": [
       "dist-electron",
       "dist-vite",
-      "database/**/*"
+      "database/**/*",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*"
     ],
     "directories": {
       "buildResources": "resources",

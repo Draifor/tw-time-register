@@ -4,7 +4,6 @@ import { rmSync } from 'node:fs';
 import { join } from 'path';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
-import pkg from './package.json';
 
 const root = join(__dirname);
 const srcRoot = join(__dirname, 'src/renderer');
@@ -15,7 +14,10 @@ const buildElectron = (isDev: boolean) => ({
   minify: !isDev,
   outDir: join(root, 'dist-electron'),
   rollupOptions: {
-    external: Object.keys(pkg.dependencies || {})
+    // Only externalize the Electron runtime and native modules (.node binaries).
+    // Everything else (axios, electron-updater, etc.) gets bundled into index.js
+    // so node_modules doesn't need to be present in the installed app.
+    external: ['electron', 'better-sqlite3']
   }
 });
 

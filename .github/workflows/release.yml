@@ -24,6 +24,10 @@ jobs:
         with:
           version: 10
 
+      - name: Configure pnpm for hoisted node_modules
+        shell: pwsh
+        run: echo "node-linker=hoisted" > .npmrc
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
