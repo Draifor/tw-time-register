@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ListTodo, Home, Settings, WifiOff, Loader2 } from 'lucide-react';
+import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2 } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
 import { Button } from './ui/button';
@@ -17,6 +17,7 @@ function NavBar() {
     { to: '/', label: 'Home', icon: Home },
     { to: '/worktime', label: 'Work Time', icon: Clock },
     { to: '/tasks', label: 'Tasks', icon: ListTodo },
+    { to: '/reports', label: 'Reports', icon: BarChart2 },
     { to: '/settings', label: 'Settings', icon: Settings }
   ];
 
