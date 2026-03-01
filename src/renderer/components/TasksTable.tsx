@@ -11,7 +11,7 @@ function TasksTable() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {data.length > 0 ? `${data.length} task${data.length !== 1 ? 's' : ''}` : 'No tasks yet'}
+          {data && data.length > 0 ? `${data.length} task${data.length !== 1 ? 's' : ''}` : 'No tasks yet'}
         </p>
         <ImportTasksDialog />
       </div>
