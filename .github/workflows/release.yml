@@ -38,6 +38,36 @@ jobs:
       - name: Rebuild native modules for Electron
         run: pnpm exec electron-builder install-app-deps
 
+      - name: Generate 256x256 icon if missing or too small
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $size = 256
+          $bmp = New-Object System.Drawing.Bitmap($size, $size)
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.Clear([System.Drawing.Color]::FromArgb(30,30,30))
+          $font = New-Object System.Drawing.Font('Arial', 80, [System.Drawing.FontStyle]::Bold)
+          $brush = [System.Drawing.Brushes]::White
+          $sf = New-Object System.Drawing.StringFormat
+          $sf.Alignment = [System.Drawing.StringAlignment]::Center
+          $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+          $rect = New-Object System.Drawing.RectangleF(0, 0, $size, $size)
+          $g.DrawString('TW', $font, $brush, $rect, $sf)
+          $g.Dispose()
+          $ms = New-Object System.IO.MemoryStream
+          $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+          $pngBytes = $ms.ToArray()
+          # Build a minimal valid ICO with a 256x256 PNG entry
+          $icoHeader = [byte[]](0,0,1,0,1,0)           # reserved, type=1, count=1
+          $imgEntry  = [byte[]](0,0,0,0,1,0,32,0)      # w=0(256), h=0(256), colorCount=0, reserved=0, planes=1, bitCount=32
+          $dataOffset = 6 + 16  # header + one directory entry
+          $sizeBytes = [System.BitConverter]::GetBytes([uint32]$pngBytes.Length)
+          $offsetBytes = [System.BitConverter]::GetBytes([uint32]$dataOffset)
+          $ico = $icoHeader + $imgEntry + $sizeBytes + $offsetBytes + $pngBytes
+          New-Item -ItemType Directory -Force -Path resources | Out-Null
+          [System.IO.File]::WriteAllBytes('resources/icon.ico', $ico)
+          Write-Host "Icon generated: $($ico.Length) bytes"
+
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

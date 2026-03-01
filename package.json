@@ -33,7 +33,7 @@
     "type-check": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "postinstall": "npx @electron/rebuild"
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
