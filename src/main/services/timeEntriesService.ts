@@ -46,7 +46,7 @@ export async function addTimeEntryService(entry: TimeEntryInput): Promise<number
      VALUES (?, ?, ?, ?, ?, ?)`,
     [entry.taskId, entry.description, entry.date, entry.startTime, entry.endTime, entry.isBillable ? 1 : 0]
   );
-  return result.lastID;
+  return result.lastID ?? 0;
 }
 
 // Add multiple time entries at once
@@ -279,21 +279,21 @@ export async function updateTimeEntry(entryId: number, entry: Partial<TimeEntryI
   values.push(entryId);
   const result = await db.run(`UPDATE time_entries SET ${updates.join(', ')} WHERE entry_id = ?`, values);
 
-  return result.changes > 0;
+  return (result.changes ?? 0) > 0;
 }
 
 // Delete a time entry
 export async function deleteTimeEntry(entryId: number): Promise<boolean> {
   const db = await openDb();
   const result = await db.run('DELETE FROM time_entries WHERE entry_id = ?', [entryId]);
-  return result.changes > 0;
+  return (result.changes ?? 0) > 0;
 }
 
 // Reset a time entry back to "unsent" (pending) so it can be re-synced after editing
 export async function resetTimeEntryToUnsent(entryId: number): Promise<boolean> {
   const db = await openDb();
   const result = await db.run('UPDATE time_entries SET send = 0 WHERE entry_id = ?', [entryId]);
-  return result.changes > 0;
+  return (result.changes ?? 0) > 0;
 }
 
 // Mark entries as sent to TeamWork
