@@ -100,6 +100,9 @@
     "appId": "com.draifor.tw-time-register",
     "productName": "TW Time Register",
     "asar": true,
+    "asarUnpack": [
+      "node_modules/sqlite3/**/*"
+    ],
     "files": [
       "dist-electron",
       "dist-vite",
