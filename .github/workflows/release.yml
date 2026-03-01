@@ -8,7 +8,10 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
+
+    env:
+      npm_config_msvs_version: '2022'
 
     steps:
       - name: Checkout
@@ -24,8 +27,15 @@ jobs:
         with:
           version: 10
 
+      - name: Install Windows SDK
+        shell: pwsh
+        run: choco install windows-sdk-10-version-2004-all --no-progress -y
+
       - name: Install dependencies
         run: pnpm install --ignore-scripts
+
+      - name: Rebuild native modules for Electron
+        run: pnpm exec electron-builder install-app-deps
 
       - name: Build and publish
         env:
