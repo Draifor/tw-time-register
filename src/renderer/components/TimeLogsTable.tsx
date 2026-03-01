@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
+import Combobox from './ui/combobox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import {
   AlertDialog,
@@ -385,20 +386,15 @@ function TimeLogsTable() {
         {showFilters && (
           <div className="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-2.5">
             {/* Task filter */}
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-[220px]">
               <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Tarea' : 'Task'}</label>
-              <select
-                value={filterTask}
-                onChange={(e) => setFilterTask(e.target.value)}
-                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring min-w-[180px]"
-              >
-                <option value="">{isSpanish ? 'Todas las tareas' : 'All tasks'}</option>
-                {taskOptions.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              <Combobox
+                options={taskOptions.map((n) => ({ value: n, label: n }))}
+                placeholder={isSpanish ? 'Todas las tareas' : 'All tasks'}
+                searchPlaceholder={isSpanish ? 'Buscar tarea...' : 'Search task...'}
+                value={filterTask ? { value: filterTask, label: filterTask } : null}
+                onChange={(opt) => setFilterTask(opt?.value ?? '')}
+              />
             </div>
             {/* Date from */}
             <div className="space-y-1">

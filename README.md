@@ -289,7 +289,7 @@ pnpm dist:linux # Linux
 ### ✅ Fase 2: Actualización del Stack (COMPLETADA - Dic 2025)
 
 | Paquete | Antes | Después |
-|---------|-------|---------|
+| --------- | ------- | --------- |
 | Vite | 2.8.6 | **7.2.6** ✅ |
 | @vitejs/plugin-react | 1.2.0 | **5.1.1** ✅ |
 | TanStack Query | 4.x | **5.x** ✅ |
