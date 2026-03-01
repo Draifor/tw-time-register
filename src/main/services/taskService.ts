@@ -144,6 +144,102 @@ export interface ImportTasksResult {
   message?: string;
 }
 
+// ─── CSV Import ──────────────────────────────────────────────────────────────
+
+export interface CSVTaskRow {
+  taskName: string;
+  typeName: string;
+  taskLink: string;
+}
+
+export interface ImportCSVResult {
+  /** Tasks successfully inserted */
+  created: number;
+  /** Tasks skipped because they already exist (same name + type) */
+  skipped: number;
+  /** New type names that were auto-created */
+  typesCreated: string[];
+  /** Per-row error messages */
+  errors: string[];
+}
+
+/**
+ * Bulk-import tasks from a parsed CSV.
+ * If a type referenced by a row does not exist it is created automatically.
+ * Duplicate tasks (same task_name + type_id) are silently skipped.
+ */
+export async function importTasksFromCSV(rows: CSVTaskRow[]): Promise<ImportCSVResult> {
+  const db = await openDB();
+
+  const result: ImportCSVResult = { created: 0, skipped: 0, typesCreated: [], errors: [] };
+
+  // Build a case-insensitive map of existing types: typeName → type_id
+  const existingTypes: { type_id: number; type_name: string }[] = await db.all(
+    `SELECT ${typeTasksDBColumns.ID}, ${typeTasksDBColumns.TYPE_NAME} FROM ${typeTasksDBColumns.TABLE_NAME}`
+  );
+  const typeMap = new Map<string, number>(
+    existingTypes.map((t) => [t.type_name.toLowerCase(), t.type_id])
+  );
+
+  for (const row of rows) {
+    const typeLower = row.typeName.trim().toLowerCase();
+    const taskName = row.taskName.trim();
+    const taskLink = row.taskLink.trim();
+
+    if (!taskName || !row.typeName.trim()) {
+      result.errors.push(`Row skipped – missing taskName or typeName: "${taskName}"`);
+      continue;
+    }
+
+    // Create type if missing
+    if (!typeMap.has(typeLower)) {
+      try {
+        await db.run(
+          `INSERT INTO ${typeTasksDBColumns.TABLE_NAME} (${typeTasksDBColumns.TYPE_NAME}) VALUES (?)`,
+          [row.typeName.trim()]
+        );
+        const inserted: { type_id: number } | undefined = await db.get(
+          `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
+          [row.typeName.trim()]
+        );
+        if (!inserted) {
+          result.errors.push(`Could not retrieve newly created type "${row.typeName.trim()}"`);
+          continue;
+        }
+        typeMap.set(typeLower, inserted.type_id);
+        result.typesCreated.push(row.typeName.trim());
+      } catch (err) {
+        result.errors.push(`Could not create type "${row.typeName.trim()}": ${String(err)}`);
+        continue;
+      }
+    }
+
+    const typeId = typeMap.get(typeLower)!;
+
+    // Skip if duplicate (same task_name + type_id)
+    const existing = await db.get(
+      `SELECT ${columnsDB.ID} FROM ${columnsDB.TABLE_NAME} WHERE ${columnsDB.TASK_NAME} = ? AND ${columnsDB.TYPE_ID} = ?`,
+      [taskName, typeId]
+    );
+    if (existing) {
+      result.skipped++;
+      continue;
+    }
+
+    try {
+      await db.run(
+        `INSERT INTO ${columnsDB.TABLE_NAME} (${columnsDB.TYPE_ID}, ${columnsDB.TASK_NAME}, ${columnsDB.TASK_LINK}, ${columnsDB.DESCRIPTION}) VALUES (?, ?, ?, ?)`,
+        [typeId, taskName, taskLink, '']
+      );
+      result.created++;
+    } catch (err) {
+      result.errors.push(`Could not insert task "${taskName}": ${String(err)}`);
+    }
+  }
+
+  return result;
+}
+
 // Fetch and preview which tasks would be imported (without saving)
 export async function previewImportTasks(
   input: ImportTasksInput,

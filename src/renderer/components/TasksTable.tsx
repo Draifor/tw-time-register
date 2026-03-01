@@ -1,6 +1,7 @@
 import React from 'react';
 import DataTable from './DataTable';
 import ImportTasksDialog from './ImportTasksDialog';
+import ImportCSVTasksDialog from './ImportCSVTasksDialog';
 import useTasks from '../hooks/useTasks';
 import { Task } from '../../types/tasks';
 
@@ -13,7 +14,10 @@ function TasksTable() {
         <p className="text-sm text-muted-foreground">
           {data && data.length > 0 ? `${data.length} task${data.length !== 1 ? 's' : ''}` : 'No tasks yet'}
         </p>
-        <ImportTasksDialog />
+        <div className="flex items-center gap-2">
+          <ImportCSVTasksDialog />
+          <ImportTasksDialog />
+        </div>
       </div>
       <DataTable
         title="TeamWork Tasks"

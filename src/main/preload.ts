@@ -306,12 +306,20 @@ const api = {
     template: 'RECA_FORE' | 'OTHER';
     typeName: string;
   }) => ipcRenderer.invoke('importTasksFromTW', input),
+  importTasksFromCSV: (rows: { taskName: string; typeName: string; taskLink: string }[]) =>
+    ipcRenderer.invoke('importTasksFromCSV', rows),
+
+  // Auto-updater
+  installUpdate: () => ipcRenderer.invoke('install-update'),
 
   /**
    * Provide an easier way to listen to events
    */
   on: (channel: string, callback: (data: unknown) => void) => {
     ipcRenderer.on(channel, (_, data) => callback(data));
+  },
+  off: (channel: string, callback: (data: unknown) => void) => {
+    ipcRenderer.removeListener(channel, (_, data) => callback(data));
   }
 };
 

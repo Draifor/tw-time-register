@@ -16,7 +16,9 @@ import {
   updateTask,
   deleteTask,
   importTasksFromTW,
-  ImportTasksInput
+  importTasksFromCSV,
+  ImportTasksInput,
+  CSVTaskRow
 } from '../services/taskService';
 import {
   addTimeEntryService,
@@ -265,4 +267,8 @@ ipcMain.handle('debugTWSubtasks', async (_event, parentTaskLink: string) => {
 
 ipcMain.handle('importTasksFromTW', async (_event, input: ImportTasksInput) => {
   return importTasksFromTW(input);
+});
+
+ipcMain.handle('importTasksFromCSV', async (_event, rows: CSVTaskRow[]) => {
+  return importTasksFromCSV(rows);
 });

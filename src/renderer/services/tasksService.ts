@@ -36,3 +36,7 @@ export const importTasksFromTW = async (input: {
 }) => {
   return window.Main.importTasksFromTW(input);
 };
+
+export const importTasksFromCSV = async (rows: { taskName: string; typeName: string; taskLink: string }[]) => {
+  return window.Main.importTasksFromCSV(rows);
+};
