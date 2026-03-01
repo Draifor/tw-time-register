@@ -28,9 +28,6 @@ jobs:
         shell: pwsh
         run: echo "node-linker=hoisted" > .npmrc
 
-      - name: Configure pnpm for hoisted node_modules
-        run: echo "node-linker=hoisted" > .npmrc
-
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
