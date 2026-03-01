@@ -1,17 +1,19 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2 } from 'lucide-react';
+import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { cn } from '../lib/utils';
 import useTWSession from '../hooks/useTWSession';
+import { useAutoUpdater } from '../hooks/useAutoUpdater';
 
 function NavBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isConfigured, username, domain, isLoading } = useTWSession();
+  const { status: updateStatus, version: updateVersion, installUpdate } = useAutoUpdater();
 
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
@@ -91,6 +93,35 @@ function NavBar() {
 
           <SwitchDarkMode />
           <SelectLanguage />
+
+          {/* Auto-update indicator */}
+          {updateStatus !== 'idle' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'gap-2 text-sm',
+                      updateStatus === 'downloaded'
+                        ? 'border-emerald-500 text-emerald-500 hover:bg-emerald-500/10'
+                        : 'border-amber-500 text-amber-500 hover:bg-amber-500/10'
+                    )}
+                    onClick={updateStatus === 'downloaded' ? installUpdate : undefined}
+                  >
+                    <Download className="h-4 w-4" />
+                    {updateStatus === 'downloaded' ? 'Instalar' : 'Actualizando'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="end">
+                  {updateStatus === 'downloaded'
+                    ? `v${updateVersion} descargada. Haz clic para instalar y reiniciar.`
+                    : `Descargando v${updateVersion}...`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc';
 import './database/database';
 import { runMigrations } from './database/migrations';
+import { initAutoUpdater } from './updater';
 
 const height = 600;
 const width = 800;
@@ -59,10 +60,13 @@ function createWindow() {
   } else {
     window?.loadFile(url);
   }
-  // Open the DevTools.
-  window.webContents.openDevTools();
+  // Open DevTools only in development
+  if (isDev) {
+    window.webContents.openDevTools();
+  }
 
   setupWindowIpc(window);
+  initAutoUpdater(window);
 
   nativeTheme.themeSource = 'dark';
 
