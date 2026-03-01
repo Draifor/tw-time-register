@@ -38,7 +38,7 @@ import {
   saveTWCredentials,
   WorkSettings
 } from '../services/settingsService';
-import { testTWConnection, sendTimeEntryToTW, extractTWTaskId, fetchTWSubtasks } from '../services/apiService';
+import { testTWConnection, sendTimeEntryToTW, extractTWTaskId, fetchTWSubtasks, debugTWSubtasks } from '../services/apiService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
@@ -243,6 +243,10 @@ ipcMain.handle('deleteTask', async (_event, id: number) => {
 // TW Task Import handlers
 ipcMain.handle('fetchTWSubtasks', async (_event, parentTaskLink: string) => {
   return fetchTWSubtasks(parentTaskLink);
+});
+
+ipcMain.handle('debugTWSubtasks', async (_event, parentTaskLink: string) => {
+  return debugTWSubtasks(parentTaskLink);
 });
 
 ipcMain.handle('importTasksFromTW', async (_event, input: ImportTasksInput) => {

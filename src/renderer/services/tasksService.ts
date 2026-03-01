@@ -24,6 +24,10 @@ export const fetchTWSubtasks = async (parentTaskLink: string) => {
   return window.Main.fetchTWSubtasks(parentTaskLink);
 };
 
+export const debugTWSubtasks = async (parentTaskLink: string) => {
+  return window.Main.debugTWSubtasks(parentTaskLink);
+};
+
 export const importTasksFromTW = async (input: {
   parentTaskLink: string;
   prefix: string;

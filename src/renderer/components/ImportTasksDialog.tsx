@@ -58,6 +58,7 @@ function ImportTasksDialog() {
 
   // Preview state
   const [previewTasks, setPreviewTasks] = useState<PreviewTask[]>([]);
+  const [rawSubtasks, setRawSubtasks] = useState<{ id: string; content: string; link: string }[]>([]);
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -75,6 +76,7 @@ function ImportTasksDialog() {
     setTemplate('RECA_FORE');
     setTypeName('');
     setPreviewTasks([]);
+    setRawSubtasks([]);
   }
 
   function handleOpenChange(isOpen: boolean) {
@@ -103,6 +105,8 @@ function ImportTasksDialog() {
         toast.error('Failed to fetch subtasks', { description: result.message });
         return;
       }
+
+      setRawSubtasks(result.subtasks);
 
       const items = TEMPLATE_SUFFIXES[template];
       const tasks: PreviewTask[] = items.map((item) => {
@@ -292,9 +296,28 @@ function ImportTasksDialog() {
               ))}
             </ul>
 
-            {foundCount === 0 && (
+            {foundCount === 0 && rawSubtasks.length > 0 && (
+              <details className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+                <summary className="cursor-pointer text-xs font-medium text-amber-600 dark:text-amber-400">
+                  TW returned {rawSubtasks.length} subtask{rawSubtasks.length !== 1 ? 's' : ''} — click to inspect
+                </summary>
+                <ul className="mt-2 space-y-1">
+                  {rawSubtasks.map((s) => (
+                    <li key={s.id} className="text-xs text-muted-foreground">
+                      <span className="font-mono text-foreground">&quot;{s.content}&quot;</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Patterns expect names starting with e.g. <span className="font-mono">"2. "</span>,{' '}
+                  <span className="font-mono">"3. "</span>, etc.
+                </p>
+              </details>
+            )}
+
+            {foundCount === 0 && rawSubtasks.length === 0 && (
               <p className="text-sm text-destructive text-center">
-                No matching subtasks found. Make sure the link points to the correct parent task.
+                No subtasks returned. Make sure the link points to the correct parent task.
               </p>
             )}
 

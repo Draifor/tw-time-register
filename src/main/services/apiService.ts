@@ -125,12 +125,23 @@ export async function fetchTWSubtasks(parentTaskLink: string): Promise<{
       timeout: 15000
     });
 
-    const raw: Record<string, unknown>[] = response.data?.tasks || [];
+    // TW API v1 returns "tasks", v2 may return "todo-items"
+    const raw: Record<string, unknown>[] =
+      (response.data?.tasks as Record<string, unknown>[]) ||
+      (response.data?.['todo-items'] as Record<string, unknown>[]) ||
+      [];
+
+    // TW API may use different field names depending on the endpoint/version
+    const getContent = (t: Record<string, unknown>): string => {
+      const todoItem = t['todo-item'] as Record<string, unknown> | undefined;
+      return String(t.content || t.name || t.title || todoItem?.content || '');
+    };
+
     const subtasks: TWSubtask[] = raw
       .map((t, i) => ({
         id: String(t.id),
-        content: String(t.content || ''),
-        order: Number(t.order ?? i + 1),
+        content: getContent(t),
+        order: Number(t.order ?? t.displayOrder ?? t['display-order'] ?? i + 1),
         link: `https://${domain}.teamwork.com/app/tasks/${t.id}`
       }))
       .sort((a, b) => a.order - b.order);
@@ -140,6 +151,36 @@ export async function fetchTWSubtasks(parentTaskLink: string): Promise<{
     const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
     const msg = axiosError.response?.data?.message || axiosError.message || 'Failed to fetch subtasks';
     return { success: false, message: msg };
+  }
+}
+
+// Fetch raw TW subtask response for debugging
+export async function debugTWSubtasks(parentTaskLink: string): Promise<{
+  success: boolean;
+  raw?: unknown;
+  message?: string;
+}> {
+  const { domain, username, password } = await getTWCredentials();
+  const taskId = extractTWTaskId(parentTaskLink);
+
+  if (!taskId) return { success: false, message: 'Could not extract task ID from the provided link' };
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  const headers = { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' };
+
+  try {
+    const response = await axios.get(`https://${domain}.teamwork.com/tasks/${taskId}/subtasks.json`, {
+      headers,
+      timeout: 15000
+    });
+    return { success: true, raw: response.data };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: unknown; status?: number }; message?: string };
+    return {
+      success: false,
+      raw: axiosError.response?.data,
+      message: `HTTP ${axiosError.response?.status}: ${axiosError.message}`
+    };
   }
 }
 

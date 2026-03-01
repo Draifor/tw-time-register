@@ -299,6 +299,7 @@ const api = {
 
   // TW Task Import
   fetchTWSubtasks: (parentTaskLink: string) => ipcRenderer.invoke('fetchTWSubtasks', parentTaskLink),
+  debugTWSubtasks: (parentTaskLink: string) => ipcRenderer.invoke('debugTWSubtasks', parentTaskLink),
   importTasksFromTW: (input: {
     parentTaskLink: string;
     prefix: string;
