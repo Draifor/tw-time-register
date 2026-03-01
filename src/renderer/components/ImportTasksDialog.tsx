@@ -212,7 +212,7 @@ function ImportTasksDialog() {
                 id="template"
                 value={template}
                 onChange={(e) => setTemplate(e.target.value as Template)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {(Object.keys(TEMPLATE_LABELS) as Template[]).map((key) => (
                   <option key={key} value={key}>
@@ -233,7 +233,7 @@ function ImportTasksDialog() {
                 id="typeName"
                 value={typeName}
                 onChange={(e) => setTypeName(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Select a type...</option>
                 {typeTasksList.map((t) => (
