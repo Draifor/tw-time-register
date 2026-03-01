@@ -35,10 +35,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Rebuild native modules for Electron
-        run: pnpm exec electron-builder install-app-deps
-
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm build && pnpm exec electron-builder --win --publish always
+        run: pnpm exec electron-rebuild -f -w sqlite3 && pnpm build && pnpm exec electron-builder --win --publish always

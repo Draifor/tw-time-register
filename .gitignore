@@ -8,6 +8,7 @@ dist-ssr
 /dist
 /dist-vite
 /dist-electron
+/release
 
 # debug
 npm-debug.log*
