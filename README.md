@@ -236,27 +236,35 @@ CREATE TABLE users (
 - [x] Soporte i18n (EN/ES) con dropdown de selección
 - [x] Modo oscuro completo
 - [x] Confirmación de eliminación con AlertDialog
+- [x] **Cálculos encadenados en `WorkTimeForm`**: hora fin de entrada N → hora inicio de entrada N+1
+- [x] **`ReportsPage`** - Vista de reportes (`/reports`)
+  - [x] 4 tarjetas resumen: horas totales, facturables, enviadas a TW, días con registros
+  - [x] Pestaña por tarea con barra de progreso y badge de estado sincronización
+  - [x] Pestaña por día con totales y detalle de entradas
+  - [x] Filtro por rango de fechas
+- [x] **`SettingsPage`** - Configuración completa (`/settings`)
+  - [x] Credenciales TeamWork (dominio, usuario, contraseña, userId)
+  - [x] Botón "Probar conexión" con auto-relleno de userId
+  - [x] Horario de trabajo (hora inicio por defecto, horas máximas por día)
+  - [x] Días laborales configurables
+  - [x] Gestión de festivos (colombianos + personalizados)
+  - [x] Selector de idioma (ES/EN)
+- [x] **NavBar con badge de sesión TW** (punto verde animado + nombre cuando está conectado)
+- [x] **Linting limpio**: 0 errores, 0 warnings en todo `src/`
 
-### Pendiente / Parcial
+### Pendiente
 
-- [ ] Sistema de autenticación completo (Settings page parcial)
-- [ ] Encriptar credenciales en BD
-- [ ] Vista de resumen/reportes por tarea y por día
+- [ ] Encriptar credenciales en BD (contraseña almacenada en texto plano)
+- [ ] Completar modelos en `main/database/models/`
 - [ ] Sincronización bidireccional con TeamWork
+- [ ] i18n completo para páginas nuevas (Reports, Settings)
 - [ ] Tests unitarios/integración
 
 ## 🐛 Problemas Conocidos
 
-### Errores de Linting
-
-Hay algunos warnings de linting pendientes:
-
-- Uso de `any` en algunos handlers IPC y formularios
-- Variables `event` no usadas en handlers IPC (usar `_event`)
-
 ### Seguridad
 
-- Credenciales almacenadas en texto plano (pendiente encriptar)
+- Credenciales TW almacenadas en texto plano en SQLite (pendiente encriptar)
 
 ## 🚀 Desarrollo
 
@@ -351,27 +359,29 @@ pnpm dist:linux # Linux
 - [x] Sincronización masiva con TeamWork desde `TimeLogsTable`
 - [x] Búsqueda general + filtros por fecha y tarea en `TimeLogsTable`
 
-### 🔄 Fase 5: Funcionalidad Core — Parte 2 (EN PROGRESO)
+### ✅ Fase 5: Funcionalidad Core — Parte 2 (COMPLETADA - Feb 2026)
 
-1. [ ] Corregir errores de linting restantes (variables `any`, `_event`)
-2. [ ] Tipar correctamente todas las interfaces (TimeEntry, WorkTimeEntry)
-3. [ ] Vista de resumen/reportes: total de horas por tarea y por día
-4. [ ] Mejorar cálculos encadenados en `WorkTimeForm` (ej. hora de inicio del siguiente = hora fin del anterior)
-5. [ ] Remover `console.log` en producción
+- [x] Linting limpio: 0 errores, 0 warnings (`any`, `_event`, `console.log`, deps de hooks)
+- [x] Tipado estricto en IPC handlers, formularios, hooks y servicios
+- [x] `ReportsPage`: reportes de horas por tarea y por día con filtro de fechas
+- [x] Cálculos encadenados en `WorkTimeForm` (hora fin N → hora inicio N+1)
+- [x] `SettingsPage`: flujo completo de autenticación y configuración de TeamWork
+- [x] `useTWSession`: badge de sesión activa en NavBar
+- [x] Migraciones automáticas de claves TW para BDs existentes
 
-### Fase 6: Integración TeamWork Completa (PENDIENTE)
+### Fase 6: Pulido y Seguridad (PENDIENTE)
 
-1. [ ] Configuración segura de credenciales (encriptar en BD)
-2. [ ] Flujo completo de autenticación en Settings
-3. [ ] Importación de proyectos/tareas completa desde TW (no solo subtareas)
-4. [ ] Sincronización bidireccional (detectar entradas ya enviadas)
+1. [ ] Encriptar credenciales TW en BD
+2. [ ] Completar modelos en `main/database/models/`
+3. [ ] Completar i18n en páginas nuevas (Reports, Settings)
+4. [ ] Importación de proyectos/tareas completos desde TW (no solo subtareas)
+5. [ ] Sincronización bidireccional (detectar entradas ya enviadas)
 
-### Fase 7: Pulido Final (PENDIENTE)
+### Fase 7: Tests y Docs (PENDIENTE)
 
-1. [ ] Completar i18n (revisar strings sin traducir)
-2. [ ] Tests unitarios/integración
-3. [ ] Documentación de API interna
-4. [ ] Optimización de rendimiento
+1. [ ] Tests unitarios/integración
+2. [ ] Documentación de API interna
+3. [ ] Optimización de rendimiento
 
 ---
 

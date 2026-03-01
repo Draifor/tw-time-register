@@ -96,9 +96,13 @@ src/
 │   │   ├── tasksService.ts     # Llama a window.Main.* (IPC)
 │   │   ├── typeTasksService.ts
 │   │   └── timesService.ts
+│   ├── hooks/
+│   │   └── useTWSession.ts     # Estado de sesión TW (isConfigured, username)
 │   └── pages/
 │       ├── HomePage.tsx        # Página principal de registro
-│       └── TasksPage.tsx       # Gestión de tareas y tipos
+│       ├── TasksPage.tsx       # Gestión de tareas y tipos
+│       ├── ReportsPage.tsx     # ⭐ Vista de reportes (horas por tarea y por día)
+│       └── SettingsPage.tsx    # ⭐ Configuración: credenciales TW, horario, festivos
 └── types/                  # Tipos compartidos
     ├── tasks.ts
     ├── typeTasks.ts
@@ -247,17 +251,29 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - `TimeLogsTable`: búsqueda general + filtros por fecha y tarea (Combobox buscable)
 - Guard `data &&` en `TasksTable` para evitar TypeError antes de que resuelva la query
 
-### ⚠️ Errores de Linting Pendientes
-- Muchos `any` en IPC handlers y forms (tipar correctamente)
-- Variables `event` no usadas en handlers IPC (usar `_event`)
-- Algunos imports no utilizados
-- `console.log` presentes en servicios (remover en producción)
+### ✅ Fase 5: Funcionalidad Core — Parte 2 (COMPLETADA - Feb 2026)
+- **Linting limpio**: 0 errores, 0 warnings en todo `src/` (tipado estricto, sin `any`, sin `console.log`)
+  - `any` eliminados de IPC handlers, forms, hooks y servicios
+  - `_event` en handlers IPC sin usar el argumento
+  - `useCallback` + dependencias correctas en `useTasks`, `useTypeTasks`
+- **`ReportsPage`** (`/reports`): vista de reportes completa
+  - 4 tarjetas resumen: horas totales, facturables, enviadas a TW, días con registros
+  - Pestañas: por tarea (con barra de progreso y badge de estado) y por día
+  - Filtro por rango de fechas
+- **Cálculos encadenados en `WorkTimeForm`**: hora fin de la entrada N se propaga como hora inicio de la entrada N+1
+- **`SettingsPage`** (`/settings`): flujo completo de autenticación con TeamWork
+  - Campos: dominio, usuario, contraseña, userId
+  - Botón "Probar conexión" → llama `/me.json` y auto-rellena userId
+  - Banner de resultado (éxito/error)
+  - `useTWSession` hook: muestra punto verde animado + nombre en NavBar cuando hay sesión activa
+  - Migración automática de claves TW en BD existentes
+- **Festivos 2026** añadidos al schema SQL
+- Ruta `/reports` en `App.tsx` y `BarChart2` en `NavBar.tsx`
 
 ### ⚠️ Mejoras Pendientes
-- Encriptar credenciales en BD
-- Completar modelos en `main/database/models/`
-- Vista de resumen/reportes (horas por tarea y por día)
-- Cálculos encadenados en `WorkTimeForm` (hora inicio siguiente = hora fin anterior)
+- Encriptar credenciales en BD (contraseña se guarda en texto plano)
+- Completar modelos en `main/database/models/` (History, TaskLinks, TimeLog)
+- Agregar festivos 2027+ al schema cuando corresponda
 
 ---
 
@@ -275,10 +291,11 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **Reportes**: Vista de resumen de horas por tarea y por día
-2. **Estabilidad**: Corregir errores de linting (ESLint 9) — `any`, `_event`
-3. **Integración**: Completar flujo de autenticación en Settings
-4. **Core**: Cálculos encadenados en `WorkTimeForm`
+1. **Seguridad**: Encriptar credenciales TW en BD (contraseña en texto plano)
+2. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
+3. **i18n**: Revisar y completar strings sin traducir en las páginas nuevas (Reports, Settings)
+4. **Tests**: Agregar tests unitarios/integración
+5. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
 
 ---
 
