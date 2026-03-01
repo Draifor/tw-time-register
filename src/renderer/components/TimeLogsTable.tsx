@@ -1,7 +1,19 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, CheckCircle2, Clock, AlertCircle, Pencil, X, Check, Trash2 } from 'lucide-react';
+import {
+  RefreshCw,
+  Send,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  Pencil,
+  X,
+  Check,
+  Trash2,
+  Search,
+  SlidersHorizontal
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -76,6 +88,39 @@ function TimeLogsTable() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Filter state
+  const [search, setSearch] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterTask, setFilterTask] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Unique task names for the task filter dropdown
+  const taskOptions = useMemo(() => {
+    const names = [...new Set((data ?? []).map((e) => e.taskName).filter(Boolean))] as string[];
+    return names.sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const filteredData = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return (data ?? []).filter((e) => {
+      if (q && !e.description?.toLowerCase().includes(q) && !e.taskName?.toLowerCase().includes(q)) return false;
+      if (filterTask && e.taskName !== filterTask) return false;
+      if (filterDateFrom && e.date < filterDateFrom) return false;
+      if (filterDateTo && e.date > filterDateTo) return false;
+      return true;
+    });
+  }, [data, search, filterTask, filterDateFrom, filterDateTo]);
+
+  const hasActiveFilters = search || filterTask || filterDateFrom || filterDateTo;
+
+  function clearFilters() {
+    setSearch('');
+    setFilterTask('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+  }
 
   const handleDelete = async (entry: TimeEntry) => {
     setDeletingId(entry.entryId);
@@ -295,23 +340,102 @@ function TimeLogsTable() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {data.length} {isSpanish ? 'entradas' : 'entries'} &middot;{' '}
-          <span className="text-amber-600 dark:text-amber-400 font-medium">
-            {pendingCount} {isSpanish ? 'pendientes' : 'pending'}
-          </span>
-        </p>
-        <Button
-          variant="default"
-          size="sm"
-          className="gap-2"
-          onClick={handleSyncAll}
-          disabled={syncingAll || pendingCount === 0}
-        >
-          {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          {isSpanish ? `Sincronizar ${pendingCount} pendientes` : `Sync ${pendingCount} pending`}
-        </Button>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={isSpanish ? 'Buscar por tarea o descripción...' : 'Search by task or description...'}
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          {/* Filter toggle */}
+          <Button
+            variant={showFilters ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5 shrink-0"
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {isSpanish ? 'Filtros' : 'Filters'}
+            {hasActiveFilters && (
+              <span className="ml-0.5 rounded-full bg-primary text-primary-foreground w-4 h-4 text-xs flex items-center justify-center">
+                {[search, filterTask, filterDateFrom, filterDateTo].filter(Boolean).length}
+              </span>
+            )}
+          </Button>
+          {/* Sync button */}
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-2 shrink-0"
+            onClick={handleSyncAll}
+            disabled={syncingAll || pendingCount === 0}
+          >
+            {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {isSpanish ? `Sync ${pendingCount}` : `Sync ${pendingCount}`}
+          </Button>
+        </div>
+
+        {/* Expanded filters */}
+        {showFilters && (
+          <div className="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-2.5">
+            {/* Task filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Tarea' : 'Task'}</label>
+              <select
+                value={filterTask}
+                onChange={(e) => setFilterTask(e.target.value)}
+                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring min-w-[180px]"
+              >
+                <option value="">{isSpanish ? 'Todas las tareas' : 'All tasks'}</option>
+                {taskOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Date from */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Desde' : 'From'}</label>
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            {/* Date to */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Hasta' : 'To'}</label>
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            {/* Clear */}
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
+                <X className="h-3 w-3 mr-1" />
+                {isSpanish ? 'Limpiar' : 'Clear'}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Results count when filtering */}
+        {hasActiveFilters && (
+          <p className="text-xs text-muted-foreground">
+            {filteredData.length} {isSpanish ? 'de' : 'of'} {data.length} {isSpanish ? 'entradas' : 'entries'}
+          </p>
+        )}
       </div>
 
       {/* Table */}
@@ -343,7 +467,14 @@ function TimeLogsTable() {
             </tr>
           </thead>
           <tbody>
-            {data.map((entry, idx) => {
+            {hasActiveFilters && filteredData.length === 0 && (
+              <tr>
+                <td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
+                  {isSpanish ? 'Sin resultados para los filtros aplicados' : 'No results match the active filters'}
+                </td>
+              </tr>
+            )}
+            {filteredData.map((entry, idx) => {
               const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
               const isSyncing = syncingIds.has(entry.entryId);
               const isEditing = editingId === entry.entryId;
