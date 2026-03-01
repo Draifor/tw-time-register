@@ -22,7 +22,7 @@ export async function addTask({ typeName, taskName, taskLink, description }: Tas
        ${columnsDB.TASK_LINK},
        ${columnsDB.DESCRIPTION})
   VALUES (?, ?, ?, ?)`;
-  return db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description]);
+  await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description]);
 }
 
 // Function to get all tasks
@@ -67,7 +67,7 @@ export async function getTaskById(id: number): Promise<Task> {
     ${typeTasksDBColumns.TABLE_NAME} ON ${columnsDB.TABLE_NAME}.${columnsDB.TYPE_ID} = ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.ID}
   WHERE
     ${columnsDB.ID} = ?`;
-  return db.get(query, [id]);
+  return (await db.get(query, [id])) as Task;
 }
 
 // Function to update a task
@@ -88,7 +88,7 @@ export async function updateTask({ id, typeName, taskName, taskLink, description
     ${columnsDB.DESCRIPTION} = ?
   WHERE
     ${columnsDB.ID} = ?`;
-  return db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description, id]);
+  await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description, id]);
 }
 
 // Function to delete a task
@@ -98,7 +98,7 @@ export async function deleteTask(id: number): Promise<void> {
     ${columnsDB.TABLE_NAME}
   WHERE
     ${columnsDB.ID} = ?`;
-  return db.run(query, [id]);
+  await db.run(query, [id]);
 }
 
 export type TaskTemplate = 'RECA_FORE' | 'OTHER';
@@ -177,9 +177,7 @@ export async function importTasksFromCSV(rows: CSVTaskRow[]): Promise<ImportCSVR
   const existingTypes: { type_id: number; type_name: string }[] = await db.all(
     `SELECT ${typeTasksDBColumns.ID}, ${typeTasksDBColumns.TYPE_NAME} FROM ${typeTasksDBColumns.TABLE_NAME}`
   );
-  const typeMap = new Map<string, number>(
-    existingTypes.map((t) => [t.type_name.toLowerCase(), t.type_id])
-  );
+  const typeMap = new Map<string, number>(existingTypes.map((t) => [t.type_name.toLowerCase(), t.type_id]));
 
   for (const row of rows) {
     const typeLower = row.typeName.trim().toLowerCase();
@@ -194,10 +192,9 @@ export async function importTasksFromCSV(rows: CSVTaskRow[]): Promise<ImportCSVR
     // Create type if missing
     if (!typeMap.has(typeLower)) {
       try {
-        await db.run(
-          `INSERT INTO ${typeTasksDBColumns.TABLE_NAME} (${typeTasksDBColumns.TYPE_NAME}) VALUES (?)`,
-          [row.typeName.trim()]
-        );
+        await db.run(`INSERT INTO ${typeTasksDBColumns.TABLE_NAME} (${typeTasksDBColumns.TYPE_NAME}) VALUES (?)`, [
+          row.typeName.trim()
+        ]);
         const inserted: { type_id: number } | undefined = await db.get(
           `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
           [row.typeName.trim()]
