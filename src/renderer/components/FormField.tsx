@@ -1,5 +1,5 @@
 import React from 'react';
-import { FieldValues } from 'react-hook-form';
+import { FieldValues, Control } from 'react-hook-form';
 import { FormFieldProps } from '../../types/dataTable';
 import Input from './ui/input-form';
 import { Label } from './ui/label';
@@ -18,7 +18,7 @@ function FormField<T extends FieldValues>({ field, control, className }: FormFie
         )}
         <Select
           name={accessorKey as string}
-          control={control}
+          control={control as unknown as Control}
           options={options}
           placeholder={header}
           rules={rules}
@@ -37,7 +37,7 @@ function FormField<T extends FieldValues>({ field, control, className }: FormFie
       )}
       <Input
         name={accessorKey as string}
-        control={control}
+        control={control as unknown as Control}
         rules={rules}
         type={type}
         placeholder={header}

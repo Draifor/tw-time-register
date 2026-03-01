@@ -32,8 +32,7 @@
     "clean": "rimraf dist main src/out",
     "type-check": "tsc",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "postinstall": "electron-builder install-app-deps"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -65,8 +64,7 @@
     "react-i18next": "^14.1.2",
     "react-router-dom": "^6.30.2",
     "sonner": "^2.0.7",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
+    "better-sqlite3": "^11.9.1",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "vite": "^7.2.6",
@@ -76,6 +74,7 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
     "@eslint/js": "^9.39.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.0.10",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
@@ -99,7 +98,10 @@
   "build": {
     "appId": "com.draifor.tw-time-register",
     "productName": "TW Time Register",
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "**/better-sqlite3/**"
+    ],
     "files": [
       "dist-electron",
       "dist-vite",

@@ -150,7 +150,7 @@ export async function getDailyTimeInfo(date: string): Promise<DailyTimeInfo> {
 
   // Get last end time for the date
   const db = await openDb();
-  const lastEntry = await db.get(
+  const lastEntry = await db.get<{ endTime: string }>(
     `
     SELECT hora_fin as endTime
     FROM time_entries
@@ -183,7 +183,7 @@ export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
 
   // Priority 1: find the most recent date that has saved entries (could be today,
   // yesterday, last week, etc. — user often registers past days retroactively).
-  const lastEntryRow = await db.get(
+  const lastEntryRow = await db.get<{ date: string }>(
     `SELECT entry_date as date FROM time_entries ORDER BY entry_date DESC, hora_fin DESC LIMIT 1`
   );
   const lastEntryDate: string | null = lastEntryRow?.date ?? null;
@@ -324,7 +324,7 @@ export async function getTimeStats(): Promise<TimeStats> {
   const weekStart = monday.toISOString().split('T')[0];
 
   // Get today's total minutes
-  const todayResult = await db.get(
+  const todayResult = await db.get<{ totalMinutes: number }>(
     `SELECT COALESCE(SUM(
       (CAST(substr(hora_fin, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_fin, 4, 2) AS INTEGER)) -
       (CAST(substr(hora_inicio, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_inicio, 4, 2) AS INTEGER))
@@ -334,7 +334,7 @@ export async function getTimeStats(): Promise<TimeStats> {
   );
 
   // Get this week's total minutes
-  const weekResult = await db.get(
+  const weekResult = await db.get<{ totalMinutes: number }>(
     `SELECT COALESCE(SUM(
       (CAST(substr(hora_fin, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_fin, 4, 2) AS INTEGER)) -
       (CAST(substr(hora_inicio, 1, 2) AS INTEGER) * 60 + CAST(substr(hora_inicio, 4, 2) AS INTEGER))
@@ -344,7 +344,7 @@ export async function getTimeStats(): Promise<TimeStats> {
   );
 
   // Get pending entries count (not sent to TeamWork)
-  const pendingResult = await db.get('SELECT COUNT(*) as count FROM time_entries WHERE send = 0');
+  const pendingResult = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM time_entries WHERE send = 0');
 
   return {
     todayMinutes: todayResult?.totalMinutes || 0,

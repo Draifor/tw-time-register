@@ -74,10 +74,11 @@ export async function getTaskById(id: number): Promise<Task> {
 export async function updateTask({ id, typeName, taskName, taskLink, description }: Task): Promise<void> {
   const db = await openDB();
 
-  const type = await db.get(
+  const type = await db.get<Record<string, unknown>>(
     `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
     [typeName]
   );
+  if (!type) throw new Error('Type not found');
 
   const query = `UPDATE
     ${columnsDB.TABLE_NAME}

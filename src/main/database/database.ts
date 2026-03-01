@@ -1,9 +1,49 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+import BetterSqlite3 from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-let db: Database | null = null;
+// ─── Compatibility wrapper ──────────────────────────────────────
+// Provides an async API that matches the `sqlite` (wrapper) package so that
+// every service file keeps working without changes.
+
+export interface RunResult {
+  lastID: number;
+  changes: number;
+}
+
+class DatabaseWrapper {
+  private db: BetterSqlite3.Database;
+
+  constructor(filename: string) {
+    this.db = new BetterSqlite3(filename);
+    this.db.pragma('journal_mode = WAL');
+  }
+
+  async all<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]> {
+    return this.db.prepare(sql).all(...(params ?? [])) as T[];
+  }
+
+  async get<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | undefined> {
+    return this.db.prepare(sql).get(...(params ?? [])) as T | undefined;
+  }
+
+  async run(sql: string, params?: unknown[]): Promise<RunResult> {
+    const result = this.db.prepare(sql).run(...(params ?? []));
+    return { lastID: Number(result.lastInsertRowid), changes: result.changes };
+  }
+
+  async exec(sql: string): Promise<void> {
+    this.db.exec(sql);
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+// ─── Singleton ──────────────────────────────────────────────────
+
+let db: DatabaseWrapper | null = null;
 
 /** Absolute path to the SQLite file used by the app. */
 export const DB_PATH = path.resolve('./database/worktime.sqlite');
@@ -16,15 +56,11 @@ export async function closeDb(): Promise<void> {
   }
 }
 
-async function openDb() {
+async function openDb(): Promise<DatabaseWrapper> {
   if (!db) {
-    db = await open({
-      filename: './database/worktime.sqlite',
-      driver: sqlite3.Database
-    });
+    db = new DatabaseWrapper(DB_PATH);
 
     const schema = fs.readFileSync('./database/schema.sql', 'utf-8');
-
     await db.exec(schema);
   }
   return db;
@@ -62,15 +98,11 @@ export async function getTimeEntries() {
 }
 
 export async function addWorkTime(description: string, hours: number, date: string) {
-  // Deprecated or fallback
   const db = await openDb();
-  // Ensure table exists if we really want to use it, but better to switch to time_entries
-  // For now, let's leave it as is to avoid breaking other things, but we won't use it for the form.
   return db.run('INSERT INTO work_times (description, hours, date) VALUES (?, ?, ?)', [description, hours, date]);
 }
 
 export async function getWorkTimes() {
-  // Deprecated or fallback
   const db = await openDb();
   return db.all('SELECT * FROM work_times ORDER BY date DESC');
 }
@@ -95,7 +127,7 @@ export async function verifyCredential(username: string, password: string) {
   if (!credential) {
     return null;
   }
-  return password === credential.password;
+  return (credential as { password: string }).password === password;
 }
 
 export default openDb;

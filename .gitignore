@@ -24,4 +24,6 @@ yarn-error.log*
 # database files (contain user data)
 *.sqlite
 *.sqlite3
+*.sqlite-shm
+*.sqlite-wal
 database/*.sqlite
