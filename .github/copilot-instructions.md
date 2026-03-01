@@ -234,15 +234,30 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - Eliminada dependencia de Material Tailwind
 - Eliminada dependencia de react-select
 
+### ✅ Fase 4: Funcionalidad Core — Parte 1 (COMPLETADA - Feb 2026)
+- `Combobox` buscable con navegación por teclado (reemplaza Radix Select en `WorkTimeForm`)
+- Fix: inicialización de `previousValues` en nuevas entradas (evitaba ajuste incorrecto de -1h)
+- `ImportTasksDialog`: asistente 3-pasos para importar subtareas de TW
+  - Templates RECA/FORE (subtareas 2,3,4,5,10) y OTHER (1,3,11)
+  - Fallbacks de campo API: `content || name || title`
+  - Fallbacks de clave raíz: `tasks || todo-items`
+  - Panel de diagnóstico cuando no hay coincidencias
+- Ordenamiento: tipos de tarea alfabético; tareas por tipo luego nombre
+- `TimeLogsTable`: edición inline completa + sincronización masiva con TW
+- `TimeLogsTable`: búsqueda general + filtros por fecha y tarea (Combobox buscable)
+- Guard `data &&` en `TasksTable` para evitar TypeError antes de que resuelva la query
+
 ### ⚠️ Errores de Linting Pendientes
 - Muchos `any` en IPC handlers y forms (tipar correctamente)
 - Variables `event` no usadas en handlers IPC (usar `_event`)
 - Algunos imports no utilizados
+- `console.log` presentes en servicios (remover en producción)
 
 ### ⚠️ Mejoras Pendientes
 - Encriptar credenciales en BD
-- Remover `console.log` en producción
 - Completar modelos en `main/database/models/`
+- Vista de resumen/reportes (horas por tarea y por día)
+- Cálculos encadenados en `WorkTimeForm` (hora inicio siguiente = hora fin anterior)
 
 ---
 
@@ -260,10 +275,10 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **Core**: Completar flujo de registro de tiempos (cálculos automáticos)
-2. **Integración**: Sincronización con TeamWork API
-3. **Estabilidad**: Corregir errores de linting (ESLint 9)
-4. **Reportes**: Visualización de tiempo por tarea/día
+1. **Reportes**: Vista de resumen de horas por tarea y por día
+2. **Estabilidad**: Corregir errores de linting (ESLint 9) — `any`, `_event`
+3. **Integración**: Completar flujo de autenticación en Settings
+4. **Core**: Cálculos encadenados en `WorkTimeForm`
 
 ---
 
@@ -305,6 +320,7 @@ Los siguientes componentes de shadcn/ui están disponibles en `components/ui/`:
 |------------|-----|
 | `Button` | Botones con variantes (default, destructive, outline, ghost) |
 | `Card` | Contenedores con header, content, footer |
+| `Combobox` | ⭐ Selector buscable custom (sin deps externas, nav teclado) |
 | `Dialog` | Modales para formularios y confirmaciones |
 | `AlertDialog` | Confirmación de acciones destructivas |
 | `DropdownMenu` | Menús contextuales (selector de idioma) |

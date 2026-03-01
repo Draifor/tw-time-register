@@ -94,6 +94,7 @@ tw-time-register/
 │   │   │   ├── WorkTimeForm.tsx    # ⭐ Formulario principal de tiempos
 │   │   │   ├── DataTable.tsx       # Tabla genérica con TanStack Table
 │   │   │   ├── DynamicForm.tsx     # Formulario dinámico por columnas
+│   │   │   ├── ImportTasksDialog.tsx # ⭐ Asistente importación tareas desde TW
 │   │   │   ├── TasksTable.tsx      # Tabla de tareas
 │   │   │   ├── TypeTasksTable.tsx  # Tabla de tipos de tarea
 │   │   │   ├── TimeLogsTable.tsx   # Tabla de logs de tiempo
@@ -102,6 +103,7 @@ tw-time-register/
 │   │   │   └── ui/                 # Componentes shadcn/ui
 │   │   │       ├── button.tsx
 │   │   │       ├── card.tsx
+│   │   │       ├── combobox.tsx    # ⭐ Selector con búsqueda (custom)
 │   │   │       ├── dialog.tsx
 │   │   │       ├── alert-dialog.tsx
 │   │   │       ├── dropdown-menu.tsx
@@ -200,9 +202,10 @@ CREATE TABLE users (
   - [x] Cálculo automático de hora fin basado en inicio + duración
   - [x] Persistencia en localStorage mientras se edita
   - [x] Guardado en base de datos
-  - [x] Selector de tarea con Radix Select (soporta tema oscuro)
+  - [x] **Selector de tarea con Combobox buscable** (navegación teclado, checkmark en selección)
   - [x] Textarea auto-expandible para descripciones
   - [x] Layout responsivo de una sola fila
+  - [x] Fix: nuevas entradas no disparan el cálculo de post-almuerzo
 - [x] **DataTable mejorada**
   - [x] Infinite scroll (carga más filas al hacer scroll)
   - [x] Skeleton loaders mientras carga
@@ -212,9 +215,22 @@ CREATE TABLE users (
   - [x] `Ctrl+N` - Nueva entrada
   - [x] `Ctrl+S` - Guardar/Registrar
   - [x] `Esc` - Eliminar última entrada
-- [x] Visualización de tiempos registrados (`TimeLogsTable`)
-- [x] CRUD de tareas (`TasksTable`)
-- [x] CRUD de tipos de tarea (`TypeTasksTable`)
+- [x] **TimeLogsTable** - Visualización avanzada de tiempos registrados
+  - [x] Edición inline (fecha, descripción, hora inicio/fin, facturable)
+  - [x] Sincronización individual y masiva con TeamWork API
+  - [x] Confirmación de eliminación con AlertDialog
+  - [x] **Búsqueda general** por tarea o descripción
+  - [x] **Filtros** por tarea (Combobox buscable), fecha desde, fecha hasta
+  - [x] Contador de resultados filtrados
+  - [x] Empty state específico para filtros sin resultados
+- [x] **Importación de tareas desde TeamWork** (`ImportTasksDialog`)
+  - [x] Asistente 3 pasos: Configurar → Previsualizar → Listo
+  - [x] Templates predefinidos: RECA/FORE (5 subtareas) y OTHER (3 subtareas)
+  - [x] Matching por número de ítem (ej. `^2.`, `^3.`, etc.)
+  - [x] Panel diagnóstico cuando no hay coincidencias
+  - [x] Soporte multi-campo de la API TW (`content`, `name`, `title`)
+- [x] CRUD de tareas (`TasksTable`) - **ordenado por tipo y nombre**
+- [x] CRUD de tipos de tarea (`TypeTasksTable`) - **ordenado alfabéticamente**
 - [x] Sistema de navegación con React Router
 - [x] AppBar personalizada con iconos Lucide
 - [x] Soporte i18n (EN/ES) con dropdown de selección
@@ -223,14 +239,11 @@ CREATE TABLE users (
 
 ### Pendiente / Parcial
 
-- [ ] Envío de tiempos a API de TeamWork (estructura existe pero sin credenciales)
-- [ ] Sistema de autenticación completo
-- [ ] Visualización de tiempos por tarea/día (reportes)
-- [ ] Edición inline de tiempos ya registrados
-- [ ] Sincronización bidireccional con TeamWork
-- [ ] Filtros avanzados en tablas
-- [ ] Tests unitarios/integración
+- [ ] Sistema de autenticación completo (Settings page parcial)
 - [ ] Encriptar credenciales en BD
+- [ ] Vista de resumen/reportes por tarea y por día
+- [ ] Sincronización bidireccional con TeamWork
+- [ ] Tests unitarios/integración
 
 ## 🐛 Problemas Conocidos
 
@@ -327,32 +340,38 @@ pnpm dist:linux # Linux
 - [x] Eliminada dependencia de Material Tailwind
 - [x] Eliminada dependencia de react-select
 
-### 🔄 Fase 4: Funcionalidad Core (EN PROGRESO)
+### ✅ Fase 4: Funcionalidad Core — Parte 1 (COMPLETADA - Feb 2026)
 
-1. Corregir errores de linting (ESLint 9)
-2. Tipar correctamente todas las interfaces
-3. Crear types para TimeEntry, WorkTimeEntry
-4. Mejorar manejo de errores
+- [x] Combobox buscable para selección de tarea (navegación teclado, sin dependencias nuevas)
+- [x] Fix: nuevas entradas en `WorkTimeForm` no disparan ajuste de post-almuerzo
+- [x] Importación de tareas desde TeamWork (`ImportTasksDialog`) con templates RECA/FORE y OTHER
+- [x] Soporte de múltiples formatos de respuesta de API TW (`tasks` / `todo-items`, `content` / `name` / `title`)
+- [x] Ordenamiento de tipos de tarea (alfabético) y tareas (por tipo, luego nombre)
+- [x] Edición inline completa en `TimeLogsTable` (fecha, descripción, tiempos, facturable)
+- [x] Sincronización masiva con TeamWork desde `TimeLogsTable`
+- [x] Búsqueda general + filtros por fecha y tarea en `TimeLogsTable`
 
-### Fase 5: Funcionalidad Core (PENDIENTE)
+### 🔄 Fase 5: Funcionalidad Core — Parte 2 (EN PROGRESO)
 
-1. Completar flujo de registro de tiempos
-2. Mejorar cálculos dinámicos (fechas encadenadas, totales)
-3. Implementar edición/eliminación de tiempos
-4. Vista de resumen por día/tarea
+1. [ ] Corregir errores de linting restantes (variables `any`, `_event`)
+2. [ ] Tipar correctamente todas las interfaces (TimeEntry, WorkTimeEntry)
+3. [ ] Vista de resumen/reportes: total de horas por tarea y por día
+4. [ ] Mejorar cálculos encadenados en `WorkTimeForm` (ej. hora de inicio del siguiente = hora fin del anterior)
+5. [ ] Remover `console.log` en producción
 
-### Fase 6: Integración TeamWork (PENDIENTE)
+### Fase 6: Integración TeamWork Completa (PENDIENTE)
 
-1. Configuración segura de credenciales
-2. Sincronización con API de TeamWork
-3. Importación de proyectos/tareas desde TW
+1. [ ] Configuración segura de credenciales (encriptar en BD)
+2. [ ] Flujo completo de autenticación en Settings
+3. [ ] Importación de proyectos/tareas completa desde TW (no solo subtareas)
+4. [ ] Sincronización bidireccional (detectar entradas ya enviadas)
 
 ### Fase 7: Pulido Final (PENDIENTE)
 
-1. Completar i18n
-2. Tests unitarios
-3. Documentación
-4. Optimización de rendimiento
+1. [ ] Completar i18n (revisar strings sin traducir)
+2. [ ] Tests unitarios/integración
+3. [ ] Documentación de API interna
+4. [ ] Optimización de rendimiento
 
 ---
 
