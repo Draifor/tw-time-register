@@ -167,17 +167,19 @@ export default function WorkTimeForm() {
         return;
       }
 
-      // Detect afterLunch toggle: shift startTime ±1 hour
+      // Detect afterLunch toggle: shift startTime ±1 hour and recalculate endTime
       if (entry.afterLunch !== prevEntry.afterLunch && entry.startTime?.[0]) {
         const shifted = new Date(entry.startTime[0]);
         shifted.setHours(shifted.getHours() + (entry.afterLunch ? 1 : -1));
+        const newEndTime = calculateEndTime([shifted], entry.hours);
         setValue(`entries.${index}.startTime`, [shifted]);
+        setValue(`entries.${index}.endTime`, newEndTime);
         previousValues.current[index] = {
           ...previousValues.current[index],
           afterLunch: entry.afterLunch,
           startTime: [shifted]
         };
-        return; // endTime will recalculate in the next render cycle
+        return;
       }
 
       const newEndTime = calculateEndTime(entry.startTime, entry.hours);
