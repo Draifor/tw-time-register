@@ -9,7 +9,7 @@ import {
   updateTypeTask,
   deleteTypeTask
 } from '../services/typeTasksService';
-import { addTask, getTasks, getTaskById, updateTask, deleteTask } from '../services/taskService';
+import { addTask, getTasks, getTaskById, updateTask, deleteTask, importTasksFromTW, ImportTasksInput } from '../services/taskService';
 import {
   addTimeEntryService,
   addTimeEntries,
@@ -38,7 +38,7 @@ import {
   saveTWCredentials,
   WorkSettings
 } from '../services/settingsService';
-import { testTWConnection, sendTimeEntryToTW, extractTWTaskId } from '../services/apiService';
+import { testTWConnection, sendTimeEntryToTW, extractTWTaskId, fetchTWSubtasks } from '../services/apiService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
@@ -238,4 +238,13 @@ ipcMain.handle(
 
 ipcMain.handle('deleteTask', async (_event, id: number) => {
   return deleteTask(id);
+});
+
+// TW Task Import handlers
+ipcMain.handle('fetchTWSubtasks', async (_event, parentTaskLink: string) => {
+  return fetchTWSubtasks(parentTaskLink);
+});
+
+ipcMain.handle('importTasksFromTW', async (_event, input: ImportTasksInput) => {
+  return importTasksFromTW(input);
 });

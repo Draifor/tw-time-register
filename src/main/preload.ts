@@ -297,6 +297,15 @@ const api = {
   updateTask: (task: Task) => ipcRenderer.invoke('updateTask', task),
   deleteTask: (id: number) => ipcRenderer.invoke('deleteTask', id),
 
+  // TW Task Import
+  fetchTWSubtasks: (parentTaskLink: string) => ipcRenderer.invoke('fetchTWSubtasks', parentTaskLink),
+  importTasksFromTW: (input: {
+    parentTaskLink: string;
+    prefix: string;
+    template: 'RECA_FORE' | 'OTHER';
+    typeName: string;
+  }) => ipcRenderer.invoke('importTasksFromTW', input),
+
   /**
    * Provide an easier way to listen to events
    */

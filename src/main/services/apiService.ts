@@ -98,6 +98,51 @@ export async function sendTimeEntryToTW(
   }
 }
 
+export interface TWSubtask {
+  id: string;
+  content: string;
+  order: number;
+  link: string;
+}
+
+// Fetch all subtasks of a parent TW task
+export async function fetchTWSubtasks(parentTaskLink: string): Promise<{
+  success: boolean;
+  subtasks?: TWSubtask[];
+  message?: string;
+}> {
+  const { domain, username, password } = await getTWCredentials();
+  const taskId = extractTWTaskId(parentTaskLink);
+
+  if (!taskId) return { success: false, message: 'Could not extract task ID from the provided link' };
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  const headers = { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' };
+
+  try {
+    const response = await axios.get(`https://${domain}.teamwork.com/tasks/${taskId}/subtasks.json`, {
+      headers,
+      timeout: 15000
+    });
+
+    const raw: Record<string, unknown>[] = response.data?.tasks || [];
+    const subtasks: TWSubtask[] = raw
+      .map((t, i) => ({
+        id: String(t.id),
+        content: String(t.content || ''),
+        order: Number(t.order ?? i + 1),
+        link: `https://${domain}.teamwork.com/app/tasks/${t.id}`
+      }))
+      .sort((a, b) => a.order - b.order);
+
+    return { success: true, subtasks };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    const msg = axiosError.response?.data?.message || axiosError.message || 'Failed to fetch subtasks';
+    return { success: false, message: msg };
+  }
+}
+
 // Legacy - kept for IPC handler compatibility
 export async function registerTimeEntry(
   taskId: string,

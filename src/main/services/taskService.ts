@@ -100,3 +100,92 @@ export async function deleteTask(id: number): Promise<void> {
     ${columnsDB.ID} = ?`;
   return db.run(query, [id]);
 }
+
+export type TaskTemplate = 'RECA_FORE' | 'OTHER';
+
+interface TemplateItem {
+  // Regex to match the subtask content (e.g. starts with "2.")
+  pattern: RegExp;
+  suffix: string;
+}
+
+const TEMPLATE_ITEMS: Record<TaskTemplate, TemplateItem[]> = {
+  RECA_FORE: [
+    { pattern: /^2\./, suffix: '2. Estimación' },
+    { pattern: /^3\./, suffix: '3. Implementación' },
+    { pattern: /^4\./, suffix: '4. Calidad' },
+    { pattern: /^5\./, suffix: '5. Bugs' },
+    { pattern: /^10\./, suffix: '10. Despliegue' }
+  ],
+  OTHER: [
+    { pattern: /^1\./, suffix: '1. Análisis' },
+    { pattern: /^3\./, suffix: '3. Implementación' },
+    { pattern: /^11\./, suffix: '11. Seguimiento' }
+  ]
+};
+
+export interface ImportTasksInput {
+  parentTaskLink: string;
+  prefix: string;
+  template: TaskTemplate;
+  typeName: string;
+}
+
+export interface ImportedTask {
+  taskName: string;
+  taskLink: string;
+  typeName: string;
+}
+
+export interface ImportTasksResult {
+  success: boolean;
+  imported?: ImportedTask[];
+  notFound?: string[];
+  message?: string;
+}
+
+// Fetch and preview which tasks would be imported (without saving)
+export async function previewImportTasks(
+  input: ImportTasksInput,
+  subtasks: { id: string; content: string; link: string }[]
+): Promise<{ taskName: string; taskLink: string }[]> {
+  const items = TEMPLATE_ITEMS[input.template];
+  return items.flatMap((item) => {
+    const match = subtasks.find((s) => item.pattern.test(s.content.trim()));
+    if (!match) return [];
+    return [{ taskName: `${input.prefix} ${item.suffix}`, taskLink: match.link }];
+  });
+}
+
+// Import tasks from TW subtasks into the local DB
+export async function importTasksFromTW(input: ImportTasksInput): Promise<ImportTasksResult> {
+  const { fetchTWSubtasks } = await import('./apiService');
+
+  const fetchResult = await fetchTWSubtasks(input.parentTaskLink);
+  if (!fetchResult.success || !fetchResult.subtasks) {
+    return { success: false, message: fetchResult.message || 'Failed to fetch subtasks' };
+  }
+
+  const items = TEMPLATE_ITEMS[input.template];
+  const subtasks = fetchResult.subtasks;
+
+  const imported: ImportedTask[] = [];
+  const notFound: string[] = [];
+
+  for (const item of items) {
+    const match = subtasks.find((s) => item.pattern.test(s.content.trim()));
+    if (!match) {
+      notFound.push(item.suffix);
+      continue;
+    }
+    const taskName = `${input.prefix} ${item.suffix}`;
+    try {
+      await addTask({ typeName: input.typeName, taskName, taskLink: match.link, description: '' });
+      imported.push({ taskName, taskLink: match.link, typeName: input.typeName });
+    } catch {
+      notFound.push(item.suffix);
+    }
+  }
+
+  return { success: true, imported, notFound };
+}
