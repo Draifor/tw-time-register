@@ -135,16 +135,14 @@ export default function WorkTimeForm() {
     const hours = hoursArray[0];
 
     if (startTime && hours) {
-      const hoursToAdd = hours.getUTCHours();
-      const minutesToAdd = hours.getUTCMinutes();
+      // Use local time consistently for both start and duration — no UTC conversion needed
+      const hoursToAdd = hours.getHours();
+      const minutesToAdd = hours.getMinutes();
 
       const newEndTime = new Date(startTime);
       newEndTime.setHours(startTime.getHours() + hoursToAdd);
       newEndTime.setMinutes(startTime.getMinutes() + minutesToAdd);
 
-      // Ajuste de la zona horaria a GMT-5
-      const offset = 5 * 60 * 60 * 1000; // 5 horas en milisegundos
-      newEndTime.setTime(newEndTime.getTime() - offset);
       return [newEndTime];
     }
 
@@ -335,7 +333,7 @@ export default function WorkTimeForm() {
         ...defaultValue,
         date: lastEntry.date,
         startTime: lastEntry.endTime,
-        endTime: lastEntry.endTime,
+        endTime: calculateEndTime(lastEntry.endTime, [suggestedDuration]),
         hours: [suggestedDuration]
       };
       append(newEntry);
