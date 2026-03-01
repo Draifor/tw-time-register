@@ -9,13 +9,14 @@ import { Card, CardContent } from './ui/card';
 interface DynamicFormProps<T extends FieldValues> {
   fields: Column[];
   onSubmit: (data: T) => void | Promise<void>;
-  onError?: (error: any) => void;
+  onError?: (error: unknown) => void;
   initialValues?: Partial<T>;
 }
 
 function DynamicForm<T extends FieldValues>({ fields, onSubmit, onError, initialValues }: DynamicFormProps<T>) {
   const defaultValues = fields.reduce((acc, field) => {
-    (acc as any)[field.accessorKey] = (initialValues as any)?.[field.accessorKey] ?? '';
+    (acc as Record<string, unknown>)[field.accessorKey] =
+      (initialValues as Record<string, unknown> | undefined)?.[field.accessorKey] ?? '';
     return acc;
   }, {} as DefaultValues<T>);
 

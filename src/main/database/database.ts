@@ -1,8 +1,8 @@
 import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import { open, Database } from 'sqlite';
 import fs from 'fs';
 
-let db: any;
+let db: Database | null = null;
 
 async function openDb() {
   if (!db) {
@@ -18,7 +18,14 @@ async function openDb() {
   return db;
 }
 
-export async function addTimeEntry(taskId: number, description: string, date: string, startTime: string, endTime: string, isBillable: boolean) {
+export async function addTimeEntry(
+  taskId: number,
+  description: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  isBillable: boolean
+) {
   const db = await openDb();
   return db.run(
     'INSERT INTO time_entries (task_id, description, entry_date, hora_inicio, hora_fin, facturable) VALUES (?, ?, ?, ?, ?, ?)',

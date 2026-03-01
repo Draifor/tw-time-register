@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control, FieldValues } from 'react-hook-form';
 import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -61,11 +61,11 @@ export default function WorkTimeForm() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return parsed.map((entry: any) => ({
+        return parsed.map((entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }) => ({
           ...entry,
-          hours: entry.hours.map((d: string) => new Date(d)),
-          startTime: entry.startTime.map((d: string) => new Date(d)),
-          endTime: entry.endTime.map((d: string) => new Date(d))
+          hours: entry.hours.map((d) => new Date(d)),
+          startTime: entry.startTime.map((d) => new Date(d)),
+          endTime: entry.endTime.map((d) => new Date(d))
         }));
       } catch (e) {
         console.error('Failed to parse saved form data', e);
@@ -87,6 +87,8 @@ export default function WorkTimeForm() {
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
   const { data: tasks } = useTasks();
+  // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
+  const typedControl = control as unknown as Control<FieldValues>;
 
   // Fetch next available slot on mount
   useEffect(() => {
@@ -110,7 +112,7 @@ export default function WorkTimeForm() {
 
   const options = React.useMemo(() => {
     return (
-      tasks?.map((task: any) => ({
+      tasks?.map((task) => ({
         value: String(task.id),
         label: task.taskName,
         link: task.taskLink
@@ -432,7 +434,7 @@ export default function WorkTimeForm() {
                   <Label htmlFor={`entries.${index}.date`}>Date</Label>
                   <InputDate
                     name={`entries.${index}.date`}
-                    control={control}
+                    control={typedControl}
                     rules={{ required: 'Date is required' }}
                   />
                 </div>
@@ -440,7 +442,7 @@ export default function WorkTimeForm() {
                   <Label htmlFor={`entries.${index}.hours`}>Duration</Label>
                   <InputTime
                     name={`entries.${index}.hours`}
-                    control={control}
+                    control={typedControl}
                     className="w-full"
                     rules={{ required: 'Duration is required' }}
                     options={{
@@ -456,7 +458,7 @@ export default function WorkTimeForm() {
                   <Label htmlFor={`entries.${index}.startTime`}>Start</Label>
                   <InputTime
                     name={`entries.${index}.startTime`}
-                    control={control}
+                    control={typedControl}
                     className="w-full"
                     rules={{ required: 'Start time is required' }}
                     options={{
@@ -474,7 +476,7 @@ export default function WorkTimeForm() {
                   <Label htmlFor={`entries.${index}.endTime`}>End</Label>
                   <InputTime
                     name={`entries.${index}.endTime`}
-                    control={control}
+                    control={typedControl}
                     className="w-full"
                     options={{
                       enableTime: true,

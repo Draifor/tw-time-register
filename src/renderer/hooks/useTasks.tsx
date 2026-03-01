@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
@@ -74,11 +74,14 @@ function useTasks() {
     }
   });
 
-  const handleDelete = (task: Task) => {
-    if (task.id) {
-      deleteTaskMutation(task.id);
-    }
-  };
+  const handleDelete = useCallback(
+    (task: Task) => {
+      if (task.id) {
+        deleteTaskMutation(task.id);
+      }
+    },
+    [deleteTaskMutation]
+  );
 
   const { data: typeTasks } = useQuery({
     queryKey: ['typeTasks'],
@@ -163,7 +166,7 @@ function useTasks() {
           ]
         : [])
     ],
-    [isEditable, typeTasks]
+    [isEditable, typeTasks, handleDelete, onEdit]
   );
 
   function handleAddRow() {
@@ -178,9 +181,7 @@ function useTasks() {
   return {
     data: useMemo(
       () =>
-        [...(data ?? [])].sort(
-          (a, b) => a.typeName.localeCompare(b.typeName) || a.taskName.localeCompare(b.taskName)
-        ),
+        [...(data ?? [])].sort((a, b) => a.typeName.localeCompare(b.typeName) || a.taskName.localeCompare(b.taskName)),
       [data]
     ),
     isLoading,

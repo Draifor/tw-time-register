@@ -31,7 +31,9 @@ function useSkipper() {
 const defaultColumn = <T,>(isEditable: boolean): Partial<ColumnDef<T>> => ({
   cell: ({ getValue, row: { index }, column: { id }, table }) => {
     const initialValue = getValue();
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [value, setValue] = useState(initialValue);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [isChanghed, setIsChanged] = useState(false);
 
     const onBlur = () => {
@@ -44,6 +46,7 @@ const defaultColumn = <T,>(isEditable: boolean): Partial<ColumnDef<T>> => ({
       setIsChanged(true);
     };
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
       setValue(initialValue);
     }, [initialValue]);

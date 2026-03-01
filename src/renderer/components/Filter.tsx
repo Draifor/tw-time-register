@@ -2,7 +2,7 @@ import React from 'react';
 import { Column, Table } from '@tanstack/react-table';
 import { Input } from './ui/input';
 
-function Filter({ column, table }: { column: Column<any, any>; table: Table<any> }) {
+function Filter({ column, table }: { column: Column<unknown, unknown>; table: Table<unknown> }) {
   const firstValue = table.getPreFilteredRowModel().flatRows[0]?.getValue(column.id);
   const columnFilterValue = column.getFilterValue();
 

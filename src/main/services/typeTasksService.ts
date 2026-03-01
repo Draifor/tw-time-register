@@ -1,24 +1,18 @@
 import openDB from '../database/database';
 import { TypeTasksDB, TypeTasks } from '../../types/typeTasks';
 
-interface Database {
-  run(query: string, params: any[]): Promise<void>;
-  all(query: string): Promise<any[]>;
-  get(query: string, params: any[]): Promise<any>;
-}
-
 // Function to add a task type
 export async function addTypeTask(typeName: string): Promise<void> {
-  const db: Database = await openDB();
+  const db = await openDB();
   const query = 'INSERT INTO type_tasks (type_name) VALUES (?)';
-  return db.run(query, [typeName]);
+  await db.run(query, [typeName]);
 }
 
 // Function to get all task types
 export async function getTypeTasks(): Promise<TypeTasks[]> {
-  const db: Database = await openDB();
+  const db = await openDB();
   const query = 'SELECT * FROM type_tasks';
-  const response: TypeTasksDB[] = await db.all(query);
+  const response = (await db.all(query)) as TypeTasksDB[];
   return response.map((type) => {
     return {
       id: type.type_id,
@@ -28,10 +22,10 @@ export async function getTypeTasks(): Promise<TypeTasks[]> {
 }
 
 // Function to get a task type by id
-export async function getTypeTaskById(id: number): Promise<any> {
-  const db: Database = await openDB();
+export async function getTypeTaskById(id: number): Promise<TypeTasks> {
+  const db = await openDB();
   const query = 'SELECT * FROM type_tasks WHERE type_id = ?';
-  const response: TypeTasksDB = await db.get(query, [id]);
+  const response = (await db.get(query, [id])) as TypeTasksDB;
   return {
     id: response.type_id,
     typeName: response.type_name
@@ -40,14 +34,14 @@ export async function getTypeTaskById(id: number): Promise<any> {
 
 // Funxtion to update a task type
 export async function updateTypeTask(id: number, typeName: string): Promise<void> {
-  const db: Database = await openDB();
+  const db = await openDB();
   const query = 'UPDATE type_tasks SET type_name = ? WHERE type_id = ?';
-  return db.run(query, [typeName, id]);
+  await db.run(query, [typeName, id]);
 }
 
 // Function to delete a task type
 export async function deleteTypeTask(id: number): Promise<void> {
-  const db: Database = await openDB();
+  const db = await openDB();
   const query = 'DELETE FROM type_tasks WHERE type_id = ?';
-  return db.run(query, [id]);
+  await db.run(query, [id]);
 }

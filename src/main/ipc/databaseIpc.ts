@@ -9,7 +9,15 @@ import {
   updateTypeTask,
   deleteTypeTask
 } from '../services/typeTasksService';
-import { addTask, getTasks, getTaskById, updateTask, deleteTask, importTasksFromTW, ImportTasksInput } from '../services/taskService';
+import {
+  addTask,
+  getTasks,
+  getTaskById,
+  updateTask,
+  deleteTask,
+  importTasksFromTW,
+  ImportTasksInput
+} from '../services/taskService';
 import {
   addTimeEntryService,
   addTimeEntries,
@@ -38,7 +46,13 @@ import {
   saveTWCredentials,
   WorkSettings
 } from '../services/settingsService';
-import { testTWConnection, sendTimeEntryToTW, extractTWTaskId, fetchTWSubtasks, debugTWSubtasks } from '../services/apiService';
+import {
+  testTWConnection,
+  sendTimeEntryToTW,
+  extractTWTaskId,
+  fetchTWSubtasks,
+  debugTWSubtasks
+} from '../services/apiService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
