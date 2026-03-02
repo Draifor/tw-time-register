@@ -347,10 +347,56 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - Scripts: `pnpm test`, `pnpm test:watch`, `pnpm test:ui`, `pnpm test:coverage`
 - Commit: `ba45523`
 
-### ⚠️ Mejoras Pendientes
-- Agregar festivos 2027+ al schema SQL cuando corresponda
-- Aumentar cobertura de tests (timeEntriesService, apiService, componentes React)
-- Versión `v1.2.0`: release con Models + Sync bidireccional + Tests
+### ✅ Fase 12: Release & Bugfixes Post-v1.2.0 (COMPLETADA - Mar 2026)
+- **`package.json`**: `"releaseType": "release"` en config de publish — evita que `electron-builder` cree drafts
+- **`release.yml`**: `permissions: contents: write` — sin esto `GITHUB_TOKEN` no puede subir assets a la release
+- **`eslint.config.js` → `eslint.config.mjs`**: extensión explícita ESM elimina warning `MODULE_TYPELESS_PACKAGE_JSON`
+- **`settingsService.ts`**: `syncHolidaysFromApi(year)` — sync de festivos colombianos desde Nager.Date API (gratis, sin clave)
+  - DELETE festivos sistema del año → GET API → INSERT saltando fechas con festivo custom del usuario
+- **IPC chain completo** para `syncHolidaysFromApi`: `databaseIpc.ts` → `preload.ts` → `timesService.ts`
+- **`SettingsPage.tsx`**: 2 botones en card de festivos (año actual + año siguiente), estado `isSyncing`
+- **i18n**: claves `syncButton`, `syncing`, `syncSuccess`, `syncError` en `settings.holidays` (ES/EN)
+- Commits: `f814897`, `67a69e7` (v1.2.0 tag), `e402f57`, `0806249`
+
+### ✅ Fase 13: Auto-updater Robusto (COMPLETADA - Mar 2026)
+- **`updater.ts`**: variable `manualCheck` — checks manuales siempre muestran error; background checks filtran ruido
+  - Filtro `isNoReleases` (406, 404, "Unable to find latest version", "Cannot parse releases feed") solo se aplica en checks automáticos
+  - IPC handler `check-for-updates`: `manualCheck = true` → try/await → `finally { manualCheck = false }`
+  - Startup + interval con `.catch(() => {})` para evitar unhandled rejections
+- **`useAutoUpdater.ts`**: `checkForUpdates()` establece `sessionStorage.setItem('manualUpdateCheck', '1')` ANTES del IPC
+  - `handleNotAvailable` resetea a `idle` (no a `up-to-date`) para evitar badge pegado
+- **`NavBar.tsx`**: badge solo visible en `status === 'available' || status === 'downloaded'`
+  - `checking` y `up-to-date` no muestran badge — solo afectan el botón en el menú
+- Commits: `0806249`, `5a6e0e0`
+
+---
+
+## Roadmap
+
+### v1.3.0 — Calidad & Cobertura
+- [ ] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`
+- [ ] Tests de componentes React (WorkTimeForm, TimeLogsTable)
+- [ ] E2E básico con Playwright (flujo registro → sync)
+- [ ] Limpiar y documentar `ReportsPage` (lógica de cálculo de horas)
+
+### v1.4.0 — UX & Productividad
+- [ ] **Drag & drop** para reordenar entradas en `WorkTimeForm`
+- [ ] **Duplicar entrada** (clonar fila en TimeLogsTable con un click)
+- [ ] **Timer en vivo** — botón play/stop que auto-calcula la duración al detener
+- [ ] **Vista diaria** en HomePage con resumen de horas por tarea del día
+- [ ] Exportar reporte a CSV / Excel
+
+### v1.5.0 — Sync Avanzado
+- [ ] **Eliminar entrada en TW** desde TimeLogsTable (DELETE en `apiService` ya existe)
+- [ ] **Pull desde TW** — importar time entries existentes en TW al histórico local
+- [ ] **Conflictos de sync** — detectar y mostrar entradas modificadas en ambos lados
+- [ ] Indicador de "última sincronización" por entrada
+
+### v2.0.0 — Multi-plataforma & Arquitectura
+- [ ] Soporte macOS (Apple Silicon + Intel)
+- [ ] Migrar a `electron-vite` para reemplazar la configuración manual de Vite+Electron
+- [ ] Considerar SQLite → mejor abstracción (Drizzle ORM sobre better-sqlite3)
+- [ ] Sistema de plugins/extensiones para otros proveedores (Jira, etc.)
 
 ---
 
@@ -367,10 +413,11 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 2. **Migrar gradualmente** - No cambiar todo de golpe
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
-### Prioridades actuales
-1. **Release `v1.2.0`**: incluye Models + Sync bidireccional + Tests
-2. **Ampliar tests**: timeEntriesService, apiService, componentes React
-3. **Festivos 2027+**: agregar al schema SQL cuando corresponda
+### Prioridades actuales (post v1.2.0)
+1. **Ampliar tests**: `timeEntriesService`, `apiService`, componentes React — objetivo: +60 tests
+2. **Timer en vivo**: play/stop en WorkTimeForm para registro en tiempo real
+3. **Duplicar entrada**: clonar fila en TimeLogsTable con un click
+4. **Publicar v1.2.0**: ya está en GitHub como release publicada con assets
 
 ---
 
@@ -403,7 +450,7 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - `invalidateQueries` usa objeto: `{ queryKey: ['tasks'] }`
 
 #### ESLint 9 (Flat Config)
-- Archivo de configuración: `eslint.config.js` (no `.eslintrc.json`)
+- Archivo de configuración: `eslint.config.mjs` (extensión `.mjs` obligatoria para ESM sin `"type": "module"` en package.json)
 - Usa `typescript-eslint` en lugar de `@typescript-eslint/*`
 - Scripts simplificados: `eslint .` (sin `--ext`)
 

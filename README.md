@@ -198,6 +198,41 @@ Las credenciales TeamWork (`tw_username`, `tw_password`) se cifran con `safeStor
 
 Las releases se publican automáticamente vía GitHub Actions al crear un tag `v*.*.*`. El instalador se sube a GitHub Releases y la app lo detecta al arrancar (o desde Ayuda → Buscar actualizaciones).
 
+| Versión | Highlights |
+| --------- | ----------- |
+| **v1.2.0** | Sync bidireccional · Tests (41) · Festivos API · Auto-updater robusto |
+| v1.1.x | Seguridad (DPAPI) · i18n ES/EN · Modelos BD |
+| v1.0.0 | Release inicial · HashRouter · SQLite + better-sqlite3 |
+
+---
+
+## 🗺️ Roadmap
+
+### v1.3.0 — Calidad & Cobertura
+
+- [ ] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`
+- [ ] Tests de componentes React (WorkTimeForm, TimeLogsTable)
+- [ ] Documentar lógica de cálculo en ReportsPage
+
+### v1.4.0 — UX & Productividad
+
+- [ ] **Timer en vivo** — play/stop que auto-calcula la duración al detener
+- [ ] **Duplicar entrada** — clonar fila en TimeLogsTable con un click
+- [ ] **Drag & drop** para reordenar entradas en WorkTimeForm
+- [ ] Exportar reporte a CSV
+
+### v1.5.0 — Sync Avanzado
+
+- [ ] Eliminar entrada en TW desde TimeLogsTable
+- [ ] Pull desde TW — importar time entries existentes al histórico local
+- [ ] Indicador de "última sincronización" por entrada
+
+### v2.0.0 — Multi-plataforma
+
+- [ ] Soporte macOS (Apple Silicon + Intel)
+- [ ] Migrar a `electron-vite`
+- [ ] Drizzle ORM sobre better-sqlite3
+
 ---
 
 ## 📝 Desarrollo con IA
