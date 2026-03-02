@@ -4,274 +4,162 @@
 
 Una aplicación Electron que permite crear borradores de registros de tiempo de forma flexible e inteligente, con cálculos dinámicos de fechas y horas, para luego sincronizarlos con la API de TeamWork.
 
-## 🎯 Objetivo del Proyecto
+---
 
-El objetivo principal es tener una herramienta personal para:
+## 🎯 Objetivo
 
-1. **Crear borradores de tiempo** - Registrar actividades conforme se van realizando, como un "borrador inteligente"
-2. **Cálculos dinámicos** - Calcular automáticamente fechas, horas de inicio/fin, duración total, etc.
-3. **Flexibilidad** - Poder modificar cualquier dato manualmente sin perder la funcionalidad automática
-4. **Organización por tareas** - Gestionar proyectos y tareas predefinidas de TeamWork
-5. **Reportes** - Ver cuánto tiempo se ha gastado por tarea, por día, etc.
-6. **Sincronización** - Enviar los registros a TeamWork cuando estén listos
+Herramienta personal para registrar el tiempo de trabajo diario de forma eficiente:
+
+1. **Borrador inteligente** — registrar actividades conforme se realizan, con cálculos automáticos
+2. **Cálculos encadenados** — hora fin de la entrada N se propaga como hora inicio de la N+1
+3. **Flexibilidad** — modificar cualquier dato manualmente sin perder la automatización
+4. **Organización por tareas** — gestionar proyectos y tareas vinculadas a TeamWork
+5. **Reportes** — tiempo por tarea, por día, horas facturables vs. totales
+6. **Sync bidireccional** — POST la primera vez, PUT si ya existe en TW; siempre filtrado por el usuario de sesión
+
+---
 
 ## 🏗️ Stack Tecnológico
 
-Este proyecto fue diseñado para aprender tecnologías modernas y patrones de diseño escalables:
-
 ### Core
 
-- **Electron** v30 - Framework para aplicaciones de escritorio
-- **React** v18 - Biblioteca UI con Hooks
-- **TypeScript** v5 - Tipado estático
-- **Vite** v7 - Build tool y dev server ultrarrápido
+- **Electron** v30 — proceso main, IPC, acceso a SQLite
+- **React** v18 + **TypeScript** v5 — renderer
+- **Vite** v7 — bundler ultrarrápido
 
-### UI y Estilos
+### UI
 
-- **shadcn/ui** - Sistema de componentes moderno basado en Radix UI
-- **Tailwind CSS** v3.4 - Framework de estilos utility-first
-- **Radix UI** - Primitivos accesibles (Dialog, Select, Tabs, Tooltip, etc.)
-- **Lucide React** - Iconos modernos
-- **Sonner** - Notificaciones toast elegantes
+- **shadcn/ui** — componentes accesibles (Radix UI)
+- **Tailwind CSS** v3.4 — utility-first
+- **Lucide React** — iconos
+- **Sonner** — notificaciones toast
 
-### Gestión de Estado y Data
+### Estado y datos
 
-- **TanStack React Query** v5 - Manejo de estado del servidor y caché
-- **TanStack React Table** v8 - Tablas avanzadas con filtrado, paginación, edición
-- **React Hook Form** v7 - Manejo de formularios con validación
+- **TanStack React Query** v5 — cache y estado del servidor
+- **TanStack React Table** v8 — tablas con edición inline e infinite scroll
+- **React Hook Form** v7 — formularios con validación
+
+### Base de datos
+
+- **better-sqlite3** v11 — SQLite local, prebuilts N-API (sin recompilar)
 
 ### Internacionalización
 
-- **i18next** + **react-i18next** - Soporte multi-idioma (ES/EN)
+- **i18next** + **react-i18next** — ES / EN
 
-### Base de Datos
+### Calidad
 
-- **SQLite3** - Base de datos local embebida
-- **sqlite** - Driver async para SQLite
+- **ESLint** v9 (flat config) + **Prettier** v3 + **typescript-eslint** v8
+- **Vitest** v4 — 41 tests unitarios, 0 fallos
 
-### Calidad de Código
+### Distribución
 
-- **ESLint** v9 - Linting con flat config
-- **Prettier** v3 - Formateo de código
-- **typescript-eslint** v8 - Reglas TypeScript para ESLint
+- **electron-updater** v6 — auto-actualizaciones vía GitHub Releases
+- **electron-builder** — instalador NSIS para Windows
 
-### Otros
+---
 
-- **Axios** - Cliente HTTP para API de TeamWork
-- **date-fns** - Manipulación de fechas
-- **Flatpickr** - Selector de fechas/horas
-- **React Router DOM** v6 - Navegación
-
-## 📁 Estructura del Proyecto
+## 📁 Estructura
 
 ```txt
-tw-time-register/
-├── database/
-│   └── schema.sql              # Esquema de la base de datos SQLite
-├── src/
-│   ├── main/                   # Proceso principal de Electron
-│   │   ├── index.ts            # Entrada principal, crea la ventana
-│   │   ├── preload.ts          # Bridge seguro entre main y renderer
-│   │   ├── database/
-│   │   │   ├── database.ts     # Conexión y queries SQLite
-│   │   │   └── models/         # (Modelos vacíos, pendientes)
-│   │   ├── ipc/
-│   │   │   ├── index.ts        # Registro de handlers IPC
-│   │   │   ├── databaseIpc.ts  # Handlers para operaciones de BD
-│   │   │   ├── windowIpc.ts    # Handlers para control de ventana
-│   │   │   └── anotherIpc.ts   # Handler de prueba para mensajes
-│   │   └── services/
-│   │       ├── apiService.ts       # Cliente API de TeamWork
-│   │       ├── credentialService.ts # Autenticación
-│   │       ├── taskService.ts      # CRUD de tareas
-│   │       └── typeTasksService.ts # CRUD de tipos de tareas
-│   ├── renderer/               # Proceso de renderizado (React)
-│   │   ├── App.tsx             # Componente raíz y rutas
-│   │   ├── main.tsx            # Punto de entrada React
-│   │   ├── components/
-│   │   │   ├── AppBar.tsx          # Barra de título personalizada
-│   │   │   ├── NavBar.tsx          # Navegación principal
-│   │   │   ├── WorkTimeForm.tsx    # ⭐ Formulario principal de tiempos
-│   │   │   ├── DataTable.tsx       # Tabla genérica con TanStack Table
-│   │   │   ├── DynamicForm.tsx     # Formulario dinámico por columnas
-│   │   │   ├── ImportTasksDialog.tsx # ⭐ Asistente importación tareas desde TW
-│   │   │   ├── TasksTable.tsx      # Tabla de tareas
-│   │   │   ├── TypeTasksTable.tsx  # Tabla de tipos de tarea
-│   │   │   ├── TimeLogsTable.tsx   # Tabla de logs de tiempo
-│   │   │   ├── TotalTimeDay.tsx    # Cálculo total diario
-│   │   │   ├── DeleteButton.tsx    # Botón de eliminación con confirmación
-│   │   │   └── ui/                 # Componentes shadcn/ui
-│   │   │       ├── button.tsx
-│   │   │       ├── card.tsx
-│   │   │       ├── combobox.tsx    # ⭐ Selector con búsqueda (custom)
-│   │   │       ├── dialog.tsx
-│   │   │       ├── alert-dialog.tsx
-│   │   │       ├── dropdown-menu.tsx
-│   │   │       ├── input.tsx
-│   │   │       ├── label.tsx
-│   │   │       ├── select.tsx
-│   │   │       ├── skeleton.tsx
-│   │   │       ├── table.tsx
-│   │   │       ├── tabs.tsx
-│   │   │       ├── tooltip.tsx
-│   │   │       └── sonner.tsx
-│   │   ├── hooks/
-│   │   │   ├── useTasks.tsx            # Hook para gestión de tareas
-│   │   │   ├── useTimeLogs.tsx         # Hook para logs de tiempo
-│   │   │   ├── useTypeTasks.tsx        # Hook para tipos de tarea
-│   │   │   ├── useTable.tsx            # Hook para TanStack Table
-│   │   │   ├── useDarkMode.ts          # Hook para modo oscuro
-│   │   │   └── useKeyboardShortcuts.ts # Hook para atajos de teclado
-│   │   ├── services/
-│   │   │   ├── tasksService.ts     # Servicio de tareas (renderer)
-│   │   │   ├── timesService.ts     # Servicio de tiempos (renderer)
-│   │   │   └── typeTasksService.ts # Servicio de tipos (renderer)
-│   │   ├── pages/
-│   │   │   ├── HomePage.tsx        # Página principal con WorkTimeForm
-│   │   │   └── TasksPage.tsx       # Página de gestión (Tabs: Tasks, Types, Logs)
-│   │   ├── locales/                # Traducciones i18n
-│   │   └── styles/                 # Estilos adicionales
-│   └── types/                  # Tipos TypeScript compartidos
-│       ├── tasks.ts            # Tipos y columnas de tareas
-│       ├── typeTasks.ts        # Tipos y columnas de tipos de tarea
-│       ├── dataTable.ts        # Tipos para DataTable genérica
-│       ├── field.ts            # Tipos para campos de formulario
-│       └── menu.ts             # Tipos para menús
-├── dist-electron/              # Build del proceso principal
-├── dist-vite/                  # Build del proceso renderer
-├── package.json
-├── vite.config.ts
-├── tailwind.config.js
-└── tsconfig.json
+src/
+├── main/                        # Proceso Electron (Node.js)
+│   ├── index.ts                 # BrowserWindow + DevTools + error handling
+│   ├── preload.ts               # contextBridge → window.Main.*
+│   ├── database/
+│   │   ├── database.ts          # DatabaseWrapper (async sobre better-sqlite3)
+│   │   ├── migrations.ts        # Migraciones idempotentes
+│   │   └── models/
+│   │       ├── TimeLog.ts       # time_entries: interfaces + columnsDB
+│   │       ├── TaskLinks.ts     # extractTwTaskId() + TaskLink
+│   │       └── History.ts       # sync_history: SyncHistory + SyncAction
+│   ├── ipc/
+│   │   └── databaseIpc.ts       # Todos los handlers IPC
+│   └── services/
+│       ├── apiService.ts        # GET/POST/PUT/DELETE TeamWork API
+│       ├── syncService.ts       # smartSyncEntries() — sync bidireccional
+│       ├── historyService.ts    # CRUD sync_history
+│       ├── timeLogService.ts    # markEntryAsSent/NotSent, getUnsentEntries
+│       ├── taskLinkService.ts   # getLinkedTasks, updateTaskLink
+│       ├── timeEntriesService.ts # CRUD time_entries
+│       ├── taskService.ts       # CRUD tasks
+│       ├── settingsService.ts   # work_settings + credenciales TW
+│       └── encryptionService.ts # DPAPI via safeStorage
+├── renderer/                    # Proceso React
+│   ├── App.tsx                  # HashRouter + rutas
+│   ├── components/
+│   │   ├── WorkTimeForm.tsx     # Formulario principal de tiempos
+│   │   ├── TimeLogsTable.tsx    # Tabla con edición inline + sync
+│   │   ├── TasksTable.tsx
+│   │   ├── TypeTasksTable.tsx
+│   │   └── ui/                  # Componentes shadcn/ui
+│   ├── hooks/
+│   │   ├── useTWSession.ts      # Sesión TW activa → badge en NavBar
+│   │   └── useAutoUpdater.ts    # Estado del auto-updater
+│   ├── lib/
+│   │   └── timeUtils.ts         # parseDuration / formatDuration (puras)
+│   ├── locales/
+│   │   ├── es.ts
+│   │   └── en.ts
+│   ├── pages/
+│   │   ├── HomePage.tsx
+│   │   ├── TasksPage.tsx
+│   │   ├── ReportsPage.tsx
+│   │   └── SettingsPage.tsx
+│   └── services/
+│       └── timesService.ts      # Wrappers window.Main.* + SmartSyncResult
+└── tests/                       # Vitest
+    ├── setup.ts
+    ├── main/
+    │   ├── models/TaskLinks.test.ts
+    │   └── services/syncService.test.ts, historyService.test.ts
+    └── renderer/
+        └── timeUtils.test.ts
 ```
 
-## 🗃️ Modelo de Datos
+---
 
-### Esquema Actual (SQLite)
+## 🗃️ Base de Datos
 
 ```sql
--- Tipos de tarea (categorías)
-CREATE TABLE type_tasks (
-    type_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type_name TEXT NOT NULL
-);
--- Valores por defecto: Acompañamiento, FORE, RECA, Procesos Internos
-
--- Tareas (proyectos/tareas de TeamWork)
-CREATE TABLE tasks (
-    task_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type_id INTEGER NOT NULL,          -- FK a type_tasks
-    task_name TEXT NOT NULL,
-    task_link TEXT,                     -- Link de TW
-    description TEXT
-);
-
--- Entradas de tiempo (borradores)
-CREATE TABLE time_entries (
-    entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER NOT NULL,           -- FK a tasks
-    description TEXT,
-    entry_date DATE NOT NULL,
-    entry_date DATE NOT NULL,
-    hora_inicio TIME NOT NULL,
-    hora_fin TIME NOT NULL,
-    facturable BOOLEAN DEFAULT 0,
-    send BOOLEAN DEFAULT 0              -- Si ya se envió a TW
-);
-
--- Usuarios/credenciales (para API de TW)
-CREATE TABLE users (
-    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL              -- ⚠️ Almacenado en texto plano
-);
+type_tasks    (type_id, type_name)
+tasks         (task_id, type_id, task_name, task_link, description)
+time_entries  (entry_id, task_id, description, entry_date, hora_inicio, hora_fin, facturable, send)
+sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_task_id, success, error_message)
 ```
 
-## ✅ Funcionalidades Implementadas
+`sync_history` es la clave del sync bidireccional: si `tw_time_entry_id` ya existe → PUT, si no → POST.
 
-### Funcionando
+---
 
-- [x] Estructura base Electron + React + Vite
-- [x] Base de datos SQLite con esquema básico
-- [x] **Sistema de UI moderno con shadcn/ui**
-  - [x] Componentes: Button, Card, Dialog, Select, Table, Tabs, Tooltip, etc.
-  - [x] Tema claro/oscuro completo
-  - [x] Notificaciones toast con Sonner
-- [x] Formulario de registro de tiempos (`WorkTimeForm`)
-  - [x] Campos dinámicos con `useFieldArray`
-  - [x] Cálculo automático de hora fin basado en inicio + duración
-  - [x] Persistencia en localStorage mientras se edita
-  - [x] Guardado en base de datos
-  - [x] **Selector de tarea con Combobox buscable** (navegación teclado, checkmark en selección)
-  - [x] Textarea auto-expandible para descripciones
-  - [x] Layout responsivo de una sola fila
-  - [x] Fix: nuevas entradas no disparan el cálculo de post-almuerzo
-- [x] **DataTable mejorada**
-  - [x] Infinite scroll (carga más filas al hacer scroll)
-  - [x] Skeleton loaders mientras carga
-  - [x] Empty states atractivos
-  - [x] Búsqueda global
-- [x] **Keyboard shortcuts**
-  - [x] `Ctrl+N` - Nueva entrada
-  - [x] `Ctrl+S` - Guardar/Registrar
-  - [x] `Esc` - Eliminar última entrada
-- [x] **TimeLogsTable** - Visualización avanzada de tiempos registrados
-  - [x] Edición inline (fecha, descripción, hora inicio/fin, facturable)
-  - [x] Sincronización individual y masiva con TeamWork API
-  - [x] Confirmación de eliminación con AlertDialog
-  - [x] **Búsqueda general** por tarea o descripción
-  - [x] **Filtros** por tarea (Combobox buscable), fecha desde, fecha hasta
-  - [x] Contador de resultados filtrados
-  - [x] Empty state específico para filtros sin resultados
-- [x] **Importación de tareas desde TeamWork** (`ImportTasksDialog`)
-  - [x] Asistente 3 pasos: Configurar → Previsualizar → Listo
-  - [x] Templates predefinidos: RECA/FORE (5 subtareas) y OTHER (3 subtareas)
-  - [x] Matching por número de ítem (ej. `^2.`, `^3.`, etc.)
-  - [x] Panel diagnóstico cuando no hay coincidencias
-  - [x] Soporte multi-campo de la API TW (`content`, `name`, `title`)
-- [x] CRUD de tareas (`TasksTable`) - **ordenado por tipo y nombre**
-- [x] CRUD de tipos de tarea (`TypeTasksTable`) - **ordenado alfabéticamente**
-- [x] Sistema de navegación con React Router
-- [x] AppBar personalizada con iconos Lucide
-- [x] Soporte i18n (EN/ES) con dropdown de selección
-- [x] Modo oscuro completo
-- [x] Confirmación de eliminación con AlertDialog
-- [x] **Cálculos encadenados en `WorkTimeForm`**: hora fin de entrada N → hora inicio de entrada N+1
-- [x] **`ReportsPage`** - Vista de reportes (`/reports`)
-  - [x] 4 tarjetas resumen: horas totales, facturables, enviadas a TW, días con registros
-  - [x] Pestaña por tarea con barra de progreso y badge de estado sincronización
-  - [x] Pestaña por día con totales y detalle de entradas
-  - [x] Filtro por rango de fechas
-- [x] **`SettingsPage`** - Configuración completa (`/settings`)
-  - [x] Credenciales TeamWork (dominio, usuario, contraseña, userId)
-  - [x] Botón "Probar conexión" con auto-relleno de userId
-  - [x] Horario de trabajo (hora inicio por defecto, horas máximas por día)
-  - [x] Días laborales configurables
-  - [x] Gestión de festivos (colombianos + personalizados)
-  - [x] Selector de idioma (ES/EN)
-- [x] **NavBar con badge de sesión TW** (punto verde animado + nombre cuando está conectado)
-- [x] **Linting limpio**: 0 errores, 0 warnings en todo `src/`
+## ✅ Funcionalidades
 
-### Pendiente
+- **WorkTimeForm** — campos dinámicos, cálculo encadenado inicio/fin, persistencia localStorage
+- **TimeLogsTable** — edición inline, sync individual y masivo, búsqueda + filtros por fecha y tarea
+- **Sync bidireccional** — `smartSyncEntries()`: POST / PUT según `sync_history`, siempre con `person-id = userId`
+- **ImportTasksDialog** — asistente 3 pasos para importar subtareas de TW (templates RECA/FORE y OTHER)
+- **ReportsPage** — horas por tarea y por día, 4 tarjetas resumen, filtro por rango de fechas
+- **SettingsPage** — credenciales TW encriptadas (DPAPI), horario, días laborales, festivos
+- **NavBar** — badge de sesión TW activa, badge de auto-updater
+- **i18n** — ES/EN completo en todos los componentes y páginas
+- **Seguridad** — credenciales TW cifradas con `safeStorage` (DPAPI en Windows)
+- **Auto-updater** — descarga en segundo plano, toasts de estado, botón "Buscar actualizaciones"
+- **41 tests** — modelos, historyService, syncService, timeUtils
 
-- [ ] Encriptar credenciales en BD (contraseña almacenada en texto plano)
-- [ ] Completar modelos en `main/database/models/`
-- [ ] Sincronización bidireccional con TeamWork
-- [ ] i18n completo para páginas nuevas (Reports, Settings)
-- [ ] Tests unitarios/integración
-
-## 🐛 Problemas Conocidos
-
-### Seguridad
-
-- Credenciales TW almacenadas en texto plano en SQLite (pendiente encriptar)
+---
 
 ## 🚀 Desarrollo
 
 ### Requisitos
 
-- Node.js v20+ (recomendado v24+)
-- pnpm (recomendado) o npm
+- **Node.js 22 LTS** — `better-sqlite3` tiene prebuilts solo para Node 22
+
+  ```bash
+  fnm use 22
+  ```
+
+- **pnpm**
 
 ### Instalación
 
@@ -279,115 +167,44 @@ CREATE TABLE users (
 pnpm install
 ```
 
-### Desarrollo
+### Comandos
 
 ```bash
-# Inicia Vite dev server + Electron
-pnpm dev
+pnpm dev              # Vite dev server + Electron
+pnpm build            # Compilar para producción
+pnpm test             # Vitest (una pasada)
+pnpm test:watch       # Vitest en modo watch
+pnpm test:coverage    # Coverage en /coverage
+.\build-local.ps1    # Build local sin instalador (no requiere admin)
 ```
 
-### Build
+### Distribución para producción (requiere admin en Windows para NSIS)
 
 ```bash
-# Genera dist-vite y dist-electron
-pnpm build
-
-# Empaqueta para distribución
-pnpm dist:win   # Windows
-pnpm dist:mac   # macOS
-pnpm dist:linux # Linux
+pnpm dist:win    # Instalador NSIS para Windows x64
 ```
 
-## 📋 Plan de Desarrollo
-
-### ✅ Fase 1: Limpieza (COMPLETADA - Dic 2025)
-
-- [x] Eliminar código de ejemplo (Users, Comments, faker, EditableTable, makeData)
-- [x] Unificar componentes duplicados (DataTable)
-- [x] Remover dependencias innecesarias (@faker-js/faker)
-- [x] Actualizar metadatos del package.json
-
-### ✅ Fase 2: Actualización del Stack (COMPLETADA - Dic 2025)
-
-| Paquete | Antes | Después |
-| --------- | ------- | --------- |
-| Vite | 2.8.6 | **7.2.6** ✅ |
-| @vitejs/plugin-react | 1.2.0 | **5.1.1** ✅ |
-| TanStack Query | 4.x | **5.x** ✅ |
-| Tailwind CSS | 3.0.23 | **3.4.18** ✅ |
-| ESLint | 8.11.0 | **9.39.1** ✅ |
-| Prettier | 2.6.0 | **3.7.4** ✅ |
-| typescript-eslint | 5.16.0 | **8.48.1** ✅ |
-
-### ✅ Fase 3: Mejora de UI/UX (COMPLETADA - Dic 2025)
-
-> 🎨 Sistema de diseño moderno implementado con shadcn/ui
-
-**Componentes shadcn/ui instalados:**
-
-- Button, Card, Dialog, AlertDialog
-- Input, Label, Textarea
-- Select (Radix), Dropdown Menu
-- Table, Tabs, Separator
-- Tooltip, Badge, Skeleton
-- Sonner (toasts)
-
-**Mejoras implementadas:**
-
-- [x] Tema claro/oscuro completo con variables CSS
-- [x] Formulario de tiempos rediseñado (layout de una fila)
-- [x] Textarea auto-expandible
-- [x] Infinite scroll en tablas (reemplaza paginación)
-- [x] Skeleton loaders durante carga
-- [x] Empty states atractivos
-- [x] Confirmación de eliminación con AlertDialog
-- [x] Keyboard shortcuts (Ctrl+N, Ctrl+S, Esc)
-- [x] Tooltips con indicadores de shortcuts
-- [x] Notificaciones toast con Sonner
-- [x] Selector de idioma con dropdown
-- [x] Eliminada dependencia de Material Tailwind
-- [x] Eliminada dependencia de react-select
-
-### ✅ Fase 4: Funcionalidad Core — Parte 1 (COMPLETADA - Feb 2026)
-
-- [x] Combobox buscable para selección de tarea (navegación teclado, sin dependencias nuevas)
-- [x] Fix: nuevas entradas en `WorkTimeForm` no disparan ajuste de post-almuerzo
-- [x] Importación de tareas desde TeamWork (`ImportTasksDialog`) con templates RECA/FORE y OTHER
-- [x] Soporte de múltiples formatos de respuesta de API TW (`tasks` / `todo-items`, `content` / `name` / `title`)
-- [x] Ordenamiento de tipos de tarea (alfabético) y tareas (por tipo, luego nombre)
-- [x] Edición inline completa en `TimeLogsTable` (fecha, descripción, tiempos, facturable)
-- [x] Sincronización masiva con TeamWork desde `TimeLogsTable`
-- [x] Búsqueda general + filtros por fecha y tarea en `TimeLogsTable`
-
-### ✅ Fase 5: Funcionalidad Core — Parte 2 (COMPLETADA - Feb 2026)
-
-- [x] Linting limpio: 0 errores, 0 warnings (`any`, `_event`, `console.log`, deps de hooks)
-- [x] Tipado estricto en IPC handlers, formularios, hooks y servicios
-- [x] `ReportsPage`: reportes de horas por tarea y por día con filtro de fechas
-- [x] Cálculos encadenados en `WorkTimeForm` (hora fin N → hora inicio N+1)
-- [x] `SettingsPage`: flujo completo de autenticación y configuración de TeamWork
-- [x] `useTWSession`: badge de sesión activa en NavBar
-- [x] Migraciones automáticas de claves TW para BDs existentes
-
-### Fase 6: Pulido y Seguridad (PENDIENTE)
-
-1. [ ] Encriptar credenciales TW en BD
-2. [ ] Completar modelos en `main/database/models/`
-3. [ ] Completar i18n en páginas nuevas (Reports, Settings)
-4. [ ] Importación de proyectos/tareas completos desde TW (no solo subtareas)
-5. [ ] Sincronización bidireccional (detectar entradas ya enviadas)
-
-### Fase 7: Tests y Docs (PENDIENTE)
-
-1. [ ] Tests unitarios/integración
-2. [ ] Documentación de API interna
-3. [ ] Optimización de rendimiento
+> Tras cambiar versión de Node, ejecutar `electron-builder install-app-deps` para recompilar `better-sqlite3` contra el ABI de Electron.
 
 ---
 
-## 📝 Notas para Desarrollo con IA
+## 🔒 Seguridad
 
-Este proyecto está configurado para desarrollo asistido por IA. Ver `.github/copilot-instructions.md` para instrucciones detalladas sobre el contexto y convenciones del proyecto.
+Las credenciales TeamWork (`tw_username`, `tw_password`) se cifran con `safeStorage` de Electron (DPAPI en Windows) antes de guardarse en SQLite. El prefijo `enc:` hace el proceso idempotente — valores antiguos se migran automáticamente al arrancar.
+
+---
+
+## 📦 Releases
+
+Las releases se publican automáticamente vía GitHub Actions al crear un tag `v*.*.*`. El instalador se sube a GitHub Releases y la app lo detecta al arrancar (o desde Ayuda → Buscar actualizaciones).
+
+---
+
+## 📝 Desarrollo con IA
+
+Ver [`.github/copilot-instructions.md`](.github/copilot-instructions.md) para contexto completo, patrones, convenciones y estado actual del proyecto.
+
+---
 
 ## 📄 Licencia
 
