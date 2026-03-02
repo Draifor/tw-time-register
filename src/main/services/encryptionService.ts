@@ -44,6 +44,12 @@ export function encrypt(plainText: string): string {
  */
 export function decrypt(value: string): string {
   if (!value || !isEncryptedValue(value)) return value;
-  const buffer = Buffer.from(value.slice(PREFIX.length), 'base64');
-  return safeStorage.decryptString(buffer);
+  try {
+    const buffer = Buffer.from(value.slice(PREFIX.length), 'base64');
+    return safeStorage.decryptString(buffer);
+  } catch {
+    // Decryption failed (e.g. different OS session, corrupted data).
+    // Return empty string so consumers can show "not configured" state.
+    return '';
+  }
 }

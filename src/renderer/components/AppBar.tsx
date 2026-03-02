@@ -1,13 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Minus, Square, X, Maximize2 } from 'lucide-react';
 
 import Icon from '../assets/icons/Icon-Electron.png';
 import MenuBar from './MenuBar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from './ui/dialog';
 
 function AppBar() {
   const [isMaximize, setMaximize] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [appVersion, setAppVersion] = useState('');
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (aboutOpen && !appVersion) {
+      window.Main.getAppVersion()
+        .then(setAppVersion)
+        .catch(() => setAppVersion('?'));
+    }
+  }, [aboutOpen, appVersion]);
 
   const handleToggle = () => {
     setMaximize(!isMaximize);
@@ -59,8 +76,8 @@ function AppBar() {
     {
       label: t('menu.help.help'),
       items: [
-        { label: t('menu.help.documentation'), onClick: () => {} },
-        { label: t('menu.help.about'), onClick: () => {} }
+        { label: t('menu.help.documentation'), action: () => {} },
+        { label: t('menu.help.about'), action: () => setAboutOpen(true) }
       ]
     }
   ];
@@ -97,6 +114,28 @@ function AppBar() {
         </div>
       </div>
       <MenuBar items={menuItems} />
+
+      <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <img src={Icon} alt="TW Time Register" className="h-10 w-10" />
+              <div>
+                <DialogTitle className="text-left">{t('menu.help.aboutDialogTitle')}</DialogTitle>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  {appVersion ? `v${appVersion}` : '...'}
+                </p>
+              </div>
+            </div>
+            <DialogDescription className="text-left">
+              {t('menu.help.aboutDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground text-center pt-2 border-t">
+            {t('menu.help.builtWith')}
+          </p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

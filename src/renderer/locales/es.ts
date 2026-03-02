@@ -204,7 +204,11 @@ const es = {
       help: {
         help: 'Ayuda',
         documentation: 'Documentación',
-        about: 'Acerca de'
+        about: 'Acerca de',
+        aboutDialogTitle: 'Acerca de TW Time Register',
+        aboutDesc: 'Aplicación de escritorio para registrar y sincronizar tiempos de trabajo con TeamWork.',
+        versionLabel: 'Versión',
+        builtWith: 'Construido con Electron + React'
       }
     },
     workTimeForm: {

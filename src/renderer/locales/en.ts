@@ -204,7 +204,11 @@ const en = {
       help: {
         help: 'Help',
         documentation: 'Documentation',
-        about: 'About'
+        about: 'About',
+        aboutDialogTitle: 'About TW Time Register',
+        aboutDesc: 'Desktop application to register and sync work hours with TeamWork.',
+        versionLabel: 'Version',
+        builtWith: 'Built with Electron + React'
       }
     },
     workTimeForm: {
