@@ -14,7 +14,8 @@ import {
   Loader2,
   Database,
   Upload,
-  Download
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -28,6 +29,7 @@ import {
   getHolidays,
   addHoliday,
   deleteHoliday,
+  syncHolidaysFromApi,
   getTWCredentials,
   saveTWCredentials,
   testTWConnection,
@@ -98,6 +100,7 @@ export default function SettingsPage() {
 
   // Database backup state
   const [dbExporting, setDbExporting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [dbImporting, setDbImporting] = useState(false);
 
   const { control, handleSubmit, reset, watch, setValue } = useForm<SettingsFormData>({
@@ -249,6 +252,20 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error deleting holiday:', error);
       toast.error(t('settings.holidays.deleteError'));
+    }
+  };
+
+  const handleSyncHolidays = async (year: number) => {
+    setIsSyncing(true);
+    try {
+      const result = await syncHolidaysFromApi(year);
+      const updatedHolidays = await getHolidays();
+      setHolidays(updatedHolidays);
+      toast.success(t('settings.holidays.syncSuccess', { inserted: result.inserted, year: result.year }));
+    } catch (_err) {
+      toast.error(t('settings.holidays.syncError'));
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -559,11 +576,31 @@ export default function SettingsPage() {
       {/* Holidays Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            {t('settings.holidays.title')}
-          </CardTitle>
-          <CardDescription>{t('settings.holidays.description')}</CardDescription>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                {t('settings.holidays.title')}
+              </CardTitle>
+              <CardDescription className="mt-1">{t('settings.holidays.description')}</CardDescription>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {[new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                <Button
+                  key={year}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSyncing}
+                  onClick={() => handleSyncHolidays(year)}
+                  className="gap-2"
+                >
+                  {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  {isSyncing ? t('settings.holidays.syncing') : `${t('settings.holidays.syncButton')} ${year}`}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add New Holiday */}

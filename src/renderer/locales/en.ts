@@ -162,7 +162,11 @@ const en = {
         deleted: 'Holiday deleted',
         deleteError: 'Error deleting holiday',
         systemDeleteError: 'Cannot delete system holidays',
-        fillAllFields: 'Please fill all fields'
+        fillAllFields: 'Please fill all fields',
+        syncButton: 'Sync holidays',
+        syncing: 'Syncing...',
+        syncSuccess: '{{inserted}} holidays synced for {{year}}',
+        syncError: 'Error syncing holidays. Check your internet connection.'
       },
       database: {
         title: 'Database',

@@ -121,6 +121,10 @@ export const deleteHoliday = async (holidayId: number): Promise<boolean> => {
   return window.Main.deleteHoliday(holidayId);
 };
 
+export const syncHolidaysFromApi = async (year: number): Promise<{ inserted: number; year: number }> => {
+  return window.Main.syncHolidaysFromApi(year);
+};
+
 export const isWorkDay = async (date: string): Promise<boolean> => {
   return window.Main.isWorkDay(date);
 };

@@ -246,6 +246,7 @@ const api = {
   getHolidays: () => ipcRenderer.invoke('getHolidays'),
   addHoliday: (date: string, description: string) => ipcRenderer.invoke('addHoliday', date, description),
   deleteHoliday: (holidayId: number) => ipcRenderer.invoke('deleteHoliday', holidayId),
+  syncHolidaysFromApi: (year: number) => ipcRenderer.invoke('syncHolidaysFromApi', year),
   isWorkDay: (date: string) => ipcRenderer.invoke('isWorkDay', date),
 
   // Language

@@ -162,7 +162,11 @@ const es = {
         deleted: 'Festivo eliminado',
         deleteError: 'Error al eliminar',
         systemDeleteError: 'No se puede eliminar festivos del sistema',
-        fillAllFields: 'Complete todos los campos'
+        fillAllFields: 'Complete todos los campos',
+        syncButton: 'Sync festivos',
+        syncing: 'Sincronizando...',
+        syncSuccess: '{{inserted}} festivos sincronizados para {{year}}',
+        syncError: 'Error al sincronizar festivos. Verifica tu conexión a internet.'
       },
       database: {
         title: 'Base de datos',

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import openDb from '../database/database';
 import { encrypt, decrypt } from './encryptionService';
 
@@ -139,6 +140,39 @@ export async function isWorkDay(date: string): Promise<boolean> {
   // Check if it's a holiday
   const holiday = await isHoliday(date);
   return !holiday;
+}
+
+// Sync public holidays for Colombia from Nager.Date free API (no key required)
+// Deletes existing system holidays for that year and replaces them with API data.
+// Custom holidays on the same date are preserved.
+export async function syncHolidaysFromApi(year: number): Promise<{ inserted: number; year: number }> {
+  const response = await axios.get<Array<{ date: string; localName: string }>>(
+    `https://date.nager.at/api/v3/PublicHolidays/${year}/CO`,
+    { timeout: 10000 }
+  );
+
+  const db = await openDb();
+
+  // Remove existing system holidays for this year (custom ones are untouched)
+  await db.run(`DELETE FROM holidays WHERE holiday_date LIKE ? AND is_custom = 0`, [`${year}-%`]);
+
+  let inserted = 0;
+  for (const holiday of response.data) {
+    // Skip if a custom holiday already occupies this date
+    const existing = await db.get<{ holiday_id: number }>(
+      'SELECT holiday_id FROM holidays WHERE holiday_date = ? AND is_custom = 1',
+      [holiday.date]
+    );
+    if (!existing) {
+      await db.run('INSERT INTO holidays (holiday_date, description, is_custom) VALUES (?, ?, 0)', [
+        holiday.date,
+        holiday.localName
+      ]);
+      inserted++;
+    }
+  }
+
+  return { inserted, year };
 }
 
 // Get the UI language setting

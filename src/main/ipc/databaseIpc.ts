@@ -43,6 +43,7 @@ import {
   addHoliday,
   deleteHoliday,
   isWorkDay,
+  syncHolidaysFromApi,
   getLanguage,
   setLanguage,
   getTWCredentials,
@@ -134,6 +135,10 @@ ipcMain.handle('addHoliday', async (_event, date: string, description: string) =
 
 ipcMain.handle('deleteHoliday', async (_event, holidayId: number) => {
   return deleteHoliday(holidayId);
+});
+
+ipcMain.handle('syncHolidaysFromApi', async (_event, year: number) => {
+  return syncHolidaysFromApi(year);
 });
 
 ipcMain.handle('isWorkDay', async (_event, date: string) => {
