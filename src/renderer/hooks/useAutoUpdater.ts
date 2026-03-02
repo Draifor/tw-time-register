@@ -18,7 +18,11 @@ export function useAutoUpdater(): UpdateState & { installUpdate: () => void; che
 
   const checkForUpdates = () => {
     setState((s) => ({ ...s, status: 'checking' }));
-    window.Main.checkForUpdates?.();
+    sessionStorage.setItem('manualUpdateCheck', '1');
+    window.Main.checkForUpdates?.().catch?.(() => {
+      setState((s) => ({ ...s, status: 'idle' }));
+      sessionStorage.removeItem('manualUpdateCheck');
+    });
   };
 
   useEffect(() => {

@@ -17,7 +17,13 @@ export function initAutoUpdater(window: BrowserWindow): void {
       window.webContents.send('update-not-available', { version: 'dev' });
       return;
     }
-    await autoUpdater.checkForUpdatesAndNotify();
+    try {
+      await autoUpdater.checkForUpdatesAndNotify();
+    } catch (err) {
+      // The 'error' event below already handles forwarding to renderer;
+      // swallow here to avoid double-sending.
+      console.error('Error checking for updates:', err);
+    }
   });
 
   // Skip the rest of the setup in development
@@ -41,12 +47,27 @@ export function initAutoUpdater(window: BrowserWindow): void {
     window.webContents.send('update-downloaded', { version: info.version });
   });
 
-  // Forward errors to renderer so they appear in DevTools / toast
+  // Forward errors to renderer.
+  // "No releases" is expected noise (repo without assets yet) — suppress it silently.
+  // Every other error (network failure, misconfiguration, etc.) always surfaces.
   autoUpdater.on('error', (err: Error) => {
-    window.webContents.send('update-error', { message: err.message });
+    const isNoReleases =
+      err.message.includes('Unable to find latest version') ||
+      err.message.includes('Cannot parse releases feed') ||
+      err.message.includes('404') ||
+      err.message.includes('406');
+
+    if (!isNoReleases) {
+      window.webContents.send('update-error', { message: err.message });
+    }
   });
 
-  // Check once on startup, then every 4 hours
-  autoUpdater.checkForUpdatesAndNotify();
-  setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 4 * 60 * 60 * 1000);
+  // Check once on startup, then every 4 hours — errors are intentionally silent
+  autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  setInterval(
+    () => {
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    },
+    4 * 60 * 60 * 1000
+  );
 }
