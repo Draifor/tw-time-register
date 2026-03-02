@@ -81,8 +81,8 @@ async function getLocalEntries(entryIds: number[]): Promise<LocalEntry[]> {
   }));
 }
 
-/** Convert "HH:MM" start + end to hours/minutes duration. */
-function calcDuration(startTime: string, endTime: string): { hours: number; minutes: number } {
+/** Convert "HH:MM" start + end to hours/minutes duration. Exported for testing. */
+export function calcDuration(startTime: string, endTime: string): { hours: number; minutes: number } {
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);
   const totalMinutes = eh * 60 + em - (sh * 60 + sm);

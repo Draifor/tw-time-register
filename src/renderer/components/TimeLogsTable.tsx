@@ -48,23 +48,7 @@ interface EditData {
   isBillable: boolean;
 }
 
-// Compute duration in hours and minutes from startTime/endTime strings (HH:MM)
-function parseDuration(startTime: string, endTime: string): { hours: number; minutes: number } {
-  if (!startTime || !endTime) return { hours: 0, minutes: 0 };
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  const totalStart = sh * 60 + sm;
-  const totalEnd = eh * 60 + em;
-  const diff = Math.max(0, totalEnd - totalStart);
-  return { hours: Math.floor(diff / 60), minutes: diff % 60 };
-}
-
-function formatDuration(hours: number, minutes: number): string {
-  if (hours === 0 && minutes === 0) return '—';
-  if (hours === 0) return `${minutes}m`;
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-}
+import { parseDuration, formatDuration } from '../lib/timeUtils';
 
 function TimeLogsTable() {
   const { data, isLoading, error } = useTimeLogs();
