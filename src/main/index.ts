@@ -60,8 +60,10 @@ function createWindow() {
   } else {
     window?.loadFile(url);
   }
-  // Open DevTools always (useful for debugging in production)
-  window.webContents.openDevTools();
+  // Open DevTools only in development
+  if (isDev) {
+    window.webContents.openDevTools();
+  }
 
   setupWindowIpc(window);
   initAutoUpdater(window);
