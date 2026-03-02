@@ -73,7 +73,10 @@ const es = {
       updateAvailableDesc: 'Descargando v{{version}} en segundo plano...',
       updateReadyToast: 'Actualización lista para instalar',
       updateReadyDesc: 'v{{version}} descargada. Reinicia para aplicar la actualización.',
-      updateReadyAction: 'Reiniciar ahora'
+      updateReadyAction: 'Reiniciar ahora',
+      upToDateToast: 'Ya tienes la última versión',
+      upToDateDesc: 'No hay actualizaciones disponibles.',
+      updateError: 'Error al buscar actualizaciones'
     },
     home: {
       title: 'Bienvenido a TW Time Register',
@@ -209,6 +212,7 @@ const es = {
       help: {
         help: 'Ayuda',
         documentation: 'Documentación',
+        checkForUpdates: 'Buscar actualizaciones',
         about: 'Acerca de',
         aboutDialogTitle: 'Acerca de TW Time Register',
         aboutDesc: 'Aplicación de escritorio para registrar y sincronizar tiempos de trabajo con TeamWork.',

@@ -4,13 +4,7 @@ import { Minus, Square, X, Maximize2 } from 'lucide-react';
 
 import Icon from '../assets/icons/Icon-Electron.png';
 import MenuBar from './MenuBar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
-} from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
 function AppBar() {
   const [isMaximize, setMaximize] = useState(false);
@@ -39,14 +33,14 @@ function AppBar() {
     {
       label: t('menu.file.file'),
       items: [
-        { label: t('menu.file.new'), onClick: () => {} },
-        { label: t('menu.file.open'), onClick: () => {} },
-        { label: t('menu.file.save'), onClick: () => {} },
+        { label: t('menu.file.new'), action: () => {} },
+        { label: t('menu.file.open'), action: () => {} },
+        { label: t('menu.file.save'), action: () => {} },
         {
           label: t('menu.file.export'),
           items: [
-            { label: 'PDF', onClick: () => {} },
-            { label: 'HTML', onClick: () => {} }
+            { label: 'PDF', action: () => {} },
+            { label: 'HTML', action: () => {} }
           ]
         }
       ]
@@ -54,29 +48,33 @@ function AppBar() {
     {
       label: t('menu.edit.edit'),
       items: [
-        { label: t('menu.edit.undo'), onClick: () => {} },
-        { label: t('menu.edit.redo'), onClick: () => {} },
-        { label: t('menu.edit.cut'), onClick: () => {} },
-        { label: t('menu.edit.copy'), onClick: () => {} },
-        { label: t('menu.edit.paste'), onClick: () => {} }
+        { label: t('menu.edit.undo'), action: () => {} },
+        { label: t('menu.edit.redo'), action: () => {} },
+        { label: t('menu.edit.cut'), action: () => {} },
+        { label: t('menu.edit.copy'), action: () => {} },
+        { label: t('menu.edit.paste'), action: () => {} }
       ]
     },
     {
       label: t('menu.view.view'),
       items: [
-        {
-          label: t('menu.view.toggleDevTools'),
-          onClick: () => toggleDevTools()
-        },
-        { label: t('menu.view.zoomIn'), onClick: () => {} },
-        { label: t('menu.view.zoomOut'), onClick: () => {} },
-        { label: t('menu.view.fullscreen'), onClick: () => {} }
+        { label: t('menu.view.toggleDevTools'), action: () => toggleDevTools() },
+        { label: t('menu.view.zoomIn'), action: () => {} },
+        { label: t('menu.view.zoomOut'), action: () => {} },
+        { label: t('menu.view.fullscreen'), action: () => {} }
       ]
     },
     {
       label: t('menu.help.help'),
       items: [
         { label: t('menu.help.documentation'), action: () => {} },
+        {
+          label: t('menu.help.checkForUpdates'),
+          action: () => {
+            sessionStorage.setItem('manualUpdateCheck', '1');
+            window.Main.checkForUpdates?.();
+          }
+        },
         { label: t('menu.help.about'), action: () => setAboutOpen(true) }
       ]
     }
@@ -127,13 +125,9 @@ function AppBar() {
                 </p>
               </div>
             </div>
-            <DialogDescription className="text-left">
-              {t('menu.help.aboutDesc')}
-            </DialogDescription>
+            <DialogDescription className="text-left">{t('menu.help.aboutDesc')}</DialogDescription>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground text-center pt-2 border-t">
-            {t('menu.help.builtWith')}
-          </p>
+          <p className="text-xs text-muted-foreground text-center pt-2 border-t">{t('menu.help.builtWith')}</p>
         </DialogContent>
       </Dialog>
     </div>

@@ -73,7 +73,10 @@ const en = {
       updateAvailableDesc: 'Downloading v{{version}} in the background...',
       updateReadyToast: 'Update ready to install',
       updateReadyDesc: 'v{{version}} downloaded. Restart to apply the update.',
-      updateReadyAction: 'Restart now'
+      updateReadyAction: 'Restart now',
+      upToDateToast: 'You are up to date',
+      upToDateDesc: 'No updates available.',
+      updateError: 'Error checking for updates'
     },
     home: {
       title: 'Welcome to TW Time Register',
@@ -209,6 +212,7 @@ const en = {
       help: {
         help: 'Help',
         documentation: 'Documentation',
+        checkForUpdates: 'Check for updates',
         about: 'About',
         aboutDialogTitle: 'About TW Time Register',
         aboutDesc: 'Desktop application to register and sync work hours with TeamWork.',

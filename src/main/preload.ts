@@ -315,6 +315,7 @@ const api = {
 
   // Auto-updater
   installUpdate: () => ipcRenderer.invoke('install-update'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
   // App info
   getAppVersion: (): Promise<string> => ipcRenderer.invoke('getAppVersion'),

@@ -2,18 +2,23 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import i18n from '../plugins/i18n';
 
-type UpdateStatus = 'idle' | 'available' | 'downloaded';
+type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloaded' | 'up-to-date';
 
 interface UpdateState {
   status: UpdateStatus;
   version: string | null;
 }
 
-export function useAutoUpdater(): UpdateState & { installUpdate: () => void } {
+export function useAutoUpdater(): UpdateState & { installUpdate: () => void; checkForUpdates: () => void } {
   const [state, setState] = useState<UpdateState>({ status: 'idle', version: null });
 
   const installUpdate = () => {
     window.Main.installUpdate?.();
+  };
+
+  const checkForUpdates = () => {
+    setState((s) => ({ ...s, status: 'checking' }));
+    window.Main.checkForUpdates?.();
   };
 
   useEffect(() => {
@@ -26,10 +31,23 @@ export function useAutoUpdater(): UpdateState & { installUpdate: () => void } {
       });
     };
 
+    const handleNotAvailable = () => {
+      setState((s) => ({ ...s, status: 'up-to-date' }));
+      // Solo mostrar toast cuando el usuario lo pidó manualmente (status === 'checking')
+      // El evento se emite también en el chequeo automático al arrancar;
+      // usamos el flag en sessionStorage para distinguirlos
+      if (sessionStorage.getItem('manualUpdateCheck') === '1') {
+        sessionStorage.removeItem('manualUpdateCheck');
+        toast.success(i18n.t('nav.upToDateToast'), {
+          description: i18n.t('nav.upToDateDesc'),
+          duration: 4000
+        });
+      }
+    };
+
     const handleDownloaded = (data: unknown) => {
       const info = data as { version: string };
       setState({ status: 'downloaded', version: info.version });
-      // Persistent toast — does not auto-dismiss, has install action
       toast.success(i18n.t('nav.updateReadyToast'), {
         description: i18n.t('nav.updateReadyDesc', { version: info.version }),
         duration: Infinity,
@@ -40,9 +58,20 @@ export function useAutoUpdater(): UpdateState & { installUpdate: () => void } {
       });
     };
 
+    const handleError = (data: unknown) => {
+      const info = data as { message: string };
+      setState((s) => ({ ...s, status: 'idle' }));
+      toast.error(i18n.t('nav.updateError'), {
+        description: info.message,
+        duration: 8000
+      });
+    };
+
     window.Main.on('update-available', handleAvailable);
+    window.Main.on('update-not-available', handleNotAvailable);
     window.Main.on('update-downloaded', handleDownloaded);
+    window.Main.on('update-error', handleError);
   }, []);
 
-  return { ...state, installUpdate };
+  return { ...state, installUpdate, checkForUpdates };
 }
