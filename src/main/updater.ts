@@ -3,6 +3,10 @@ import { BrowserWindow, ipcMain } from 'electron';
 import isDev from 'electron-is-dev';
 
 export function initAutoUpdater(window: BrowserWindow): void {
+  // Tracks whether the current check was triggered manually by the user.
+  // Manual checks always surface errors; background checks filter "no assets" noise.
+  let manualCheck = false;
+
   // Always register IPC handlers so they exist in both dev and production.
   // In dev the auto-updater is disabled, but the renderer can still call these
   // without getting "No handler registered" errors.
@@ -17,12 +21,15 @@ export function initAutoUpdater(window: BrowserWindow): void {
       window.webContents.send('update-not-available', { version: 'dev' });
       return;
     }
+    manualCheck = true;
     try {
       await autoUpdater.checkForUpdatesAndNotify();
     } catch (err) {
       // The 'error' event below already handles forwarding to renderer;
       // swallow here to avoid double-sending.
       console.error('Error checking for updates:', err);
+    } finally {
+      manualCheck = false;
     }
   });
 
@@ -48,9 +55,17 @@ export function initAutoUpdater(window: BrowserWindow): void {
   });
 
   // Forward errors to renderer.
-  // "No releases" is expected noise (repo without assets yet) — suppress it silently.
-  // Every other error (network failure, misconfiguration, etc.) always surfaces.
+  // Manual checks: ALWAYS surface the error (user explicitly asked to check).
+  // Background checks: suppress "no assets/no releases" noise (repo not fully published yet).
+  // Real errors (network failure, config issues, etc.) always surface regardless.
   autoUpdater.on('error', (err: Error) => {
+    if (manualCheck) {
+      // User-triggered: always show the error so they know something is wrong
+      window.webContents.send('update-error', { message: err.message });
+      return;
+    }
+
+    // Background check: only suppress known "no release assets" noise
     const isNoReleases =
       err.message.includes('Unable to find latest version') ||
       err.message.includes('Cannot parse releases feed') ||

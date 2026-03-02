@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write   # Required to upload release assets with electron-builder
+
 jobs:
   build-windows:
     runs-on: windows-2022
