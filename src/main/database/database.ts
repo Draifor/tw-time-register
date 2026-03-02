@@ -1,4 +1,5 @@
 import BetterSqlite3 from 'better-sqlite3';
+import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
@@ -45,8 +46,18 @@ class DatabaseWrapper {
 
 let db: DatabaseWrapper | null = null;
 
-/** Absolute path to the SQLite file used by the app. */
-export const DB_PATH = path.resolve('./database/worktime.sqlite');
+/**
+ * Writable path for the SQLite DB (AppData\Roaming\tw-time-register).
+ * This location is always writable, even in a packaged app.
+ */
+export function getDbPath(): string {
+  const userData = app.getPath('userData');
+  fs.mkdirSync(userData, { recursive: true });
+  return path.join(userData, 'worktime.sqlite');
+}
+
+/** Absolute path to the SQLite file — kept for backup/import/export. */
+export const DB_PATH = getDbPath();
 
 /** Close the active DB connection (needed before replacing the file on import). */
 export async function closeDb(): Promise<void> {
@@ -58,9 +69,12 @@ export async function closeDb(): Promise<void> {
 
 async function openDb(): Promise<DatabaseWrapper> {
   if (!db) {
-    db = new DatabaseWrapper(DB_PATH);
+    const dbPath = getDbPath();
+    db = new DatabaseWrapper(dbPath);
 
-    const schema = fs.readFileSync('./database/schema.sql', 'utf-8');
+    // schema.sql ships inside the app bundle (resources/app/database/)
+    const schemaPath = path.join(app.getAppPath(), 'database', 'schema.sql');
+    const schema = fs.readFileSync(schemaPath, 'utf-8');
     await db.exec(schema);
   }
   return db;

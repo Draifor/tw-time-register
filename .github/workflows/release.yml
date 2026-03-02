@@ -26,7 +26,15 @@ jobs:
 
       - name: Configure pnpm for hoisted node_modules
         shell: pwsh
-        run: echo "node-linker=hoisted" > .npmrc
+        run: |
+          @"
+          node-linker=hoisted
+
+          onlyBuiltDependencies:
+            - better-sqlite3
+            - electron
+            - esbuild
+          "@ | Set-Content .npmrc
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile

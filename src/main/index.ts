@@ -3,7 +3,7 @@ import { join } from 'path';
 import fs from 'fs';
 
 // Packages
-import { BrowserWindow, app, nativeTheme } from 'electron';
+import { BrowserWindow, app, nativeTheme, dialog } from 'electron';
 import isDev from 'electron-is-dev';
 import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc';
@@ -81,10 +81,14 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  // Run database migrations
-  await runMigrations();
-
-  createWindow();
+  try {
+    // Run database migrations
+    await runMigrations();
+    createWindow();
+  } catch (err) {
+    dialog.showErrorBox('Startup error', String(err));
+    app.quit();
+  }
 
   app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
