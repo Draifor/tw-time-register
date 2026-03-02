@@ -288,6 +288,22 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - **`.node-version`** fija Node 22 LTS para el proyecto
 - **`.npmrc`** con `onlyBuiltDependencies` para auto-aprobar builds de `better-sqlite3`/`electron`
 
+### ✅ Fase 7: Seguridad — Credenciales TW Encriptadas (COMPLETADA - 2026)
+- **`encryptionService.ts`** — wrapper sobre `safeStorage` de Electron (DPAPI en Windows)
+  - `encrypt(plainText)` → `enc:<base64>`; `decrypt(value)` → texto plano con fallback transparente
+  - `isEncryptedValue()` para detectar si ya está cifrado; `isEncryptionAvailable()` para UI
+- **`settingsService.ts`** — `saveTWCredentials` cifra `tw_username`/`tw_password` al guardar; `getTWCredentials` descifra al leer
+- **`migrations.ts`** — migración automática: recifra valores plain-text existentes en el primer arranque
+- Commit: `7838941`
+
+### ✅ Fase 8: i18n — Migración Completa (COMPLETADA - 2026)
+- **Locales reconstruidos** (`es.ts`, `en.ts`) con estructura completa:
+  `common`, `nav`, `home`, `reports`, `settings`, `timeLogs`, `days`, `menu`
+- **Páginas migradas**: `ReportsPage`, `SettingsPage`, `HomePage`, `NavBar`, `TimeLogsTable`
+- Eliminados todos los ternarios `isSpanish ? '...' : '...'` — todo usa `t('section.key')`
+- Interpolación: `t('key', { var: value })` con `{{var}}` en locales
+- Commit: `8d87b91`
+
 ### ⚠️ Mejoras Pendientes
 - Completar modelos en `main/database/models/` (History, TaskLinks, TimeLog)
 - Agregar festivos 2027+ al schema cuando corresponda
@@ -308,11 +324,10 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **i18n**: Revisar y completar strings sin traducir en Reports y Settings
-2. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
-3. **Tests**: Agregar tests unitarios/integración
-4. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
-5. **Festivos 2027+**: Agregar al schema SQL cuando corresponda
+1. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
+2. **Tests**: Agregar tests unitarios/integración
+3. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
+4. **Festivos 2027+**: Agregar al schema SQL cuando corresponda
 
 ---
 
