@@ -44,6 +44,7 @@ Desarrollador que necesita registrar su tiempo de trabajo diario en TeamWork de 
 - **ESLint v9** - Linting con flat config (`eslint.config.js`)
 - **Prettier v3** - Formateo de código
 - **typescript-eslint v8** - Reglas TypeScript para ESLint
+- **Vitest v4** - Tests unitarios (compatible con Vite, sin config extra)
 
 ---
 
@@ -56,19 +57,29 @@ src/
 │   ├── preload.ts          # Expone API segura al renderer via contextBridge
 │   ├── database/
 │   │   ├── database.ts     # Conexión SQLite y queries básicas
-│   │   ├── migrations.ts   # Migraciones de esquema
+│   │   ├── migrations.ts   # Migraciones de esquema (idempotentes)
 │   │   └── models/         # Modelos de datos
+│   │       ├── Credentials.ts
+│   │       ├── TimeLog.ts      # ⭐ time_entries: interfaces + columnsDB
+│   │       ├── TaskLinks.ts    # ⭐ task_link en tasks: extractTwTaskId()
+│   │       └── History.ts      # ⭐ sync_history: SyncHistory + SyncAction
 │   ├── ipc/
 │   │   ├── index.ts        # Registro central de handlers
 │   │   ├── databaseIpc.ts  # Handlers IPC para BD
 │   │   ├── windowIpc.ts    # Handlers para ventana
 │   │   └── anotherIpc.ts   # Otros handlers
 │   └── services/
-│       ├── taskService.ts      # CRUD de tareas
-│       ├── typeTasksService.ts # CRUD de tipos de tareas
-│       ├── timeLogService.ts   # CRUD de registros de tiempo
-│       ├── credentialService.ts # Gestión de credenciales
-│       ├── apiService.ts       # Cliente API TeamWork
+│       ├── taskService.ts          # CRUD de tareas
+│       ├── typeTasksService.ts     # CRUD de tipos de tareas
+│       ├── timeEntriesService.ts   # CRUD completo de time_entries
+│       ├── timeLogService.ts       # ⭐ Helpers orientados al sync (mark sent, unsent entries)
+│       ├── historyService.ts       # ⭐ CRUD de sync_history
+│       ├── syncService.ts          # ⭐ Sync bidireccional (POST/PUT + history)
+│       ├── taskLinkService.ts      # ⭐ Gestión de task_link vs TW task IDs
+│       ├── credentialService.ts    # Gestión de credenciales locales
+│       ├── encryptionService.ts    # Cifrado DPAPI via safeStorage
+│       ├── settingsService.ts      # work_settings (horario, TW credentials)
+│       ├── apiService.ts           # Cliente HTTP TeamWork (axios)
 │       └── ...
 ├── renderer/               # Proceso React (Browser)
 │   ├── App.tsx             # Rutas y providers
@@ -79,36 +90,27 @@ src/
 │   │   ├── TasksTable.tsx      # Tabla de tareas
 │   │   ├── TypeTasksTable.tsx  # Tabla de tipos de tareas
 │   │   └── ui/                 # Componentes shadcn/ui
-│   │       ├── button.tsx, card.tsx, dialog.tsx
-│   │       ├── input.tsx, label.tsx, textarea-form.tsx
-│   │       ├── select.tsx, select-custom.tsx
-│   │       ├── table.tsx, tabs.tsx, separator.tsx
-│   │       ├── tooltip.tsx, badge.tsx, skeleton.tsx
-│   │       ├── alert-dialog.tsx, dropdown-menu.tsx
-│   │       └── sonner.tsx
 │   ├── hooks/
-│   │   ├── useTasks.tsx            # React Query para tareas
-│   │   ├── useTypeTasks.tsx        # React Query para tipos
-│   │   ├── useTimeLogs.tsx         # React Query para time logs
-│   │   ├── useTable.tsx            # Configuración TanStack Table
-│   │   ├── useKeyboardShortcuts.ts # ⭐ Atajos de teclado
-│   │   └── useDarkMode.ts          # Toggle tema oscuro
+│   │   ├── useTasks.tsx, useTypeTasks.tsx, useTimeLogs.tsx
+│   │   ├── useTable.tsx, useKeyboardShortcuts.ts, useDarkMode.ts
+│   │   ├── useTWSession.ts     # Estado de sesión TW (isConfigured, username)
+│   │   └── useAutoUpdater.ts   # Estado de auto-actualización
+│   ├── lib/
+│   │   ├── utils.ts            # cn() helper de shadcn
+│   │   └── timeUtils.ts        # ⭐ parseDuration / formatDuration (puras, testeadas)
 │   ├── services/
-│   │   ├── tasksService.ts     # Llama a window.Main.* (IPC)
-│   │   ├── typeTasksService.ts
-│   │   └── timesService.ts
-│   ├── hooks/
-│   │   └── useTWSession.ts     # Estado de sesión TW (isConfigured, username)
+│   │   ├── tasksService.ts, typeTasksService.ts, timesService.ts
 │   └── pages/
-│       ├── HomePage.tsx        # Página principal de registro
-│       ├── TasksPage.tsx       # Gestión de tareas y tipos
-│       ├── ReportsPage.tsx     # ⭐ Vista de reportes (horas por tarea y por día)
-│       └── SettingsPage.tsx    # ⭐ Configuración: credenciales TW, horario, festivos
-└── types/                  # Tipos compartidos
-    ├── tasks.ts
-    ├── typeTasks.ts
-    ├── dataTable.ts
-    └── ...
+│       ├── HomePage.tsx, TasksPage.tsx, ReportsPage.tsx, SettingsPage.tsx
+├── tests/                  # ⭐ Tests unitarios (Vitest)
+│   ├── setup.ts            # @testing-library/jest-dom global setup
+│   ├── main/
+│   │   ├── models/TaskLinks.test.ts
+│   │   └── services/syncService.test.ts, historyService.test.ts
+│   └── renderer/
+│       └── timeUtils.test.ts
+└── types/                  # Tipos compartidos main↔renderer
+    ├── tasks.ts, typeTasks.ts, dataTable.ts, ...
 ```
 
 ### Flujo de Datos (IPC)
@@ -196,10 +198,17 @@ const { mutate } = useMutation({
 
 ### Tablas Principales
 ```sql
-type_tasks (type_id, type_name)           -- Categorías: FORE, RECA, etc.
-tasks (task_id, type_id, task_name, ...)  -- Tareas de TeamWork
-time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
+type_tasks    (type_id, type_name)
+tasks         (task_id, type_id, task_name, task_link, description)
+time_entries  (entry_id, task_id, description, entry_date, hora_inicio, hora_fin, facturable, send)
+sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_task_id, success, error_message)
 ```
+
+### `sync_history` — clave del sync bidireccional
+- `tw_time_entry_id`: ID del time entry en TW → si existe → PUT, si no → POST
+- `action`: `'created' | 'updated' | 'deleted'`
+- `success`: 1/0 — solo los rows con `success=1` se usan para detectar entradas existentes
+- Siempre se usa `tw_user_id` de credenciales para filtrar entradas propias del usuario
 
 ### Agregar IPC Handler
 1. Agregar función en `main/services/` o `main/database/`
@@ -304,9 +313,44 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - Interpolación: `t('key', { var: value })` con `{{var}}` en locales
 - Commit: `8d87b91`
 
+### ✅ Fase 9: Modelos BD Completos (COMPLETADA - Mar 2026)
+- **`models/TimeLog.ts`**: `TimeLogDB` (snake_case), `TimeLog`/`TimeLogInput` (camelCase), `columnsDB` para `time_entries`
+- **`models/TaskLinks.ts`**: `TaskLink`, `extractTwTaskId()` — extrae ID numérico de TW de la URL
+- **`models/History.ts`**: `SyncHistoryDB`, `SyncHistory`, `SyncHistoryInput`, `SyncAction`
+- **`services/timeLogService.ts`**: `markEntryAsSent/NotSent()`, `getUnsentEntries()`
+- **`services/taskLinkService.ts`**: `getLinkedTasks()`, `getTaskLink()`, `updateTaskLink()`
+- **`services/historyService.ts`**: `recordSync()`, `getSyncHistory()`, `getRecentHistory()`, `getLastSuccessfulSync()`
+- **Migración**: tabla `sync_history` (CREATE TABLE IF NOT EXISTS en `migrations.ts`)
+- Commit: `91a7147`
+
+### ✅ Fase 10: Sync Bidireccional (COMPLETADA - Mar 2026)
+- **`syncService.ts`** — `smartSyncEntries(entryIds[])`: orquesta upsert inteligente
+  - Sin `tw_user_id` configurado → aborta con mensaje claro
+  - Sin `task_link` en la tarea → `skipped`
+  - Consulta `sync_history` por `tw_time_entry_id` existente → **PUT** si lo tiene, **POST** si no
+  - Siempre pasa `person-id = userId` para que la entrada quede asignada al usuario correcto
+  - Graba resultado en `sync_history` (éxito o error) → marca `send = 1` solo si éxito
+- **`apiService.ts`**: `fetchUserTimeEntriesForTask(twTaskId, userId)`, `updateTimeEntryInTW()`, `deleteTimeEntryFromTW()`
+- **`TimeLogsTable.tsx`**: conectado a `smartSyncEntries` (batch para "enviar todo", individual por fila)
+- **`timesService.ts`**: tipos `SmartSyncResult` + wrapper `smartSyncEntries()`
+- Commits: `6851bab`, `08bb2f4`
+
+### ✅ Fase 11: Tests Unitarios (COMPLETADA - Mar 2026)
+- **Stack**: Vitest v4 + jsdom + @testing-library/react + @testing-library/jest-dom
+- **`vitest.config.ts`**: separado de `vite.config.ts` (sin plugins Electron)
+- **`src/renderer/lib/timeUtils.ts`**: `parseDuration` / `formatDuration` extraídas de `TimeLogsTable` — puras y testeables
+- **41 tests, 4 suites, 0 fallos**:
+  - `TaskLinks.test.ts` — 7 tests de `extractTwTaskId`
+  - `timeUtils.test.ts` — 13 tests de `parseDuration` / `formatDuration`
+  - `historyService.test.ts` — 10 tests (recordSync, getSyncHistory, getRecentHistory, getLastSuccessfulSync)
+  - `syncService.test.ts` — 11 tests (calcDuration + smartSyncEntries con mocks)
+- Scripts: `pnpm test`, `pnpm test:watch`, `pnpm test:ui`, `pnpm test:coverage`
+- Commit: `ba45523`
+
 ### ⚠️ Mejoras Pendientes
-- Completar modelos en `main/database/models/` (History, TaskLinks, TimeLog)
-- Agregar festivos 2027+ al schema cuando corresponda
+- Agregar festivos 2027+ al schema SQL cuando corresponda
+- Aumentar cobertura de tests (timeEntriesService, apiService, componentes React)
+- Versión `v1.2.0`: release con Models + Sync bidireccional + Tests
 
 ---
 
@@ -324,10 +368,9 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
-2. **Tests**: Agregar tests unitarios/integración
-3. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
-4. **Festivos 2027+**: Agregar al schema SQL cuando corresponda
+1. **Release `v1.2.0`**: incluye Models + Sync bidireccional + Tests
+2. **Ampliar tests**: timeEntriesService, apiService, componentes React
+3. **Festivos 2027+**: agregar al schema SQL cuando corresponda
 
 ---
 
@@ -432,6 +475,9 @@ Los siguientes componentes de shadcn/ui están disponibles en `components/ui/`:
 pnpm install        # Instalar dependencias (requiere Node 22: fnm use 22)
 pnpm dev            # Iniciar desarrollo (Vite + Electron)
 pnpm build          # Compilar para producción
+pnpm test           # Ejecutar tests (Vitest, una pasada)
+pnpm test:watch     # Tests en modo watch
+pnpm test:coverage  # Coverage report en /coverage
 .\build-local.ps1  # Build local sin instalador para probar (no requiere admin)
 ```
 
