@@ -21,8 +21,9 @@ Desarrollador que necesita registrar su tiempo de trabajo diario en TeamWork de 
 
 ### Proceso Principal (Electron Main)
 - **Electron v30** - El proceso main maneja la ventana, IPC y acceso a SQLite
-- **SQLite3 + sqlite** - Base de datos local para persistencia
+- **better-sqlite3 v11** - Base de datos local para persistencia (sync API, prebuilts nativos sin compilar)
 - **Axios** - Cliente HTTP para API de TeamWork
+- **electron-updater v6** - Auto-actualizaciones via GitHub Releases
 
 ### Proceso Renderer (React)
 - **React v18** con hooks
@@ -270,6 +271,23 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - **Festivos 2026** añadidos al schema SQL
 - Ruta `/reports` en `App.tsx` y `BarChart2` en `NavBar.tsx`
 
+### ✅ Fase 6: Release & Distribución (COMPLETADA - Mar 2026)
+- **`better-sqlite3`** reemplaza `sqlite3 + sqlite` — prebuilts N-API, sin VS Build Tools
+  - `DatabaseWrapper` en `database.ts`: API async compatible, preserva signatures de todos los servicios
+  - Tipos genéricos en `db.all<T>()` y `db.get<T>()` para type-safety estricto
+- **ASAR deshabilitado** (`"asar": false`) — simplifica packaging con módulos nativos + pnpm hoisted
+- **Vite bundlea todas las deps JS** del main process en `dist-electron/index.js`
+  - Solo se externalizan `electron` (runtime) y `better-sqlite3` (nativo)
+  - Elimina necesidad de `node_modules` en la app instalada (excepto el `.node` nativo)
+- **`HashRouter`** reemplaza `BrowserRouter` — necesario en Electron (no hay servidor HTTP en producción)
+- **Paths absolutos** en `database.ts` usando `app.getPath('userData')` y `app.getAppPath()`
+- **Error handling** en `main/index.ts` con `dialog.showErrorBox` para crashes visibles
+- **GitHub Actions** (`release.yml`): Node 22, pnpm hoisted solo en CI, `electron-builder install-app-deps`
+- **`build-local.ps1`**: script para probar builds localmente sin instalador (usa `--dir`, no requiere admin)
+- **`useAutoUpdater` hook** + badge en NavBar (amber descargando, verde listo para instalar)
+- **`.node-version`** fija Node 22 LTS para el proyecto
+- **`.npmrc`** con `onlyBuiltDependencies` para auto-aprobar builds de `better-sqlite3`/`electron`
+
 ### ⚠️ Mejoras Pendientes
 - Encriptar credenciales en BD (contraseña se guarda en texto plano)
 - Completar modelos en `main/database/models/` (History, TaskLinks, TimeLog)
@@ -292,10 +310,11 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 
 ### Prioridades actuales
 1. **Seguridad**: Encriptar credenciales TW en BD (contraseña en texto plano)
-2. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
-3. **i18n**: Revisar y completar strings sin traducir en las páginas nuevas (Reports, Settings)
+2. **i18n**: Revisar y completar strings sin traducir en Reports y Settings
+3. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
 4. **Tests**: Agregar tests unitarios/integración
 5. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
+6. **Festivos 2027+**: Agregar al schema SQL cuando corresponda
 
 ---
 
@@ -312,8 +331,15 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 | ESLint | 8.11.0 | **9.39.1** |
 | Prettier | 2.6.0 | **3.7.4** |
 | typescript-eslint | 5.16.0 | **8.48.1** |
+| sqlite3 + sqlite | 5.x + 4.x | **better-sqlite3 11.x** |
 
 ### Cambios importantes en la migración
+
+#### better-sqlite3 (Mar 2026)
+- API síncrona envuelta en `DatabaseWrapper` async para no cambiar los 11 servicios
+- Requiere **Node 22 LTS** — los prebuilts N-API no existen para Node 24
+- Tras instalar, ejecutar `electron-builder install-app-deps` para recompilar contra el ABI de Electron
+- pnpm necesita `node-linker=hoisted` durante el packaging (`build-local.ps1` y CI lo hacen automáticamente)
 
 #### React Query v5
 - Sintaxis de `useQuery` cambió a objeto: `useQuery({ queryKey, queryFn })`
@@ -390,11 +416,17 @@ Los siguientes componentes de shadcn/ui están disponibles en `components/ui/`:
 ## Comandos de Desarrollo
 
 ```bash
-pnpm install        # Instalar dependencias
+pnpm install        # Instalar dependencias (requiere Node 22: fnm use 22)
 pnpm dev            # Iniciar desarrollo (Vite + Electron)
 pnpm build          # Compilar para producción
-pnpm dist:win       # Empaquetar para Windows
+.\build-local.ps1  # Build local sin instalador para probar (no requiere admin)
 ```
+
+### Notas sobre Node y módulos nativos
+- **Usar siempre Node 22 LTS** (`fnm use 22.17.0`) — `better-sqlite3` tiene prebuilts para Node 22
+- Node 24 no tiene prebuilts y sin VS Build Tools no puede compilar desde fuente
+- Tras cambiar de Node version, reimplementar `node_modules` con `pnpm install`
+- `electron-builder install-app-deps` reconstruye `better-sqlite3` contra los headers de Electron (ABI distinto al de Node)
 
 ---
 
@@ -404,3 +436,6 @@ pnpm dist:win       # Empaquetar para Windows
 - Los tiempos se manejan con **Date** y **Flatpickr**, conversión a strings para BD
 - El cálculo de hora fin (`endTime = startTime + hours`) está en `WorkTimeForm.tsx`
 - Las entradas se persisten en **localStorage** mientras se editan (antes de guardar en BD)
+- **HashRouter** es obligatorio en Electron — BrowserRouter no funciona con `file://` en producción
+- **Paths en producción**: usar `app.getPath('userData')` para datos de usuario y `app.getAppPath()` para assets bundleados. `process.cwd()` NO es confiable en producción
+- **WAL mode**: `better-sqlite3` usa `PRAGMA journal_mode=WAL` — genera `.sqlite-shm` y `.sqlite-wal` temporales (excluidos en `.gitignore`)
