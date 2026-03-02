@@ -184,6 +184,139 @@ export async function debugTWSubtasks(parentTaskLink: string): Promise<{
   }
 }
 
+export interface TWTimeEntry {
+  /** Numeric ID of the time entry in TeamWork */
+  id: string;
+  /** TW task ID */
+  taskId: string;
+  /** Date in YYYYMMDD */
+  date: string;
+  /** HH:MM start time */
+  time: string;
+  hours: number;
+  minutes: number;
+  description: string;
+  isBillable: boolean;
+}
+
+/**
+ * Fetch all time entries for a specific TW task belonging to a given user.
+ * Always pass userId so we only touch that user's own entries.
+ */
+export async function fetchUserTimeEntriesForTask(
+  twTaskId: string,
+  userId: string
+): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    const response = await axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}/time_entries.json`, {
+      params: { userId },
+      headers: {
+        Authorization: buildAuthHeader(username, password),
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+
+    const raw: Record<string, unknown>[] = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
+
+    const entries: TWTimeEntry[] = raw.map((e) => ({
+      id: String(e.id),
+      taskId: String(e['task-id'] ?? e.taskId ?? twTaskId),
+      date: String(e.date ?? ''),
+      time: String(e.time ?? ''),
+      hours: Number(e.hours ?? 0),
+      minutes: Number(e.minutes ?? 0),
+      description: String(e.description ?? ''),
+      isBillable: e.isbillable === true || e.isbillable === 'true'
+    }));
+
+    return { success: true, entries };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    return {
+      success: false,
+      message: axiosError.response?.data?.message || axiosError.message || 'Failed to fetch entries'
+    };
+  }
+}
+
+/**
+ * Update an existing time entry in TeamWork (PUT).
+ * Used during bidirectional sync when the entry was previously created.
+ */
+export async function updateTimeEntryInTW(
+  twEntryId: string,
+  entry: SendTimeEntryInput
+): Promise<{ success: boolean; message?: string }> {
+  const { domain, username, password, userId } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    await axios.put(
+      `https://${domain}.teamwork.com/time_entries/${twEntryId}.json`,
+      {
+        'time-entry': {
+          description: entry.description,
+          date: entry.date.replace(/-/g, ''),
+          time: entry.startTime,
+          hours: entry.hours,
+          minutes: entry.minutes,
+          isbillable: entry.isBillable,
+          ...(userId ? { 'person-id': userId } : {})
+        }
+      },
+      {
+        headers: {
+          Authorization: buildAuthHeader(username, password),
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+    return { success: true };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
+    const msg =
+      axiosError.response?.data?.MESSAGE ||
+      axiosError.response?.data?.message ||
+      axiosError.message ||
+      'Failed to update entry';
+    return { success: false, message: msg };
+  }
+}
+
+/**
+ * Delete a time entry from TeamWork.
+ */
+export async function deleteTimeEntryFromTW(twEntryId: string): Promise<{ success: boolean; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    await axios.delete(`https://${domain}.teamwork.com/time_entries/${twEntryId}.json`, {
+      headers: {
+        Authorization: buildAuthHeader(username, password),
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+    return { success: true };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
+    return {
+      success: false,
+      message:
+        axiosError.response?.data?.MESSAGE ||
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        'Failed to delete entry'
+    };
+  }
+}
+
 // Legacy - kept for IPC handler compatibility
 export async function registerTimeEntry(
   taskId: string,

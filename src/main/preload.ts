@@ -309,6 +309,9 @@ const api = {
   importTasksFromCSV: (rows: { taskName: string; typeName: string; taskLink: string }[]) =>
     ipcRenderer.invoke('importTasksFromCSV', rows),
 
+  // Bidirectional sync — only syncs entries belonging to the logged-in TW user
+  smartSyncEntries: (entryIds: number[]) => ipcRenderer.invoke('smartSyncEntries', entryIds),
+
   // Database backup
   exportDatabase: () => ipcRenderer.invoke('exportDatabase'),
   importDatabase: () => ipcRenderer.invoke('importDatabase'),
