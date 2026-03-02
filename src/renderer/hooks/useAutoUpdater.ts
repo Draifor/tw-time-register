@@ -36,8 +36,9 @@ export function useAutoUpdater(): UpdateState & { installUpdate: () => void; che
     };
 
     const handleNotAvailable = () => {
-      setState((s) => ({ ...s, status: 'up-to-date' }));
-      // Solo mostrar toast cuando el usuario lo pidó manualmente (status === 'checking')
+      // Always reset to idle — no badge should remain after finding no update
+      setState((s) => ({ ...s, status: 'idle' }));
+      // Solo mostrar toast cuando el usuario lo pidió manualmente
       // El evento se emite también en el chequeo automático al arrancar;
       // usamos el flag en sessionStorage para distinguirlos
       if (sessionStorage.getItem('manualUpdateCheck') === '1') {

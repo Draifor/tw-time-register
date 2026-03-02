@@ -96,8 +96,8 @@ function NavBar() {
           <SwitchDarkMode />
           <SelectLanguage />
 
-          {/* Auto-update indicator */}
-          {updateStatus !== 'idle' && (
+          {/* Auto-update indicator — only shown when a download is in progress or ready to install */}
+          {(updateStatus === 'available' || updateStatus === 'downloaded') && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
