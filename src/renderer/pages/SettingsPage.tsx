@@ -75,8 +75,7 @@ interface NewHolidayForm {
 }
 
 export default function SettingsPage() {
-  const { i18n } = useTranslation();
-  const isSpanish = i18n.language === 'es';
+  const { t, i18n } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -155,10 +154,10 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await updateWorkSettings(data);
-      toast.success(isSpanish ? 'Configuración guardada' : 'Settings saved');
+      toast.success(t('settings.saved'));
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error(isSpanish ? 'Error al guardar' : 'Error saving settings');
+      toast.error(t('settings.saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -170,10 +169,10 @@ export default function SettingsPage() {
     try {
       await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), twUserId.trim());
       window.dispatchEvent(new Event(TW_SESSION_UPDATED_EVENT));
-      toast.success(isSpanish ? 'Credenciales de TeamWork guardadas' : 'TeamWork credentials saved');
+      toast.success(t('settings.teamwork.savedCreds'));
     } catch (error) {
       console.error('Error saving TW credentials:', error);
-      toast.error(isSpanish ? 'Error al guardar credenciales' : 'Error saving credentials');
+      toast.error(t('settings.teamwork.saveCredsError'));
     } finally {
       setTwSaving(false);
     }
@@ -194,11 +193,9 @@ export default function SettingsPage() {
           await saveTWCredentials(twDomain.trim(), twUsername.trim(), twPassword.trim(), result.userId);
         }
         window.dispatchEvent(new Event(TW_SESSION_UPDATED_EVENT));
-        toast.success(
-          isSpanish ? `Conexión exitosa. Hola, ${result.name}!` : `Connected successfully. Hello, ${result.name}!`
-        );
+        toast.success(t('settings.teamwork.testSuccess', { name: result.name }));
       } else {
-        toast.error(result.message || (isSpanish ? 'Error de conexión' : 'Connection failed'));
+        toast.error(result.message || t('settings.teamwork.connectionFailed'));
       }
     } catch (error) {
       console.error('TW test error:', error);
@@ -224,7 +221,7 @@ export default function SettingsPage() {
 
   const handleAddHoliday = async () => {
     if (!newHoliday.date || !newHoliday.description) {
-      toast.error(isSpanish ? 'Complete todos los campos' : 'Please fill all fields');
+      toast.error(t('settings.holidays.fillAllFields'));
       return;
     }
 
@@ -233,10 +230,10 @@ export default function SettingsPage() {
       const updatedHolidays = await getHolidays();
       setHolidays(updatedHolidays);
       setNewHoliday({ date: '', description: '' });
-      toast.success(isSpanish ? 'Festivo agregado' : 'Holiday added');
+      toast.success(t('settings.holidays.added'));
     } catch (error) {
       console.error('Error adding holiday:', error);
-      toast.error(isSpanish ? 'Error al agregar festivo' : 'Error adding holiday');
+      toast.error(t('settings.holidays.addError'));
     }
   };
 
@@ -245,13 +242,13 @@ export default function SettingsPage() {
       const deleted = await deleteHoliday(holidayId);
       if (deleted) {
         setHolidays(holidays.filter((h) => h.holidayId !== holidayId));
-        toast.success(isSpanish ? 'Festivo eliminado' : 'Holiday deleted');
+        toast.success(t('settings.holidays.deleted'));
       } else {
-        toast.error(isSpanish ? 'No se puede eliminar festivos del sistema' : 'Cannot delete system holidays');
+        toast.error(t('settings.holidays.systemDeleteError'));
       }
     } catch (error) {
       console.error('Error deleting holiday:', error);
-      toast.error(isSpanish ? 'Error al eliminar' : 'Error deleting holiday');
+      toast.error(t('settings.holidays.deleteError'));
     }
   };
 
@@ -260,9 +257,9 @@ export default function SettingsPage() {
     try {
       const result = await exportDatabase();
       if (result.success) {
-        toast.success(isSpanish ? 'Base de datos exportada correctamente' : 'Database exported successfully');
+        toast.success(t('settings.database.exportSuccess'));
       } else if (result.message !== 'Cancelled') {
-        toast.error(result.message || (isSpanish ? 'Error al exportar' : 'Export failed'));
+        toast.error(result.message || t('settings.database.exportError'));
       }
     } catch (err) {
       toast.error(String(err));
@@ -276,13 +273,9 @@ export default function SettingsPage() {
     try {
       const result = await importDatabase();
       if (result.success) {
-        toast.success(
-          isSpanish
-            ? 'Base de datos importada. Reinicia la app para ver los cambios.'
-            : 'Database imported. Restart the app to see the changes.'
-        );
+        toast.success(t('settings.database.importSuccess'));
       } else if (result.message !== 'Cancelled') {
-        toast.error(result.message || (isSpanish ? 'Error al importar' : 'Import failed'));
+        toast.error(result.message || t('settings.database.importError'));
       }
     } catch (err) {
       toast.error(String(err));
@@ -294,7 +287,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">{isSpanish ? 'Configuración' : 'Settings'}</h1>
+        <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
         <div className="animate-pulse space-y-4">
           <div className="h-48 bg-muted rounded-lg" />
           <div className="h-48 bg-muted rounded-lg" />
@@ -306,10 +299,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{isSpanish ? 'Configuración' : 'Settings'}</h1>
-        <p className="text-muted-foreground">
-          {isSpanish ? 'Configura tu horario de trabajo y festivos' : 'Configure your work schedule and holidays'}
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
+        <p className="text-muted-foreground">{t('settings.subtitle')}</p>
       </div>
 
       {/* Language Card */}
@@ -317,11 +308,9 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
-            {isSpanish ? 'Idioma' : 'Language'}
+            {t('settings.language.title')}
           </CardTitle>
-          <CardDescription>
-            {isSpanish ? 'Selecciona el idioma de la interfaz' : 'Select the interface language'}
-          </CardDescription>
+          <CardDescription>{t('settings.language.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
@@ -358,16 +347,12 @@ export default function SettingsPage() {
             <Link2 className="h-5 w-5" />
             TeamWork
           </CardTitle>
-          <CardDescription>
-            {isSpanish
-              ? 'Configura tus credenciales de API para sincronizar tiempos'
-              : 'Configure your API credentials to sync time entries'}
-          </CardDescription>
+          <CardDescription>{t('settings.teamwork.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="twDomain">{isSpanish ? 'Dominio de TeamWork' : 'TeamWork Domain'}</Label>
+              <Label htmlFor="twDomain">{t('settings.teamwork.domain')}</Label>
               <div className="flex items-center">
                 <span className="inline-flex items-center px-3 h-9 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm select-none">
                   https://
@@ -388,7 +373,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twUsername">{isSpanish ? 'Usuario / Email' : 'Username / Email'}</Label>
+              <Label htmlFor="twUsername">{t('settings.teamwork.username')}</Label>
               <Input
                 id="twUsername"
                 type="text"
@@ -402,7 +387,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twPassword">{isSpanish ? 'Contraseña' : 'Password'}</Label>
+              <Label htmlFor="twPassword">{t('settings.teamwork.password')}</Label>
               <Input
                 id="twPassword"
                 type="password"
@@ -417,10 +402,8 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="twUserId">
-                {isSpanish ? 'ID de usuario en TW' : 'TW User ID'}
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {isSpanish ? '(se auto-rellena al probar la conexión)' : '(auto-filled when testing connection)'}
-                </span>
+                {t('settings.teamwork.userId')}
+                <span className="ml-2 text-xs text-muted-foreground">{t('settings.teamwork.userIdHint')}</span>
               </Label>
               <Input
                 id="twUserId"
@@ -449,10 +432,8 @@ export default function SettingsPage() {
               )}
               <span>
                 {twTestResult.success
-                  ? isSpanish
-                    ? `Conectado como ${twTestResult.name}`
-                    : `Connected as ${twTestResult.name}`
-                  : twTestResult.message || (isSpanish ? 'Error de conexión' : 'Connection failed')}
+                  ? t('settings.teamwork.connectedAs', { name: twTestResult.name })
+                  : twTestResult.message || t('settings.teamwork.connectionFailed')}
               </span>
             </div>
           )}
@@ -466,11 +447,11 @@ export default function SettingsPage() {
               disabled={twTesting || !twDomain.trim() || !twUsername.trim() || !twPassword.trim()}
             >
               {twTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-              {isSpanish ? 'Probar conexión' : 'Test connection'}
+              {t('settings.teamwork.testConnection')}
             </Button>
             <Button type="button" className="gap-2" onClick={handleSaveTWCredentials} disabled={twSaving}>
               {twSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {isSpanish ? 'Guardar' : 'Save'}
+              {t('common.save')}
             </Button>
           </div>
         </CardContent>
@@ -482,20 +463,14 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              {isSpanish ? 'Horario de Trabajo' : 'Work Schedule'}
+              {t('settings.schedule.title')}
             </CardTitle>
-            <CardDescription>
-              {isSpanish
-                ? 'Define tu hora de inicio y horas máximas por día'
-                : 'Define your start time and maximum hours per day'}
-            </CardDescription>
+            <CardDescription>{t('settings.schedule.description')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Default Start Time */}
             <div className="grid gap-2 max-w-xs">
-              <Label htmlFor="defaultStartTime">
-                {isSpanish ? 'Hora de inicio por defecto' : 'Default start time'}
-              </Label>
+              <Label htmlFor="defaultStartTime">{t('settings.schedule.defaultStartTime')}</Label>
               <Controller
                 name="defaultStartTime"
                 control={control}
@@ -507,14 +482,14 @@ export default function SettingsPage() {
 
             {/* Max Hours Per Day */}
             <div className="space-y-4">
-              <Label>{isSpanish ? 'Horas máximas por día' : 'Maximum hours per day'}</Label>
+              <Label>{t('settings.schedule.maxHours')}</Label>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {DAYS_OF_WEEK.slice(0, 5).map((day) => {
                   const fieldName = `maxHours${day.label}` as keyof SettingsFormData;
                   return (
                     <div key={day.id} className="space-y-2">
                       <Label htmlFor={fieldName} className="text-sm text-muted-foreground">
-                        {isSpanish ? day.labelEs : day.label}
+                        {t(`days.${day.key}`)}
                       </Label>
                       <Controller
                         name={fieldName}
@@ -547,11 +522,9 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5" />
-              {isSpanish ? 'Días Laborales' : 'Work Days'}
+              {t('settings.workDays.title')}
             </CardTitle>
-            <CardDescription>
-              {isSpanish ? 'Selecciona los días que trabajas' : 'Select the days you work'}
-            </CardDescription>
+            <CardDescription>{t('settings.workDays.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -566,7 +539,7 @@ export default function SettingsPage() {
                     onClick={() => toggleWorkDay(day.id)}
                     className="min-w-[100px]"
                   >
-                    {isSpanish ? day.labelEs : day.label}
+                    {t(`days.${day.key}`)}
                   </Button>
                 );
               })}
@@ -578,13 +551,7 @@ export default function SettingsPage() {
         <div className="flex justify-end">
           <Button type="submit" disabled={isSaving} className="gap-2">
             <Save className="h-4 w-4" />
-            {isSaving
-              ? isSpanish
-                ? 'Guardando...'
-                : 'Saving...'
-              : isSpanish
-                ? 'Guardar Configuración'
-                : 'Save Settings'}
+            {isSaving ? t('common.saving') : t('settings.saveSettings')}
           </Button>
         </div>
       </form>
@@ -594,17 +561,15 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            {isSpanish ? 'Días Festivos' : 'Holidays'}
+            {t('settings.holidays.title')}
           </CardTitle>
-          <CardDescription>
-            {isSpanish ? 'Los días festivos no cuentan como días laborales' : 'Holidays are not counted as work days'}
-          </CardDescription>
+          <CardDescription>{t('settings.holidays.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add New Holiday */}
           <div className="flex flex-wrap gap-4 items-end p-4 bg-muted/50 rounded-lg">
             <div className="space-y-2">
-              <Label>{isSpanish ? 'Fecha' : 'Date'}</Label>
+              <Label>{t('common.date')}</Label>
               <Input
                 type="date"
                 className="w-[180px]"
@@ -613,16 +578,16 @@ export default function SettingsPage() {
               />
             </div>
             <div className="flex-1 min-w-[200px] space-y-2">
-              <Label>{isSpanish ? 'Descripción' : 'Description'}</Label>
+              <Label>{t('common.description')}</Label>
               <Input
-                placeholder={isSpanish ? 'Nombre del festivo' : 'Holiday name'}
+                placeholder={t('settings.holidays.holidayName')}
                 value={newHoliday.description}
                 onChange={(e) => setNewHoliday((prev) => ({ ...prev, description: e.target.value }))}
               />
             </div>
             <Button type="button" onClick={handleAddHoliday} className="gap-2">
               <Plus className="h-4 w-4" />
-              {isSpanish ? 'Agregar' : 'Add'}
+              {t('common.add')}
             </Button>
           </div>
 
@@ -631,9 +596,7 @@ export default function SettingsPage() {
           {/* Holidays List */}
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {holidays.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                {isSpanish ? 'No hay festivos registrados' : 'No holidays registered'}
-              </p>
+              <p className="text-muted-foreground text-center py-8">{t('settings.holidays.noHolidays')}</p>
             ) : (
               holidays.map((holiday) => (
                 <div
@@ -645,7 +608,7 @@ export default function SettingsPage() {
                     <div className="text-sm">{holiday.description}</div>
                     {!holiday.isCustom && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                        {isSpanish ? 'Sistema' : 'System'}
+                        {t('common.system')}
                       </span>
                     )}
                   </div>
@@ -658,20 +621,18 @@ export default function SettingsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>{isSpanish ? '¿Eliminar festivo?' : 'Delete holiday?'}</AlertDialogTitle>
+                          <AlertDialogTitle>{t('settings.holidays.deleteTitle')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {isSpanish
-                              ? `¿Estás seguro de eliminar "${holiday.description}"?`
-                              : `Are you sure you want to delete "${holiday.description}"?`}
+                            {t('settings.holidays.deleteDescription', { name: holiday.description })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>{isSpanish ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDeleteHoliday(holiday.holidayId)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            {isSpanish ? 'Eliminar' : 'Delete'}
+                            {t('common.delete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -689,13 +650,9 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            {isSpanish ? 'Base de datos' : 'Database'}
+            {t('settings.database.title')}
           </CardTitle>
-          <CardDescription>
-            {isSpanish
-              ? 'Exporta tu BD para hacer una copia de seguridad o para llevarla a otra instalación'
-              : 'Export your database as a backup or to transfer it to another installation'}
-          </CardDescription>
+          <CardDescription>{t('settings.database.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3">
@@ -706,54 +663,36 @@ export default function SettingsPage() {
               onClick={handleExportDatabase}
               disabled={dbExporting}
             >
-              {dbExporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {isSpanish ? 'Exportar BD' : 'Export DB'}
+              {dbExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {t('settings.database.exportDb')}
             </Button>
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button type="button" variant="outline" className="gap-2" disabled={dbImporting}>
-                  {dbImporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  {isSpanish ? 'Importar BD' : 'Import DB'}
+                  {dbImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {t('settings.database.importDb')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {isSpanish ? '¿Importar base de datos?' : 'Import database?'}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {isSpanish
-                      ? 'Esto reemplazará completamente tu base de datos actual con el archivo seleccionado. Los datos actuales se perderán. ¿Continuar?'
-                      : 'This will completely replace your current database with the selected file. Current data will be lost. Continue?'}
-                  </AlertDialogDescription>
+                  <AlertDialogTitle>{t('settings.database.importTitle')}</AlertDialogTitle>
+                  <AlertDialogDescription>{t('settings.database.importDescription')}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>{isSpanish ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
+                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleImportDatabase}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {isSpanish ? 'Importar' : 'Import'}
+                    {t('common.import')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            {isSpanish
-              ? 'El archivo exportado contiene todas tus tareas, tipos, registros de tiempo y configuración.'
-              : 'The exported file contains all your tasks, types, time entries and settings.'}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('settings.database.importFootnote')}</p>
         </CardContent>
       </Card>
     </div>

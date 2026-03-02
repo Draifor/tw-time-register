@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
@@ -12,15 +13,16 @@ import { useAutoUpdater } from '../hooks/useAutoUpdater';
 function NavBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { isConfigured, username, domain, isLoading } = useTWSession();
   const { status: updateStatus, version: updateVersion, installUpdate } = useAutoUpdater();
 
   const navItems = [
-    { to: '/', label: 'Home', icon: Home },
-    { to: '/worktime', label: 'Work Time', icon: Clock },
-    { to: '/tasks', label: 'Tasks', icon: ListTodo },
-    { to: '/reports', label: 'Reports', icon: BarChart2 },
-    { to: '/settings', label: 'Settings', icon: Settings }
+    { to: '/', label: t('nav.home'), icon: Home },
+    { to: '/worktime', label: t('nav.workTime'), icon: Clock },
+    { to: '/tasks', label: t('nav.tasks'), icon: ListTodo },
+    { to: '/reports', label: t('nav.reports'), icon: BarChart2 },
+    { to: '/settings', label: t('nav.settings'), icon: Settings }
   ];
 
   return (
@@ -76,17 +78,17 @@ function NavBar() {
                   ) : (
                     <>
                       <WifiOff className="h-4 w-4" />
-                      <span className="hidden sm:inline">Sin sesión TW</span>
+                      <span className="hidden sm:inline">{t('nav.noSession')}</span>
                     </>
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end">
                 {isLoading
-                  ? 'Verificando credenciales...'
+                  ? t('nav.verifying')
                   : isConfigured
-                    ? `Conectado como ${username} · ${domain}.teamwork.com`
-                    : 'Sin credenciales de TeamWork. Haz clic para configurar.'}
+                    ? t('nav.connectedAs', { username, domain })
+                    : t('nav.noCredentials')}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -111,13 +113,13 @@ function NavBar() {
                     onClick={updateStatus === 'downloaded' ? installUpdate : undefined}
                   >
                     <Download className="h-4 w-4" />
-                    {updateStatus === 'downloaded' ? 'Instalar' : 'Actualizando'}
+                    {updateStatus === 'downloaded' ? t('nav.installing') : t('nav.updating')}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end">
                   {updateStatus === 'downloaded'
-                    ? `v${updateVersion} descargada. Haz clic para instalar y reiniciar.`
-                    : `Descargando v${updateVersion}...`}
+                    ? t('nav.downloadedVersion', { version: updateVersion })
+                    : t('nav.downloadingVersion', { version: updateVersion })}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -289,7 +289,6 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 - **`.npmrc`** con `onlyBuiltDependencies` para auto-aprobar builds de `better-sqlite3`/`electron`
 
 ### ⚠️ Mejoras Pendientes
-- Encriptar credenciales en BD (contraseña se guarda en texto plano)
 - Completar modelos en `main/database/models/` (History, TaskLinks, TimeLog)
 - Agregar festivos 2027+ al schema cuando corresponda
 
@@ -309,12 +308,11 @@ time_entries (entry_id, task_id, ...)     -- Registros de tiempo (borrador)
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales
-1. **Seguridad**: Encriptar credenciales TW en BD (contraseña en texto plano)
-2. **i18n**: Revisar y completar strings sin traducir en Reports y Settings
-3. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
-4. **Tests**: Agregar tests unitarios/integración
-5. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
-6. **Festivos 2027+**: Agregar al schema SQL cuando corresponda
+1. **i18n**: Revisar y completar strings sin traducir en Reports y Settings
+2. **Modelos**: Completar `main/database/models/` (History, TaskLinks, TimeLog)
+3. **Tests**: Agregar tests unitarios/integración
+4. **Sync bidireccional**: Detectar entradas ya enviadas a TW al reimportar
+5. **Festivos 2027+**: Agregar al schema SQL cuando corresponda
 
 ---
 

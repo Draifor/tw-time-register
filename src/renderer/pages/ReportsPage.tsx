@@ -59,9 +59,8 @@ function SummaryCard({ label, value, sub, icon: Icon }: SummaryCardProps) {
 
 function ReportsPage() {
   const { data, isLoading } = useTimeLogs();
-  const { i18n } = useTranslation();
-  const isSpanish = i18n.language === 'es';
-  const locale = isSpanish ? 'es-CO' : 'en-US';
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'es' ? 'es-CO' : 'en-US';
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -88,7 +87,7 @@ function ReportsPage() {
   const byTask = useMemo(() => {
     const map = new Map<string, { minutes: number; billableMinutes: number; entries: number; sentEntries: number }>();
     for (const e of filtered) {
-      const key = e.taskName || (isSpanish ? 'Sin tarea' : 'No task');
+      const key = e.taskName || t('common.noTask');
       const prev = map.get(key) ?? { minutes: 0, billableMinutes: 0, entries: 0, sentEntries: 0 };
       const mins = toMinutes(e.startTime, e.endTime);
       map.set(key, {
@@ -99,7 +98,7 @@ function ReportsPage() {
       });
     }
     return [...map.entries()].map(([taskName, v]) => ({ taskName, ...v })).sort((a, b) => b.minutes - a.minutes);
-  }, [filtered, isSpanish]);
+  }, [filtered, t]);
 
   // By day
   const byDay = useMemo(() => {
@@ -134,17 +133,15 @@ function ReportsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <BarChart2 className="h-6 w-6" />
-          {isSpanish ? 'Reportes' : 'Reports'}
+          {t('reports.title')}
         </h1>
-        <p className="text-muted-foreground">
-          {isSpanish ? 'Resumen de horas por tarea y por día' : 'Summary of hours by task and by day'}
-        </p>
+        <p className="text-muted-foreground">{t('reports.subtitle')}</p>
       </div>
 
       {/* Date range filter */}
       <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-muted/30 px-4 py-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Desde' : 'From'}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('reports.from')}</label>
           <input
             type="date"
             value={dateFrom}
@@ -153,7 +150,7 @@ function ReportsPage() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Hasta' : 'To'}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('reports.to')}</label>
           <input
             type="date"
             value={dateTo}
@@ -169,11 +166,11 @@ function ReportsPage() {
             }}
             className="h-8 px-3 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
-            {isSpanish ? 'Limpiar' : 'Clear'}
+            {t('reports.clear')}
           </button>
         )}
         <p className="text-xs text-muted-foreground ml-auto self-end pb-1">
-          {filtered.length} {isSpanish ? 'entradas' : 'entries'}
+          {filtered.length} {t('common.entries')}
         </p>
       </div>
 
@@ -181,34 +178,30 @@ function ReportsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <SummaryCard
           icon={Clock}
-          label={isSpanish ? 'Total registrado' : 'Total logged'}
+          label={t('reports.totalLogged')}
           value={formatDuration(totalMinutes)}
-          sub={`${filtered.length} ${isSpanish ? 'entradas' : 'entries'}`}
+          sub={`${filtered.length} ${t('common.entries')}`}
         />
         <SummaryCard
           icon={TrendingUp}
-          label={isSpanish ? 'Facturable' : 'Billable'}
+          label={t('common.billable')}
           value={formatDuration(billableMinutes)}
           sub={totalMinutes > 0 ? `${Math.round((billableMinutes / totalMinutes) * 100)}%` : '—'}
         />
         <SummaryCard
           icon={CheckCircle2}
-          label={isSpanish ? 'Enviadas a TW' : 'Sent to TW'}
+          label={t('reports.sentToTW')}
           value={`${sentCount}`}
           sub={
-            filtered.length > 0
-              ? `${Math.round((sentCount / filtered.length) * 100)}% ${isSpanish ? 'del total' : 'of total'}`
-              : '—'
+            filtered.length > 0 ? `${Math.round((sentCount / filtered.length) * 100)}% ${t('reports.ofTotal')}` : '—'
           }
         />
         <SummaryCard
           icon={CalendarDays}
-          label={isSpanish ? 'Días con registro' : 'Days with logs'}
+          label={t('reports.daysWithLogs')}
           value={`${byDay.length}`}
           sub={
-            byDay.length > 0
-              ? `${formatDuration(Math.round(totalMinutes / byDay.length))} ${isSpanish ? 'promedio/día' : 'avg/day'}`
-              : '—'
+            byDay.length > 0 ? `${formatDuration(Math.round(totalMinutes / byDay.length))} ${t('reports.avgDay')}` : '—'
           }
         />
       </div>
@@ -217,20 +210,18 @@ function ReportsPage() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
           <BarChart2 className="h-12 w-12 opacity-30" />
-          <p className="text-lg">
-            {isSpanish ? 'No hay datos en el rango seleccionado' : 'No data in the selected range'}
-          </p>
+          <p className="text-lg">{t('reports.noData')}</p>
         </div>
       ) : (
         <Tabs defaultValue="task" className="w-full">
           <TabsList className="grid w-full grid-cols-2 lg:w-[320px]">
             <TabsTrigger value="task" className="gap-2">
               <ListTodo className="h-4 w-4" />
-              {isSpanish ? 'Por tarea' : 'By task'}
+              {t('reports.byTask')}
             </TabsTrigger>
             <TabsTrigger value="day" className="gap-2">
               <CalendarDays className="h-4 w-4" />
-              {isSpanish ? 'Por día' : 'By day'}
+              {t('reports.byDay')}
             </TabsTrigger>
           </TabsList>
 
@@ -240,20 +231,18 @@ function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      {isSpanish ? 'Tarea' : 'Task'}
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colTask')}</th>
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                      {t('reports.colEntries')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Entradas' : 'Entries'}
+                      {t('reports.colTotalHours')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Total horas' : 'Total hours'}
+                      {t('reports.colBillable')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Facturable' : 'Billable'}
-                    </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Estado envío' : 'Sync status'}
+                      {t('reports.colSyncStatus')}
                     </th>
                   </tr>
                 </thead>
@@ -290,12 +279,12 @@ function ReportsPage() {
                               className="text-emerald-600 border-emerald-300 dark:text-emerald-400 gap-1"
                             >
                               <CheckCircle2 className="h-3 w-3" />
-                              {isSpanish ? 'Enviado' : 'Sent'}
+                              {t('common.sent')}
                             </Badge>
                           ) : pct === 0 ? (
                             <Badge variant="outline" className="text-muted-foreground gap-1">
                               <CircleDot className="h-3 w-3" />
-                              {isSpanish ? 'Pendiente' : 'Pending'}
+                              {t('common.pending')}
                             </Badge>
                           ) : (
                             <Badge
@@ -321,17 +310,15 @@ function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      {isSpanish ? 'Fecha' : 'Date'}
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                      {t('reports.colEntries')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Entradas' : 'Entries'}
+                      {t('reports.colTotalHours')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Total horas' : 'Total hours'}
-                    </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                      {isSpanish ? 'Estado envío' : 'Sync status'}
+                      {t('reports.colSyncStatus')}
                     </th>
                   </tr>
                 </thead>
@@ -350,12 +337,12 @@ function ReportsPage() {
                               className="text-emerald-600 border-emerald-300 dark:text-emerald-400 gap-1"
                             >
                               <CheckCircle2 className="h-3 w-3" />
-                              {isSpanish ? 'Enviado' : 'Sent'}
+                              {t('common.sent')}
                             </Badge>
                           ) : pct === 0 ? (
                             <Badge variant="outline" className="text-muted-foreground gap-1">
                               <CircleDot className="h-3 w-3" />
-                              {isSpanish ? 'Pendiente' : 'Pending'}
+                              {t('common.pending')}
                             </Badge>
                           ) : (
                             <Badge

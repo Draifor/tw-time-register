@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Clock, ListTodo, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -7,6 +8,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { getTimeStats, TimeStats, minutesToHoursMinutes } from '../services/timesService';
 
 function HomePage() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<TimeStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,8 +34,8 @@ function HomePage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to TW Time Register</h1>
-        <p className="text-muted-foreground text-lg">Track your work hours and sync them with TeamWork effortlessly.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('home.title')}</h1>
+        <p className="text-muted-foreground text-lg">{t('home.subtitle')}</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -43,14 +45,14 @@ function HomePage() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Clock className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle>Time Registration</CardTitle>
+              <CardTitle>{t('home.timeRegistration')}</CardTitle>
             </div>
-            <CardDescription>Register your daily work hours with automatic calculations for end times.</CardDescription>
+            <CardDescription>{t('home.timeRegistrationDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Link to="/worktime">
               <Button className="w-full">
-                Start Registering
+                {t('home.startRegistering')}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
@@ -63,14 +65,14 @@ function HomePage() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <ListTodo className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle>Task Management</CardTitle>
+              <CardTitle>{t('home.taskManagement')}</CardTitle>
             </div>
-            <CardDescription>Manage your TeamWork tasks and task types for quick time entry selection.</CardDescription>
+            <CardDescription>{t('home.taskManagementDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Link to="/tasks">
               <Button variant="outline" className="w-full">
-                View Tasks
+                {t('home.viewTasks')}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
@@ -80,8 +82,8 @@ function HomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Quick Stats</CardTitle>
-          <CardDescription>Your time tracking summary</CardDescription>
+          <CardTitle>{t('home.quickStats')}</CardTitle>
+          <CardDescription>{t('home.statsSummary')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
@@ -91,7 +93,7 @@ function HomePage() {
               ) : (
                 <div className="text-2xl font-bold">{formatTime(stats?.todayMinutes || 0)}</div>
               )}
-              <div className="text-sm text-muted-foreground">Today</div>
+              <div className="text-sm text-muted-foreground">{t('home.today')}</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted">
               {isLoading ? (
@@ -99,7 +101,7 @@ function HomePage() {
               ) : (
                 <div className="text-2xl font-bold">{formatTime(stats?.weekMinutes || 0)}</div>
               )}
-              <div className="text-sm text-muted-foreground">This Week</div>
+              <div className="text-sm text-muted-foreground">{t('home.thisWeek')}</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted">
               {isLoading ? (
@@ -113,7 +115,7 @@ function HomePage() {
                   {stats?.pendingEntries || 0}
                 </div>
               )}
-              <div className="text-sm text-muted-foreground">Pending Entries</div>
+              <div className="text-sm text-muted-foreground">{t('home.pendingEntries')}</div>
             </div>
           </div>
         </CardContent>

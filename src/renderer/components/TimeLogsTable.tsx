@@ -71,8 +71,7 @@ function formatDuration(hours: number, minutes: number): string {
 function TimeLogsTable() {
   const { data, isLoading, error } = useTimeLogs();
   const queryClient = useQueryClient();
-  const { i18n } = useTranslation();
-  const isSpanish = i18n.language === 'es';
+  const { t, i18n } = useTranslation();
 
   // Track loading state per entry
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
@@ -128,14 +127,10 @@ function TimeLogsTable() {
     try {
       const ok = await deleteTimeEntry(entry.entryId);
       if (ok) {
-        toast.success(
-          isSpanish
-            ? `Entrada "${entry.taskName || entry.description}" eliminada`
-            : `Entry "${entry.taskName || entry.description}" deleted`
-        );
+        toast.success(t('timeLogs.deleteSuccess', { name: entry.taskName || entry.description }));
         queryClient.invalidateQueries({ queryKey: ['workTimes'] });
       } else {
-        toast.error(isSpanish ? 'Error al eliminar la entrada' : 'Failed to delete entry');
+        toast.error(t('timeLogs.deleteError'));
       }
     } catch (err) {
       console.error('Delete error:', err);
@@ -171,19 +166,15 @@ function TimeLogsTable() {
         isBillable: editData.isBillable
       });
       if (!ok) {
-        toast.error(isSpanish ? 'Error al guardar cambios' : 'Failed to save changes');
+        toast.error(t('timeLogs.saveError'));
         return;
       }
       // If the entry was already sent, reset it to pending so the user can re-sync
       if (entry.isSent) {
         await resetTimeEntryToUnsent(entry.entryId);
-        toast.info(
-          isSpanish
-            ? 'Entrada actualizada y marcada como pendiente — vuelve a sincronizarla con TW'
-            : 'Entry updated and marked as pending — sync it again to update TW'
-        );
+        toast.info(t('timeLogs.updatedPending'));
       } else {
-        toast.success(isSpanish ? 'Cambios guardados' : 'Changes saved');
+        toast.success(t('timeLogs.changesSaved'));
       }
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ['workTimes'] });
@@ -206,27 +197,19 @@ function TimeLogsTable() {
   const syncEntry = useCallback(
     async (entry: TimeEntry): Promise<boolean> => {
       if (!entry.taskLink) {
-        toast.error(
-          isSpanish
-            ? `Sin task_link para "${entry.taskName || entry.description}"`
-            : `No task_link for "${entry.taskName || entry.description}"`
-        );
+        toast.error(t('timeLogs.noTaskLink', { name: entry.taskName || entry.description }));
         return false;
       }
 
       const twTaskId = await extractTWTaskId(entry.taskLink);
       if (!twTaskId) {
-        toast.error(
-          isSpanish
-            ? `No se pudo extraer el ID de TW de la URL: ${entry.taskLink}`
-            : `Could not extract TW task ID from URL: ${entry.taskLink}`
-        );
+        toast.error(t('timeLogs.noTWTaskId', { url: entry.taskLink }));
         return false;
       }
 
       const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
       if (hours === 0 && minutes === 0) {
-        toast.error(isSpanish ? 'Duración es 0 — verifica hora inicio/fin' : 'Duration is 0 — check start/end time');
+        toast.error(t('timeLogs.durationZero'));
         return false;
       }
 
@@ -244,11 +227,11 @@ function TimeLogsTable() {
         await markEntriesAsSent([entry.entryId]);
         return true;
       } else {
-        toast.error(result.message || (isSpanish ? 'Error al sincronizar' : 'Sync failed'));
+        toast.error(result.message || t('timeLogs.syncFailed'));
         return false;
       }
     },
-    [isSpanish]
+    [t]
   );
 
   const handleSyncOne = async (entry: TimeEntry) => {
@@ -256,11 +239,7 @@ function TimeLogsTable() {
     try {
       const ok = await syncEntry(entry);
       if (ok) {
-        toast.success(
-          isSpanish
-            ? `✓ "${entry.taskName || entry.description}" enviado a TW`
-            : `✓ "${entry.taskName || entry.description}" sent to TW`
-        );
+        toast.success(t('timeLogs.entrySentToTW', { name: entry.taskName || entry.description }));
         queryClient.invalidateQueries({ queryKey: ['workTimes'] });
       }
     } catch (err) {
@@ -274,7 +253,7 @@ function TimeLogsTable() {
   const handleSyncAll = async () => {
     const pending = data.filter((e) => !e.isSent);
     if (pending.length === 0) {
-      toast.info(isSpanish ? 'No hay entradas pendientes' : 'No pending entries');
+      toast.info(t('timeLogs.noPending'));
       return;
     }
     setSyncingAll(true);
@@ -295,13 +274,9 @@ function TimeLogsTable() {
     setSyncingAll(false);
     queryClient.invalidateQueries({ queryKey: ['workTimes'] });
     if (failCount === 0) {
-      toast.success(
-        isSpanish ? `${successCount} entradas enviadas a TeamWork` : `${successCount} entries sent to TeamWork`
-      );
+      toast.success(t('timeLogs.allSent', { count: successCount }));
     } else {
-      toast.warning(
-        isSpanish ? `${successCount} enviadas, ${failCount} fallidas` : `${successCount} sent, ${failCount} failed`
-      );
+      toast.warning(t('timeLogs.partialSent', { success: successCount, fail: failCount }));
     }
   };
 
@@ -330,10 +305,8 @@ function TimeLogsTable() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
         <Clock className="h-12 w-12 opacity-30" />
-        <p className="text-lg">{isSpanish ? 'No hay registros de tiempo' : 'No time logs yet'}</p>
-        <p className="text-sm">
-          {isSpanish ? 'Crea una entrada en la pantalla principal' : 'Create an entry on the home screen'}
-        </p>
+        <p className="text-lg">{t('timeLogs.noTimeLogs')}</p>
+        <p className="text-sm">{t('timeLogs.createEntry')}</p>
       </div>
     );
   }
@@ -350,7 +323,7 @@ function TimeLogsTable() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={isSpanish ? 'Buscar por tarea o descripción...' : 'Search by task or description...'}
+              placeholder={t('timeLogs.searchPlaceholder')}
               className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -362,7 +335,7 @@ function TimeLogsTable() {
             onClick={() => setShowFilters((v) => !v)}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            {isSpanish ? 'Filtros' : 'Filters'}
+            {t('timeLogs.filters')}
             {hasActiveFilters && (
               <span className="ml-0.5 rounded-full bg-primary text-primary-foreground w-4 h-4 text-xs flex items-center justify-center">
                 {[search, filterTask, filterDateFrom, filterDateTo].filter(Boolean).length}
@@ -378,7 +351,7 @@ function TimeLogsTable() {
             disabled={syncingAll || pendingCount === 0}
           >
             {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {isSpanish ? `Sync ${pendingCount}` : `Sync ${pendingCount}`}
+            {`Sync ${pendingCount}`}
           </Button>
         </div>
 
@@ -387,18 +360,18 @@ function TimeLogsTable() {
           <div className="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-2.5">
             {/* Task filter */}
             <div className="space-y-1 min-w-[220px]">
-              <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Tarea' : 'Task'}</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('reports.colTask')}</label>
               <Combobox
                 options={taskOptions.map((n) => ({ value: n, label: n }))}
-                placeholder={isSpanish ? 'Todas las tareas' : 'All tasks'}
-                searchPlaceholder={isSpanish ? 'Buscar tarea...' : 'Search task...'}
+                placeholder={t('timeLogs.allTasks')}
+                searchPlaceholder={t('timeLogs.searchTask')}
                 value={filterTask ? { value: filterTask, label: filterTask } : null}
                 onChange={(opt) => setFilterTask(opt?.value ?? '')}
               />
             </div>
             {/* Date from */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Desde' : 'From'}</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('reports.from')}</label>
               <input
                 type="date"
                 value={filterDateFrom}
@@ -408,7 +381,7 @@ function TimeLogsTable() {
             </div>
             {/* Date to */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{isSpanish ? 'Hasta' : 'To'}</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('reports.to')}</label>
               <input
                 type="date"
                 value={filterDateTo}
@@ -420,7 +393,7 @@ function TimeLogsTable() {
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
                 <X className="h-3 w-3 mr-1" />
-                {isSpanish ? 'Limpiar' : 'Clear'}
+                {t('reports.clear')}
               </Button>
             )}
           </div>
@@ -429,7 +402,7 @@ function TimeLogsTable() {
         {/* Results count when filtering */}
         {hasActiveFilters && (
           <p className="text-xs text-muted-foreground">
-            {filteredData.length} {isSpanish ? 'de' : 'of'} {data.length} {isSpanish ? 'entradas' : 'entries'}
+            {filteredData.length} {t('timeLogs.of')} {data.length} {t('common.entries')}
           </p>
         )}
       </div>
@@ -439,34 +412,22 @@ function TimeLogsTable() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{isSpanish ? 'Fecha' : 'Date'}</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{isSpanish ? 'Tarea' : 'Task'}</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                {isSpanish ? 'Descripción' : 'Description'}
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                {isSpanish ? 'Inicio' : 'Start'}
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{isSpanish ? 'Fin' : 'End'}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                {isSpanish ? 'Duración' : 'Duration'}
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                {isSpanish ? 'Facturable' : 'Billable'}
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                {isSpanish ? 'Estado' : 'Status'}
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                {isSpanish ? 'Acciones' : 'Actions'}
-              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colTask')}</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('common.description')}</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colStart')}</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colEnd')}</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colDuration')}</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('common.billable')}</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colStatus')}</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colActions')}</th>
             </tr>
           </thead>
           <tbody>
             {hasActiveFilters && filteredData.length === 0 && (
               <tr>
                 <td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
-                  {isSpanish ? 'Sin resultados para los filtros aplicados' : 'No results match the active filters'}
+                  {t('timeLogs.noFilterResults')}
                 </td>
               </tr>
             )}
@@ -499,7 +460,7 @@ function TimeLogsTable() {
                         type="text"
                         value={editData.description}
                         onChange={(e) => setEditData((d) => ({ ...d, description: e.target.value }))}
-                        placeholder={isSpanish ? 'Descripción' : 'Description'}
+                        placeholder={t('common.description')}
                         className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </td>
@@ -542,7 +503,7 @@ function TimeLogsTable() {
                       {entry.isSent ? (
                         <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
                           <CheckCircle2 className="h-3 w-3" />
-                          {isSpanish ? 'Enviado' : 'Sent'}
+                          {t('common.sent')}
                         </Badge>
                       ) : (
                         <Badge
@@ -550,7 +511,7 @@ function TimeLogsTable() {
                           className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
                         >
                           <Clock className="h-3 w-3" />
-                          {isSpanish ? 'Pendiente' : 'Pending'}
+                          {t('common.pending')}
                         </Badge>
                       )}
                     </td>
@@ -575,7 +536,7 @@ function TimeLogsTable() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{isSpanish ? 'Guardar cambios' : 'Save changes'}</p>
+                              <p>{t('timeLogs.saveChanges')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -592,7 +553,7 @@ function TimeLogsTable() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{isSpanish ? 'Cancelar' : 'Cancel'}</p>
+                              <p>{t('common.cancel')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -617,28 +578,22 @@ function TimeLogsTable() {
                                 </AlertDialogTrigger>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>{isSpanish ? 'Eliminar entrada' : 'Delete entry'}</p>
+                                <p>{t('timeLogs.deleteEntry')}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                {isSpanish ? '¿Eliminar esta entrada?' : 'Delete this entry?'}
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {isSpanish
-                                  ? 'Esta acción no se puede deshacer. La entrada se eliminará solo localmente.'
-                                  : 'This action cannot be undone. The entry will be removed locally only.'}
-                              </AlertDialogDescription>
+                              <AlertDialogTitle>{t('timeLogs.deleteConfirmTitle')}</AlertDialogTitle>
+                              <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>{isSpanish ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
+                              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                               <AlertDialogAction
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 onClick={() => handleDelete(entry)}
                               >
-                                {isSpanish ? 'Eliminar' : 'Delete'}
+                                {t('common.delete')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -694,17 +649,17 @@ function TimeLogsTable() {
                   <td className="px-4 py-3 text-center">
                     {entry.isBillable ? (
                       <Badge variant="secondary" className="text-xs">
-                        {isSpanish ? 'Sí' : 'Yes'}
+                        {t('timeLogs.yes')}
                       </Badge>
                     ) : (
-                      <span className="text-muted-foreground text-xs">{isSpanish ? 'No' : 'No'}</span>
+                      <span className="text-muted-foreground text-xs">No</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     {entry.isSent ? (
                       <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-500/20">
                         <CheckCircle2 className="h-3 w-3" />
-                        {isSpanish ? 'Enviado' : 'Sent'}
+                        {t('common.sent')}
                       </Badge>
                     ) : (
                       <Badge
@@ -712,7 +667,7 @@ function TimeLogsTable() {
                         className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
                       >
                         <Clock className="h-3 w-3" />
-                        {isSpanish ? 'Pendiente' : 'Pending'}
+                        {t('common.pending')}
                       </Badge>
                     )}
                   </td>
@@ -733,15 +688,7 @@ function TimeLogsTable() {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>
-                              {entry.isSent
-                                ? isSpanish
-                                  ? 'Editar y reenviar a TW'
-                                  : 'Edit & re-sync to TW'
-                                : isSpanish
-                                  ? 'Editar entrada'
-                                  : 'Edit entry'}
-                            </p>
+                            <p>{entry.isSent ? t('timeLogs.editResync') : t('timeLogs.editEntry')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -765,7 +712,7 @@ function TimeLogsTable() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{isSpanish ? 'Enviar a TeamWork' : 'Send to TeamWork'}</p>
+                              <p>{t('timeLogs.sendToTW')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -791,28 +738,22 @@ function TimeLogsTable() {
                               </AlertDialogTrigger>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{isSpanish ? 'Eliminar entrada' : 'Delete entry'}</p>
+                              <p>{t('timeLogs.deleteEntry')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {isSpanish ? '¿Eliminar esta entrada?' : 'Delete this entry?'}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {isSpanish
-                                ? 'Esta acción no se puede deshacer. La entrada se eliminará solo localmente.'
-                                : 'This action cannot be undone. The entry will be removed locally only.'}
-                            </AlertDialogDescription>
+                            <AlertDialogTitle>{t('timeLogs.deleteConfirmTitle')}</AlertDialogTitle>
+                            <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>{isSpanish ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
+                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               onClick={() => handleDelete(entry)}
                             >
-                              {isSpanish ? 'Eliminar' : 'Delete'}
+                              {t('common.delete')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
