@@ -227,6 +227,29 @@ export const columns = [
   }
 ];
 
+// Bidirectional sync
+export interface SmartSyncEntryResult {
+  entryId: number;
+  success: boolean;
+  action: 'created' | 'updated' | 'skipped';
+  twEntryId?: string;
+  message?: string;
+}
+
+export interface SmartSyncResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: SmartSyncEntryResult[];
+}
+
+/**
+ * Smart upsert: POST if the entry has never been sent, PUT if it already exists in TW.
+ * Always scoped to the logged-in user (tw_user_id from credentials).
+ */
+export const smartSyncEntries = async (entryIds: number[]): Promise<SmartSyncResult> =>
+  window.Main.smartSyncEntries(entryIds);
+
 // Database backup
 export interface BackupResult {
   success: boolean;

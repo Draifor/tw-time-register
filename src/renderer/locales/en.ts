@@ -30,6 +30,8 @@ const en = {
       durationZero: 'Duration is 0 — check start/end time',
       syncFailed: 'Sync failed',
       entrySentToTW: '✓ "{{name}}" sent to TW',
+      entryUpdatedInTW: '✓ "{{name}}" updated in TW',
+      noTWUserId: 'TW user ID not configured — open Settings and test the connection',
       noPending: 'No pending entries',
       allSent: '{{count}} entries sent to TeamWork',
       partialSent: '{{success}} sent, {{fail}} failed',

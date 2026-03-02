@@ -30,6 +30,8 @@ const es = {
       durationZero: 'Duración es 0 — verifica hora inicio/fin',
       syncFailed: 'Error al sincronizar',
       entrySentToTW: '✓ "{{name}}" enviado a TW',
+      entryUpdatedInTW: '✓ "{{name}}" actualizado en TW',
+      noTWUserId: 'Usuario de TW no configurado — abre Configuración y prueba la conexión',
       noPending: 'No hay entradas pendientes',
       allSent: '{{count}} entradas enviadas a TeamWork',
       partialSent: '{{success}} enviadas, {{fail}} fallidas',

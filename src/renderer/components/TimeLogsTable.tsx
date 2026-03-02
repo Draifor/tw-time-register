@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,9 +33,7 @@ import {
 } from './ui/alert-dialog';
 import useTimeLogs from '../hooks/useTimeLogs';
 import {
-  syncTimeEntryToTW,
-  extractTWTaskId,
-  markEntriesAsSent,
+  smartSyncEntries,
   updateTimeEntry,
   deleteTimeEntry,
   resetTimeEntryToUnsent,
@@ -71,7 +69,7 @@ function formatDuration(hours: number, minutes: number): string {
 function TimeLogsTable() {
   const { data, isLoading, error } = useTimeLogs();
   const queryClient = useQueryClient();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   // Track loading state per entry
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
@@ -194,56 +192,21 @@ function TimeLogsTable() {
       return next;
     });
 
-  const syncEntry = useCallback(
-    async (entry: TimeEntry): Promise<boolean> => {
-      if (!entry.taskLink) {
-        toast.error(t('timeLogs.noTaskLink', { name: entry.taskName || entry.description }));
-        return false;
-      }
-
-      const twTaskId = await extractTWTaskId(entry.taskLink);
-      if (!twTaskId) {
-        toast.error(t('timeLogs.noTWTaskId', { url: entry.taskLink }));
-        return false;
-      }
-
-      const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
-      if (hours === 0 && minutes === 0) {
-        toast.error(t('timeLogs.durationZero'));
-        return false;
-      }
-
-      const result = await syncTimeEntryToTW({
-        twTaskId,
-        description: entry.description,
-        date: entry.date,
-        startTime: entry.startTime,
-        hours,
-        minutes,
-        isBillable: entry.isBillable
-      });
-
-      if (result.success) {
-        await markEntriesAsSent([entry.entryId]);
-        return true;
-      } else {
-        toast.error(result.message || t('timeLogs.syncFailed'));
-        return false;
-      }
-    },
-    [t]
-  );
-
   const handleSyncOne = async (entry: TimeEntry) => {
     setSyncing(entry.entryId, true);
     try {
-      const ok = await syncEntry(entry);
-      if (ok) {
-        toast.success(t('timeLogs.entrySentToTW', { name: entry.taskName || entry.description }));
+      const result = await smartSyncEntries([entry.entryId]);
+      const r = result.results[0];
+      if (r?.success) {
+        const name = entry.taskName || entry.description;
+        const msg =
+          r.action === 'updated' ? t('timeLogs.entryUpdatedInTW', { name }) : t('timeLogs.entrySentToTW', { name });
+        toast.success(msg);
         queryClient.invalidateQueries({ queryKey: ['workTimes'] });
+      } else {
+        toast.error(r?.message || t('timeLogs.syncFailed'));
       }
     } catch (err) {
-      console.error('Sync error:', err);
       toast.error(String(err));
     } finally {
       setSyncing(entry.entryId, false);
@@ -251,32 +214,26 @@ function TimeLogsTable() {
   };
 
   const handleSyncAll = async () => {
-    const pending = data.filter((e) => !e.isSent);
+    const pending = (data ?? []).filter((e) => !e.isSent);
     if (pending.length === 0) {
       toast.info(t('timeLogs.noPending'));
       return;
     }
     setSyncingAll(true);
-    let successCount = 0;
-    let failCount = 0;
-    for (const entry of pending) {
-      setSyncing(entry.entryId, true);
-      try {
-        const ok = await syncEntry(entry);
-        if (ok) successCount++;
-        else failCount++;
-      } catch {
-        failCount++;
-      } finally {
-        setSyncing(entry.entryId, false);
+    pending.forEach((e) => setSyncing(e.entryId, true));
+    try {
+      const result = await smartSyncEntries(pending.map((e) => e.entryId));
+      queryClient.invalidateQueries({ queryKey: ['workTimes'] });
+      if (result.failed === 0) {
+        toast.success(t('timeLogs.allSent', { count: result.succeeded }));
+      } else {
+        toast.warning(t('timeLogs.partialSent', { success: result.succeeded, fail: result.failed }));
       }
-    }
-    setSyncingAll(false);
-    queryClient.invalidateQueries({ queryKey: ['workTimes'] });
-    if (failCount === 0) {
-      toast.success(t('timeLogs.allSent', { count: successCount }));
-    } else {
-      toast.warning(t('timeLogs.partialSent', { success: successCount, fail: failCount }));
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      pending.forEach((e) => setSyncing(e.entryId, false));
+      setSyncingAll(false);
     }
   };
 
