@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control, FieldValues } from 'react-hook-form';
 import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
 import Textarea from './ui/textarea-form';
 import { Label } from './ui/label';
@@ -27,6 +28,7 @@ type WorkTimeEntry = {
 };
 
 export default function WorkTimeForm() {
+  const { t } = useTranslation();
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
     const [hours, minutes] = (slot?.startTime || '09:00').split(':').map(Number);
@@ -231,9 +233,12 @@ export default function WorkTimeForm() {
           const overHours = Math.floor(overMinutes / 60);
           const overMins = overMinutes % 60;
 
-          // Show warning but still allow save
-          toast.warning(`Overtime on ${date}`, {
-            description: `You are registering ${overHours}h ${overMins}m over the ${dailyInfo.maxMinutes / 60}h limit.`
+          toast.warning(t('workTimeForm.overtimeTitle', { date }), {
+            description: t('workTimeForm.overtimeDesc', {
+              overH: overHours,
+              overM: overMins,
+              maxH: dailyInfo.maxMinutes / 60
+            })
           });
         }
       }
@@ -263,8 +268,8 @@ export default function WorkTimeForm() {
 
       await Promise.all(promises);
 
-      toast.success('Entries saved successfully!', {
-        description: `${data.entries.length} time entries registered.`
+      toast.success(t('workTimeForm.savedTitle'), {
+        description: t('workTimeForm.savedDesc', { count: data.entries.length })
       });
       localStorage.removeItem('workTimeFormEntries');
 
@@ -277,8 +282,8 @@ export default function WorkTimeForm() {
       }
     } catch (error) {
       console.error('Error saving entries:', error);
-      toast.error('Error saving entries', {
-        description: 'Please try again later.'
+      toast.error(t('workTimeForm.saveErrorTitle'), {
+        description: t('workTimeForm.saveErrorDesc')
       });
     }
   };
@@ -375,7 +380,7 @@ export default function WorkTimeForm() {
           // Clear the last entry if there's more than one
           if (fields.length > 1) {
             remove(fields.length - 1);
-            toast.info('Last entry removed');
+            toast.info(t('workTimeForm.lastRemoved'));
           }
         },
         description: 'Remove last entry'
@@ -387,8 +392,8 @@ export default function WorkTimeForm() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Time Registration</h1>
-          <p className="text-muted-foreground">Register your work hours for TeamWork</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('workTimeForm.title')}</h1>
+          <p className="text-muted-foreground">{t('workTimeForm.subtitle')}</p>
         </div>
         <TotalTimeDay control={control} />
       </div>
@@ -398,7 +403,7 @@ export default function WorkTimeForm() {
           <Card key={field.id} className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Entry {index + 1}</CardTitle>
+                <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
                 <Button
                   type="button"
                   variant="ghost"
@@ -415,9 +420,9 @@ export default function WorkTimeForm() {
               {/* Single row layout - wraps on smaller screens */}
               <div className="flex flex-wrap gap-4 items-start">
                 <div className="flex-1 min-w-[200px] space-y-2">
-                  <Label htmlFor={`entries.${index}.description`}>Description</Label>
+                  <Label htmlFor={`entries.${index}.description`}>{t('common.description')}</Label>
                   <Textarea
-                    placeholder="What did you work on?"
+                    placeholder={t('workTimeForm.descPlaceholder')}
                     className="w-full"
                     name={`entries.${index}.description`}
                     control={control}
@@ -425,34 +430,34 @@ export default function WorkTimeForm() {
                   />
                 </div>
                 <div className="w-[200px] space-y-2">
-                  <Label htmlFor={`entries.${index}.task`}>Task</Label>
+                  <Label htmlFor={`entries.${index}.task`}>{t('workTimeForm.task')}</Label>
                   <Combobox
                     name={`entries.${index}.task`}
                     control={control}
                     options={options}
-                    placeholder="Select a task"
-                    searchPlaceholder="Search tasks..."
-                    rules={{ required: 'Task is required' }}
+                    placeholder={t('workTimeForm.selectTask')}
+                    searchPlaceholder={t('workTimeForm.searchTasks')}
+                    rules={{ required: t('workTimeForm.taskRequired') }}
                   />
                   {errors?.entries?.[index]?.task && (
                     <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>
                   )}
                 </div>
                 <div className="w-[170px] space-y-2">
-                  <Label htmlFor={`entries.${index}.date`}>Date</Label>
+                  <Label htmlFor={`entries.${index}.date`}>{t('common.date')}</Label>
                   <InputDate
                     name={`entries.${index}.date`}
                     control={typedControl}
-                    rules={{ required: 'Date is required' }}
+                    rules={{ required: t('workTimeForm.dateRequired') }}
                   />
                 </div>
                 <div className="w-[90px] space-y-2">
-                  <Label htmlFor={`entries.${index}.hours`}>Duration</Label>
+                  <Label htmlFor={`entries.${index}.hours`}>{t('timeLogs.colDuration')}</Label>
                   <InputTime
                     name={`entries.${index}.hours`}
                     control={typedControl}
                     className="w-full"
-                    rules={{ required: 'Duration is required' }}
+                    rules={{ required: t('workTimeForm.durationRequired') }}
                     options={{
                       enableTime: true,
                       noCalendar: true,
@@ -463,12 +468,12 @@ export default function WorkTimeForm() {
                   />
                 </div>
                 <div className="w-[100px] space-y-2">
-                  <Label htmlFor={`entries.${index}.startTime`}>Start</Label>
+                  <Label htmlFor={`entries.${index}.startTime`}>{t('timeLogs.colStart')}</Label>
                   <InputTime
                     name={`entries.${index}.startTime`}
                     control={typedControl}
                     className="w-full"
-                    rules={{ required: 'Start time is required' }}
+                    rules={{ required: t('workTimeForm.startRequired') }}
                     options={{
                       enableTime: true,
                       noCalendar: true,
@@ -481,7 +486,7 @@ export default function WorkTimeForm() {
                   )}
                 </div>
                 <div className="w-[100px] space-y-2">
-                  <Label htmlFor={`entries.${index}.endTime`}>End</Label>
+                  <Label htmlFor={`entries.${index}.endTime`}>{t('timeLogs.colEnd')}</Label>
                   <InputTime
                     name={`entries.${index}.endTime`}
                     control={typedControl}
@@ -502,7 +507,7 @@ export default function WorkTimeForm() {
                     className="flex items-center gap-1.5 cursor-pointer select-none"
                   >
                     <UtensilsCrossed className="h-3.5 w-3.5 text-muted-foreground" />
-                    Post-lunch
+                    {t('workTimeForm.afterLunch')}
                   </Label>
                   <div className="h-10 flex items-center">
                     <label
@@ -525,7 +530,7 @@ export default function WorkTimeForm() {
                     className="flex items-center gap-1.5 cursor-pointer select-none"
                   >
                     <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                    Billable
+                    {t('common.billable')}
                   </Label>
                   <div className="h-10 flex items-center">
                     <label
@@ -553,12 +558,12 @@ export default function WorkTimeForm() {
               <TooltipTrigger asChild>
                 <Button type="button" variant="outline" onClick={handleAddEntry}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Entry
+                  {t('workTimeForm.addEntry')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <p className="flex items-center gap-1">
-                  Add new entry
+                  {t('workTimeForm.addEntryTooltip')}
                   <kbd className="ml-1 px-1.5 py-0.5 bg-background/20 border border-border/50 rounded text-xs font-mono">
                     Ctrl+N
                   </kbd>
@@ -571,12 +576,12 @@ export default function WorkTimeForm() {
               <TooltipTrigger asChild>
                 <Button type="submit">
                   <Send className="h-4 w-4 mr-2" />
-                  Register in TeamWork
+                  {t('workTimeForm.register')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <p className="flex items-center gap-1">
-                  Save entries
+                  {t('workTimeForm.saveTooltip')}
                   <kbd className="ml-1 px-1.5 py-0.5 bg-background/20 border border-border/50 rounded text-xs font-mono">
                     Ctrl+S
                   </kbd>
@@ -586,7 +591,7 @@ export default function WorkTimeForm() {
           </TooltipProvider>
           <span className="text-xs text-muted-foreground hidden sm:inline">
             <Keyboard className="h-3 w-3 inline mr-1" />
-            Press Esc to remove last entry
+            {t('workTimeForm.escHint')}
           </span>
         </div>
       </form>

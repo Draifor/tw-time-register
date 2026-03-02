@@ -206,6 +206,32 @@ const en = {
         documentation: 'Documentation',
         about: 'About'
       }
+    },
+    workTimeForm: {
+      title: 'Time Registration',
+      subtitle: 'Register your work hours for TeamWork',
+      entryN: 'Entry {{num}}',
+      descPlaceholder: 'What did you work on?',
+      task: 'Task',
+      selectTask: 'Select a task',
+      searchTasks: 'Search tasks...',
+      taskRequired: 'Task is required',
+      dateRequired: 'Date is required',
+      durationRequired: 'Duration is required',
+      startRequired: 'Start time is required',
+      afterLunch: 'Post-lunch',
+      addEntry: 'Add Entry',
+      addEntryTooltip: 'Add new entry',
+      register: 'Register in TeamWork',
+      saveTooltip: 'Save entries',
+      escHint: 'Press Esc to remove last entry',
+      savedTitle: 'Entries saved successfully!',
+      savedDesc: '{{count}} time entries registered.',
+      saveErrorTitle: 'Error saving entries',
+      saveErrorDesc: 'Please try again later.',
+      lastRemoved: 'Last entry removed',
+      overtimeTitle: 'Overtime on {{date}}',
+      overtimeDesc: 'You are registering {{overH}}h {{overM}}m over the {{maxH}}h limit.'
     }
   }
 };
