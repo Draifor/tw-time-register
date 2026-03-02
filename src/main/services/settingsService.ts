@@ -1,4 +1,5 @@
 import openDb from '../database/database';
+import { encrypt, decrypt } from './encryptionService';
 
 export interface WorkSettings {
   defaultStartTime: string;
@@ -20,7 +21,9 @@ export interface Holiday {
 // Get all work settings as a structured object
 export async function getWorkSettings(): Promise<WorkSettings> {
   const db = await openDb();
-  const rows = await db.all<{ setting_key: string; setting_value: string }>('SELECT setting_key, setting_value FROM work_settings');
+  const rows = await db.all<{ setting_key: string; setting_value: string }>(
+    'SELECT setting_key, setting_value FROM work_settings'
+  );
 
   const settings: Record<string, string> = {};
   rows.forEach((row) => {
@@ -141,7 +144,9 @@ export async function isWorkDay(date: string): Promise<boolean> {
 // Get the UI language setting
 export async function getLanguage(): Promise<string> {
   const db = await openDb();
-  const row = await db.get<{ setting_value: string }>("SELECT setting_value FROM work_settings WHERE setting_key = 'language'");
+  const row = await db.get<{ setting_value: string }>(
+    "SELECT setting_value FROM work_settings WHERE setting_key = 'language'"
+  );
   return row?.setting_value || 'es';
 }
 
@@ -170,8 +175,8 @@ export async function getTWCredentials(): Promise<TWCredentials> {
   });
   return {
     domain: map['tw_domain'] || '',
-    username: map['tw_username'] || '',
-    password: map['tw_password'] || '',
+    username: decrypt(map['tw_username'] || ''),
+    password: decrypt(map['tw_password'] || ''),
     userId: map['tw_user_id'] || ''
   };
 }
@@ -184,7 +189,7 @@ export async function saveTWCredentials(
 ): Promise<void> {
   const db = await openDb();
   await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_domain'", [domain]);
-  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_username'", [username]);
-  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_password'", [password]);
+  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_username'", [encrypt(username)]);
+  await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_password'", [encrypt(password)]);
   await db.run("UPDATE work_settings SET setting_value = ? WHERE setting_key = 'tw_user_id'", [userId]);
 }

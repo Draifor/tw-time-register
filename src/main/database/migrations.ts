@@ -1,4 +1,5 @@
 import openDb from './database';
+import { isEncryptedValue, encrypt } from '../services/encryptionService';
 
 // Run all pending migrations
 export async function runMigrations(): Promise<void> {
@@ -44,5 +45,20 @@ export async function runMigrations(): Promise<void> {
       "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_user_id', '', 'TeamWork user ID (numeric)')"
     );
     console.log('Migration: Added tw_user_id setting');
+  }
+
+  // Migration: encrypt existing plain-text TW credentials
+  // After this runs once, values will carry the "enc:" prefix so the check is idempotent.
+  const sensitiveKeys = ['tw_username', 'tw_password'];
+  for (const key of sensitiveKeys) {
+    const row = await db.get<{ setting_value: string }>(
+      'SELECT setting_value FROM work_settings WHERE setting_key = ?',
+      [key]
+    );
+    if (row && row.setting_value && !isEncryptedValue(row.setting_value)) {
+      const encrypted = encrypt(row.setting_value);
+      await db.run('UPDATE work_settings SET setting_value = ? WHERE setting_key = ?', [encrypted, key]);
+      console.log(`Migration: Encrypted ${key}`);
+    }
   }
 }
