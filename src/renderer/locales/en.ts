@@ -68,7 +68,12 @@ const en = {
       installing: 'Install',
       updating: 'Updating',
       downloadedVersion: 'v{{version}} downloaded. Click to install and restart.',
-      downloadingVersion: 'Downloading v{{version}}...'
+      downloadingVersion: 'Downloading v{{version}}...',
+      updateAvailableToast: 'New version available',
+      updateAvailableDesc: 'Downloading v{{version}} in the background...',
+      updateReadyToast: 'Update ready to install',
+      updateReadyDesc: 'v{{version}} downloaded. Restart to apply the update.',
+      updateReadyAction: 'Restart now'
     },
     home: {
       title: 'Welcome to TW Time Register',

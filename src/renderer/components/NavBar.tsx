@@ -102,18 +102,20 @@ function NavBar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant={updateStatus === 'downloaded' ? 'default' : 'outline'}
                     size="sm"
                     className={cn(
-                      'gap-2 text-sm',
+                      'gap-2 text-sm animate-pulse',
                       updateStatus === 'downloaded'
-                        ? 'border-emerald-500 text-emerald-500 hover:bg-emerald-500/10'
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-0'
                         : 'border-amber-500 text-amber-500 hover:bg-amber-500/10'
                     )}
                     onClick={updateStatus === 'downloaded' ? installUpdate : undefined}
                   >
                     <Download className="h-4 w-4" />
-                    {updateStatus === 'downloaded' ? t('nav.installing') : t('nav.updating')}
+                    {updateStatus === 'downloaded'
+                      ? t('nav.installing', { version: updateVersion })
+                      : t('nav.updating')}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end">
