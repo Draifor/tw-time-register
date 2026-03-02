@@ -262,7 +262,7 @@ export default function SettingsPage() {
       const updatedHolidays = await getHolidays();
       setHolidays(updatedHolidays);
       toast.success(t('settings.holidays.syncSuccess', { inserted: result.inserted, year: result.year }));
-    } catch (_err) {
+    } catch {
       toast.error(t('settings.holidays.syncError'));
     } finally {
       setIsSyncing(false);
