@@ -61,4 +61,20 @@ export async function runMigrations(): Promise<void> {
       console.log(`Migration: Encrypted ${key}`);
     }
   }
+
+  // Migration: create sync_history table (idempotent — CREATE TABLE IF NOT EXISTS)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS sync_history (
+      history_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+      entry_id         INTEGER NOT NULL,
+      action           TEXT    NOT NULL CHECK(action IN ('created','updated','deleted')),
+      synced_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tw_time_entry_id TEXT,
+      tw_task_id       TEXT,
+      success          BOOLEAN DEFAULT 1,
+      error_message    TEXT,
+      FOREIGN KEY (entry_id) REFERENCES time_entries(entry_id) ON DELETE CASCADE
+    )
+  `);
+  console.log('Migration: sync_history table ensured');
 }
