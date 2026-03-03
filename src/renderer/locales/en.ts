@@ -250,7 +250,16 @@ const en = {
       saveErrorDesc: 'Please try again later.',
       lastRemoved: 'Last entry removed',
       overtimeTitle: 'Overtime on {{date}}',
-      overtimeDesc: 'You are registering {{overH}}h {{overM}}m over the {{maxH}}h limit.'
+      overtimeDesc: 'You are registering {{overH}}h {{overM}}m over the {{maxH}}h limit.',
+      summary: {
+        title: 'Time summary',
+        nDays: '{{count}} days',
+        saved: 'Saved in database',
+        draft: 'Draft (not saved)',
+        complete: 'Complete',
+        left: 'remaining',
+        total: 'Total'
+      }
     }
   }
 };

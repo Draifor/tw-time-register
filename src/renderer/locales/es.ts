@@ -250,7 +250,16 @@ const es = {
       saveErrorDesc: 'Por favor, inténtalo de nuevo más tarde.',
       lastRemoved: 'Última entrada eliminada',
       overtimeTitle: 'Tiempo extra el {{date}}',
-      overtimeDesc: 'Estás registrando {{overH}}h {{overM}}m sobre el límite de {{maxH}}h.'
+      overtimeDesc: 'Estás registrando {{overH}}h {{overM}}m sobre el límite de {{maxH}}h.',
+      summary: {
+        title: 'Resumen de tiempos',
+        nDays: '{{count}} días',
+        saved: 'Guardado en base de datos',
+        draft: 'Borrador (sin guardar)',
+        complete: 'Completo',
+        left: 'restantes',
+        total: 'Total'
+      }
     }
   }
 };
