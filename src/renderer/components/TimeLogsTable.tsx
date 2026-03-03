@@ -11,6 +11,7 @@ import {
   X,
   Check,
   Trash2,
+  Copy,
   Search,
   SlidersHorizontal
 } from 'lucide-react';
@@ -35,6 +36,7 @@ import {
 import useTimeLogs from '../hooks/useTimeLogs';
 import {
   smartSyncEntries,
+  addTimeEntry,
   updateTimeEntry,
   deleteTimeEntry,
   resetTimeEntryToUnsent,
@@ -71,6 +73,7 @@ function TimeLogsTable() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   // Filter state
   const [search, setSearch] = useState('');
@@ -104,6 +107,26 @@ function TimeLogsTable() {
     setFilterDateFrom('');
     setFilterDateTo('');
   }
+
+  const handleDuplicate = async (entry: TimeEntry) => {
+    setDuplicatingId(entry.entryId);
+    try {
+      await addTimeEntry({
+        taskId: entry.taskId,
+        description: entry.description,
+        date: entry.date,
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+        isBillable: entry.isBillable
+      });
+      toast.success(t('timeLogs.duplicateSuccess', { name: entry.taskName || entry.description }));
+      queryClient.invalidateQueries({ queryKey: ['workTimes'] });
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
 
   const handleDelete = async (entry: TimeEntry) => {
     setDeletingId(entry.entryId);
@@ -627,6 +650,29 @@ function TimeLogsTable() {
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{entry.isSent ? t('timeLogs.editResync') : t('timeLogs.editEntry')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      {/* Duplicate button */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                              disabled={editingId !== null || duplicatingId === entry.entryId}
+                              onClick={() => handleDuplicate(entry)}
+                            >
+                              {duplicatingId === entry.entryId ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('timeLogs.duplicateEntry')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

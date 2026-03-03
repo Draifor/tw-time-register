@@ -55,7 +55,9 @@ const es = {
       yes: 'Sí',
       editResync: 'Editar y reenviar a TW',
       editEntry: 'Editar entrada',
-      sendToTW: 'Enviar a TeamWork'
+      sendToTW: 'Enviar a TeamWork',
+      duplicateEntry: 'Duplicar entrada',
+      duplicateSuccess: 'Entrada "{{name}}" duplicada'
     },
     nav: {
       home: 'Inicio',
