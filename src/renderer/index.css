@@ -122,3 +122,78 @@
 .dark .numInputWrapper:hover {
   background: hsl(var(--accent));
 }
+
+/* Month / year navigation */
+.dark .flatpickr-months .flatpickr-month,
+.dark .flatpickr-months .flatpickr-prev-month,
+.dark .flatpickr-months .flatpickr-next-month {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  fill: hsl(var(--popover-foreground));
+}
+.dark .flatpickr-months .flatpickr-prev-month:hover,
+.dark .flatpickr-months .flatpickr-next-month:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  fill: hsl(var(--accent-foreground));
+}
+.dark .flatpickr-current-month input.cur-year,
+.dark .flatpickr-current-month .flatpickr-monthDropdown-months {
+  background: transparent;
+  color: hsl(var(--popover-foreground));
+}
+.dark .flatpickr-current-month .flatpickr-monthDropdown-months option {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+/* Weekday header row */
+.dark .flatpickr-weekdays,
+.dark .flatpickr-weekday {
+  background: hsl(var(--popover));
+  color: hsl(var(--muted-foreground));
+}
+
+/* Day cells */
+.dark .flatpickr-day {
+  color: hsl(var(--popover-foreground));
+  border-color: transparent;
+}
+.dark .flatpickr-day.prevMonthDay,
+.dark .flatpickr-day.nextMonthDay {
+  color: hsl(var(--muted-foreground));
+}
+.dark .flatpickr-day:hover,
+.dark .flatpickr-day:focus {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  border-color: transparent;
+}
+.dark .flatpickr-day.today {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--popover-foreground));
+}
+.dark .flatpickr-day.today:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+.dark .flatpickr-day.selected,
+.dark .flatpickr-day.selected:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+.dark .flatpickr-day.disabled,
+.dark .flatpickr-day.disabled:hover {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.4;
+}
+
+/* Inner day grid background */
+.dark .flatpickr-innerContainer,
+.dark .flatpickr-rContainer,
+.dark .flatpickr-days,
+.dark .dayContainer {
+  background: hsl(var(--popover));
+}
