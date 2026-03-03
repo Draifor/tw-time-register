@@ -407,20 +407,34 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - **i18n**: claves `workTimeForm.timer.{start, stop, otherRunning}` en ES/EN
 - Commit: `269c864`
 
+### ✅ Fase 16: UX — Duplicar Entrada + i18n Completa (COMPLETADA - Mar 2026)
+- **`TimeLogsTable.tsx`**: botón `Copy` entre Editar y Sincronizar en cada fila
+  - `handleDuplicate`: copia `taskId`, `description`, `date`, `startTime`, `endTime`, `isBillable` de la entrada original
+  - Nueva entrada creada con `isSent=false`; spinner `RefreshCw` mientras se procesa
+  - Deshabilitado si hay otra edición activa
+  - i18n: claves `timeLogs.duplicateEntry` / `timeLogs.duplicateSuccess` (ES+EN)
+  - Commit: `358d884`
+- **i18n Completa — Tasks**: `TasksPage`, `TasksTable`, `TypeTasksTable`, `ImportTasksDialog`, `ImportCSVTasksDialog`
+  - Nueva sección `tasks.*` en `es.ts` / `en.ts` (~60 claves: pestañas, títulos, labels, hints, toasts, pasos de wizard)
+  - `common.done`, `common.back`, `common.errorOccurred` añadidos a ambos locales
+  - Todos los strings hardcodeados reemplazados por `t()` — 0 strings en inglés sin traducir
+  - Commit: `68a3540`
+
 ---
 
 ## Roadmap
 
-### v1.3.0 — Calidad & Cobertura
+### ✅ v1.3.0 — Calidad & Cobertura (PUBLICADA - Mar 2026)
 - [x] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`, `encryptionService` — **108 tests, 8 suites** ✅
 - [ ] Tests de componentes React (WorkTimeForm, TimeLogsTable)
 - [ ] E2E básico con Playwright (flujo registro → sync)
 - [ ] Limpiar y documentar `ReportsPage` (lógica de cálculo de horas)
 
-### v1.4.0 — UX & Productividad
+### ✅ v1.4.0 — UX & Productividad (PUBLICADA - Mar 2026)
 - [ ] **Drag & drop** para reordenar entradas en `WorkTimeForm`
-- [ ] **Duplicar entrada** (clonar fila en TimeLogsTable con un click)
+- [x] **Duplicar entrada** (clonar fila en TimeLogsTable con un click) ✅
 - [x] **Timer en vivo** — botón play/stop que auto-calcula la duración al detener ✅
+- [x] **i18n completa** — Tasks page, TypeTasks, Import dialogs totalmente traducidos ✅
 - [ ] **Vista diaria** en HomePage con resumen de horas por tarea del día
 - [ ] Exportar reporte a CSV / Excel
 
@@ -451,11 +465,11 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 2. **Migrar gradualmente** - No cambiar todo de golpe
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
-### Prioridades actuales (post v1.2.1)
-1. **Duplicar entrada**: clonar fila en TimeLogsTable con un click
-2. **Tests de componentes React**: WorkTimeForm, TimeLogsTable (siguiente expansión de cobertura)
-3. **v1.3.0 release**: empaquetar las mejoras de calidad + UX actuales
-4. **fix(slot): smart next slot after save** — ya implementado (`5d962c7`)
+### Prioridades actuales (post v1.4.0)
+1. **Tests de componentes React**: WorkTimeForm, TimeLogsTable (siguiente expansión de cobertura)
+2. **Vista diaria** en HomePage con resumen de horas por tarea del día
+3. **Drag & drop** para reordenar entradas en `WorkTimeForm`
+4. **v1.5.0 Sync Avanzado**: eliminar entrada en TW, pull desde TW, conflictos
 
 ---
 

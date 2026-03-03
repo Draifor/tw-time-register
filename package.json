@@ -1,6 +1,6 @@
 {
   "name": "tw-time-register",
-  "version": "1.2.1",
+  "version": "1.4.0",
   "license": "MIT",
   "main": "dist-electron/index.js",
   "author": {
