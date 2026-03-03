@@ -393,6 +393,20 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
   - `checking` y `up-to-date` no muestran badge — solo afectan el botón en el menú
 - Commits: `0806249`, `5a6e0e0`
 
+### ✅ Fase 15: Timer en Vivo (COMPLETADA - Mar 2026)
+- **`WorkTimeForm.tsx`**: botón play/stop por entrada en el header de cada card
+  - Un solo timer activo a la vez (una persona = una tarea a la vez)
+  - Icono `Timer` (muted, habilitado) → `TimerOff` rojo pulsante + tiempo transcurrido en formato `mm:ss` / `h:mm:ss`
+  - Mientras otro timer está activo: botón Play deshabilitado con tooltip `timer.otherRunning`
+  - Al iniciar: registra `startTime` actual (epoch-1970) en el campo del formulario
+  - Al detener: calcula `hours` (duración) → el `useEffect` encadenado recalcula `endTime` automáticamente
+- **Estado persistente**: `localStorage['wt_activeTimer']` con `{ index, startedAt: ISO }` — sobrevive navegación entre rutas
+  - Al montar: restaura timer y computa `elapsedSeconds` desde `startedAt` hasta `Date.now()`
+- **Cleanup**: `clearInterval` al desmontar, al eliminar la entrada con timer activo (botón Trash2) y al Escape sobre el último entry
+- **`activeTimerRef`**: `useRef` sincronizado con `activeTimer` state — evita stale closures en callbacks de keyboard shortcuts
+- **i18n**: claves `workTimeForm.timer.{start, stop, otherRunning}` en ES/EN
+- Commit: `269c864`
+
 ---
 
 ## Roadmap
@@ -406,7 +420,7 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 ### v1.4.0 — UX & Productividad
 - [ ] **Drag & drop** para reordenar entradas en `WorkTimeForm`
 - [ ] **Duplicar entrada** (clonar fila en TimeLogsTable con un click)
-- [ ] **Timer en vivo** — botón play/stop que auto-calcula la duración al detener
+- [x] **Timer en vivo** — botón play/stop que auto-calcula la duración al detener ✅
 - [ ] **Vista diaria** en HomePage con resumen de horas por tarea del día
 - [ ] Exportar reporte a CSV / Excel
 
@@ -438,10 +452,10 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
 ### Prioridades actuales (post v1.2.1)
-1. **Timer en vivo**: play/stop en WorkTimeForm para registro en tiempo real
-2. **Duplicar entrada**: clonar fila en TimeLogsTable con un click
-3. **Tests de componentes React**: WorkTimeForm, TimeLogsTable (siguiente expansión de cobertura)
-4. **v1.3.0 release**: empaquetar las mejoras de UX actuales
+1. **Duplicar entrada**: clonar fila en TimeLogsTable con un click
+2. **Tests de componentes React**: WorkTimeForm, TimeLogsTable (siguiente expansión de cobertura)
+3. **v1.3.0 release**: empaquetar las mejoras de calidad + UX actuales
+4. **fix(slot): smart next slot after save** — ya implementado (`5d962c7`)
 
 ---
 
