@@ -198,6 +198,22 @@ const en = {
       noTasks: 'No tasks yet',
       tableTitle: 'TeamWork Tasks',
       typesTableTitle: 'Task Types',
+      form: {
+        addTaskBtn: 'New task',
+        taskNameLabel: 'Task name',
+        taskNamePlaceholder: 'e.g. RECA-001 3. Implementation',
+        typeLabel: 'Type',
+        selectType: 'Select a type...',
+        taskLinkLabel: 'TW Link (optional)',
+        taskLinkPlaceholder: 'https://...teamwork.com/app/tasks/...',
+        descriptionLabel: 'Description (optional)',
+        descriptionPlaceholder: 'Notes about the task...',
+        submitBtn: 'Add task',
+        nameRequired: 'Name is required',
+        typeRequired: 'Type is required',
+        addSuccess: 'Task added successfully',
+        addError: 'Failed to add task'
+      },
       importTW: {
         trigger: 'Import from TW',
         title: 'Import Tasks from TeamWork',

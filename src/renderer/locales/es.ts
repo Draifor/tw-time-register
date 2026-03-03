@@ -198,6 +198,22 @@ const es = {
       noTasks: 'Sin tareas aún',
       tableTitle: 'Tareas de TeamWork',
       typesTableTitle: 'Tipos de Tarea',
+      form: {
+        addTaskBtn: 'Nueva tarea',
+        taskNameLabel: 'Nombre de tarea',
+        taskNamePlaceholder: 'Ej. RECA-001 3. Implementación',
+        typeLabel: 'Tipo',
+        selectType: 'Selecciona un tipo...',
+        taskLinkLabel: 'Link TW (opcional)',
+        taskLinkPlaceholder: 'https://...teamwork.com/app/tasks/...',
+        descriptionLabel: 'Descripción (opcional)',
+        descriptionPlaceholder: 'Notas sobre la tarea...',
+        submitBtn: 'Agregar tarea',
+        nameRequired: 'El nombre es obligatorio',
+        typeRequired: 'El tipo es obligatorio',
+        addSuccess: 'Tarea agregada correctamente',
+        addError: 'Error al agregar la tarea'
+      },
       importTW: {
         trigger: 'Importar desde TW',
         title: 'Importar Tareas desde TeamWork',
