@@ -195,11 +195,13 @@ export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
     const maxMinutes = getMaxHoursForDay(settings, lastDow) * 60;
     const isComplete = maxMinutes > 0 && lastInfo.totalMinutes >= maxMinutes;
 
-    if (!isComplete && lastInfo.lastEndTime) {
-      // The most recently used date still has remaining hours → continue from there
+    if (!isComplete) {
+      // The most recently used date still has remaining hours → continue from there.
+      // Use the last entry's end time, or fall back to the configured default start time.
+      const startTime = lastInfo.lastEndTime ?? settings.defaultStartTime;
       return {
         date: lastEntryDate,
-        startTime: lastInfo.lastEndTime,
+        startTime,
         dayOfWeek: lastDow,
         maxHoursForDay: getMaxHoursForDay(settings, lastDow)
       };
@@ -207,8 +209,17 @@ export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
   }
 
   // Priority 2: the last used date is complete (or there are no entries at all).
-  // Find the next configured work day starting from today.
-  const searchDate = new Date(today);
+  // Search forward from the day AFTER the last entry date, or from today — whichever
+  // is later. This prevents jumping backwards when the user has pre-filled future days.
+  const afterLastDate = lastEntryDate
+    ? (() => {
+        const d = new Date(lastEntryDate + 'T12:00:00');
+        d.setDate(d.getDate() + 1);
+        return d;
+      })()
+    : new Date(today);
+  const searchDate = afterLastDate > today ? new Date(afterLastDate) : new Date(today);
+
   for (let i = 0; i < 30; i++) {
     const dateStr = formatDate(searchDate);
     const dayOfWeek = searchDate.getDay() === 0 ? 7 : searchDate.getDay();
@@ -223,16 +234,17 @@ export async function getNextAvailableSlot(): Promise<NextSlotSuggestion> {
     const maxHours = getMaxHoursForDay(settings, dayOfWeek);
 
     if (dailyInfo.remainingMinutes > 0) {
-      const startTime = dailyInfo.lastEndTime || settings.defaultStartTime;
+      // For a day with no entries yet, lastEndTime is null → use the configured default start time
+      const startTime = dailyInfo.lastEndTime ?? settings.defaultStartTime;
       return { date: dateStr, startTime, dayOfWeek, maxHoursForDay: maxHours };
     }
 
     searchDate.setDate(searchDate.getDate() + 1);
   }
 
-  // Fallback: tomorrow with default start time
-  const fallbackDate = new Date(today);
-  fallbackDate.setDate(fallbackDate.getDate() + 1);
+  // Fallback: first work day after the last entry (or tomorrow) with default start time
+  const fallbackDate = lastEntryDate ? new Date(afterLastDate) : new Date(today);
+  fallbackDate.setHours(12, 0, 0, 0);
   const fallbackDow = fallbackDate.getDay() === 0 ? 7 : fallbackDate.getDay();
 
   return {
