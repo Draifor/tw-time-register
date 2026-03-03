@@ -19,6 +19,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import Combobox from './ui/combobox';
+import TimePickerInput from './ui/time-picker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import {
   AlertDialog,
@@ -407,20 +408,16 @@ function TimeLogsTable() {
                     </td>
                     {/* Start time */}
                     <td className="px-2 py-2 text-center">
-                      <input
-                        type="time"
+                      <TimePickerInput
                         value={editData.startTime}
-                        onChange={(e) => setEditData((d) => ({ ...d, startTime: e.target.value }))}
-                        className="w-24 rounded border border-input bg-background px-2 py-1 text-xs font-mono text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                        onChange={(v) => setEditData((d) => ({ ...d, startTime: v }))}
                       />
                     </td>
                     {/* End time */}
                     <td className="px-2 py-2 text-center">
-                      <input
-                        type="time"
+                      <TimePickerInput
                         value={editData.endTime}
-                        onChange={(e) => setEditData((d) => ({ ...d, endTime: e.target.value }))}
-                        className="w-24 rounded border border-input bg-background px-2 py-1 text-xs font-mono text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                        onChange={(v) => setEditData((d) => ({ ...d, endTime: v }))}
                       />
                     </td>
                     {/* Duration (computed) */}

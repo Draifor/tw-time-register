@@ -86,3 +86,39 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* ── Flatpickr dark mode overrides ─────────────────────────────────────────
+   The Flatpickr popup appends to <body>, outside the component tree,
+   so we target it here. The `.dark` class is on <html>. */
+.dark .flatpickr-calendar {
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  color: hsl(var(--popover-foreground));
+}
+.dark .flatpickr-calendar.arrowTop::before,
+.dark .flatpickr-calendar.arrowTop::after {
+  border-bottom-color: hsl(var(--border));
+}
+.dark .flatpickr-time input,
+.dark .flatpickr-time .flatpickr-time-separator,
+.dark .flatpickr-time .flatpickr-am-pm {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-color: hsl(var(--border));
+}
+.dark .flatpickr-time input:hover,
+.dark .flatpickr-time input:focus,
+.dark .flatpickr-time .flatpickr-am-pm:hover,
+.dark .flatpickr-time .flatpickr-am-pm:focus {
+  background: hsl(var(--accent));
+}
+.dark .numInputWrapper span.arrowUp::after {
+  border-bottom-color: hsl(var(--muted-foreground));
+}
+.dark .numInputWrapper span.arrowDown::after {
+  border-top-color: hsl(var(--muted-foreground));
+}
+.dark .numInputWrapper:hover {
+  background: hsl(var(--accent));
+}
