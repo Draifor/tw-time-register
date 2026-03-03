@@ -335,7 +335,7 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - **`timesService.ts`**: tipos `SmartSyncResult` + wrapper `smartSyncEntries()`
 - Commits: `6851bab`, `08bb2f4`
 
-### ✅ Fase 11: Tests Unitarios (COMPLETADA - Mar 2026)
+### ✅ Fase 11: Tests Unitarios — Base (COMPLETADA - Mar 2026)
 - **Stack**: Vitest v4 + jsdom + @testing-library/react + @testing-library/jest-dom
 - **`vitest.config.ts`**: separado de `vite.config.ts` (sin plugins Electron)
 - **`src/renderer/lib/timeUtils.ts`**: `parseDuration` / `formatDuration` extraídas de `TimeLogsTable` — puras y testeables
@@ -346,6 +346,30 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
   - `syncService.test.ts` — 11 tests (calcDuration + smartSyncEntries con mocks)
 - Scripts: `pnpm test`, `pnpm test:watch`, `pnpm test:ui`, `pnpm test:coverage`
 - Commit: `ba45523`
+
+### ✅ Fase 14: Tests Ampliados — Servicios Core (COMPLETADA - Mar 2026)
+- **108 tests, 8 suites, 0 fallos** (+67 tests sobre la base de la Fase 11)
+- **`encryptionService.test.ts`** — 14 tests:
+  - `isEncryptedValue`: prefijo `enc:`, plain text, mid-string, vacío
+  - `isEncryptionAvailable`: proxies el mock de `safeStorage`
+  - `encrypt`: vacío sin cifrar, sin safeStorage, formato `enc:<base64>`, re-cifrado
+  - `decrypt`: vacío, plain-text legacy, round-trip, fallo de desencriptado → `''`
+- **`settingsService.test.ts`** — 19 tests:
+  - `getMaxHoursForDay`: cada día de semana, fin de semana, valor personalizado
+  - `getWorkSettings`: parsing completo, defaults vacíos, horas custom, días custom
+  - `updateWorkSettings`: conteo de `db.run`, serialización `workDays`, objeto vacío
+  - `isHoliday`: row existe / no existe
+  - `isWorkDay`: lunes normal, sábado, festivo, día fuera de `workDays`
+- **`timeEntriesService.test.ts`** — 17 tests:
+  - `addTimeEntryService`: lastID retornado, `isBillable` 0/1, sin lastID → 0
+  - `getTotalMinutesForDate`: sin entradas, una entrada, múltiples, hora exacta
+  - `getDailyTimeInfo`: fin de semana maxMinutes=0, cálculo remaining, clamp a 0, lastEndTime null
+  - `getNextAvailableSlot`: sin entradas, día incompleto, fallback a `defaultStartTime`, avanza al siguiente día, no retrocede antes del último registro
+- **`apiService.test.ts`** — 17 tests:
+  - `extractTWTaskId`: URL estándar, path extra, sin `/tasks/`, vacío, sin dígitos
+  - `testTWConnection`: credenciales vacías, respuesta válida (name+userId), error de red, mensaje del body de error, URL correcta
+  - `sendTimeEntryToTW`: credenciales vacías, POST exitoso con `twEntryId`, URL correcta, fecha YYYYMMDD, `person-id` incluido/omitido, error API
+- Commit: `6fea7eb`
 
 ### ✅ Fase 12: Release & Bugfixes Post-v1.2.0 (COMPLETADA - Mar 2026)
 - **`package.json`**: `"releaseType": "release"` en config de publish — evita que `electron-builder` cree drafts
@@ -374,7 +398,7 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 ## Roadmap
 
 ### v1.3.0 — Calidad & Cobertura
-- [ ] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`
+- [x] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`, `encryptionService` — **108 tests, 8 suites** ✅
 - [ ] Tests de componentes React (WorkTimeForm, TimeLogsTable)
 - [ ] E2E básico con Playwright (flujo registro → sync)
 - [ ] Limpiar y documentar `ReportsPage` (lógica de cálculo de horas)
@@ -413,11 +437,11 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 2. **Migrar gradualmente** - No cambiar todo de golpe
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
-### Prioridades actuales (post v1.2.0)
-1. **Ampliar tests**: `timeEntriesService`, `apiService`, componentes React — objetivo: +60 tests
-2. **Timer en vivo**: play/stop en WorkTimeForm para registro en tiempo real
-3. **Duplicar entrada**: clonar fila en TimeLogsTable con un click
-4. **Publicar v1.2.0**: ya está en GitHub como release publicada con assets
+### Prioridades actuales (post v1.2.1)
+1. **Timer en vivo**: play/stop en WorkTimeForm para registro en tiempo real
+2. **Duplicar entrada**: clonar fila en TimeLogsTable con un click
+3. **Tests de componentes React**: WorkTimeForm, TimeLogsTable (siguiente expansión de cobertura)
+4. **v1.3.0 release**: empaquetar las mejoras de UX actuales
 
 ---
 
