@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useForm, useFieldArray, useWatch, Control, FieldValues } from 'react-hook-form';
-import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, TimerOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
@@ -131,6 +131,93 @@ export default function WorkTimeForm() {
   }, [tasks]);
 
   const previousValues = useRef<{ startTime: Date[]; hours: Date[]; afterLunch: boolean }[]>([]);
+
+  // ── Live timer ───────────────────────────────────────────────────────────────
+  // One timer active at a time. Persisted to localStorage so it survives
+  // navigation. Uses 1970-epoch Dates (same convention as the rest of the form).
+  const [activeTimer, setActiveTimer] = useState<{ index: number; startedAt: Date } | null>(() => {
+    try {
+      const saved = localStorage.getItem('wt_activeTimer');
+      if (saved) {
+        const { index, startedAt } = JSON.parse(saved) as { index: number; startedAt: string };
+        return { index, startedAt: new Date(startedAt) };
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('wt_activeTimer');
+      if (saved) {
+        const { startedAt } = JSON.parse(saved) as { startedAt: string };
+        return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref that always points to the latest activeTimer — avoids stale closures in
+  // keyboard shortcut callbacks registered before the next render.
+  const activeTimerRef = useRef(activeTimer);
+  useEffect(() => { activeTimerRef.current = activeTimer; }, [activeTimer]);
+
+  // Start/stop the 1-second tick whenever activeTimer changes
+  useEffect(() => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    if (activeTimer) {
+      timerIntervalRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - activeTimer.startedAt.getTime()) / 1000));
+      }, 1000);
+    }
+    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
+  }, [activeTimer]);
+
+  // Clear interval on unmount
+  useEffect(() => () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); }, []);
+
+  const formatElapsed = (secs: number): string => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return h > 0
+      ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+      : `${m}:${String(s).padStart(2, '0')}`;
+  };
+
+  const handleStartTimer = useCallback(
+    (index: number) => {
+      // Stop any existing timer without saving to form (user switched tasks)
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      const now = new Date();
+      // startTime stored as 1970-epoch Date — same convention as the rest of the form
+      const startDate = new Date('1970-01-01T00:00:00');
+      startDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
+      setValue(`entries.${index}.startTime`, [startDate]);
+      const state = { index, startedAt: now };
+      setActiveTimer(state);
+      setElapsedSeconds(0);
+      localStorage.setItem('wt_activeTimer', JSON.stringify({ index, startedAt: now.toISOString() }));
+    },
+    [setValue]
+  );
+
+  const handleStopTimer = useCallback(() => {
+    if (!activeTimer) return;
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    const now = new Date();
+    const elapsed = Math.floor((now.getTime() - activeTimer.startedAt.getTime()) / 1000);
+    const elapsedMinutes = Math.floor(elapsed / 60);
+    const durationH = Math.floor(elapsedMinutes / 60);
+    const durationM = elapsedMinutes % 60;
+    const durationDate = new Date('1970-01-01T00:00:00');
+    durationDate.setHours(durationH, durationM, 0, 0);
+    // Updating 'hours' triggers the chained useEffect → recalculates endTime automatically
+    setValue(`entries.${activeTimer.index}.hours`, [durationDate]);
+    setActiveTimer(null);
+    setElapsedSeconds(0);
+    localStorage.removeItem('wt_activeTimer');
+  }, [activeTimer, setValue]);
+  // ── End live timer ──────────────────────────────────────────────────────────
 
   const calculateEndTime = (startTimeArray: Date[], hoursArray: Date[]) => {
     const startTime = startTimeArray[0];
@@ -379,7 +466,15 @@ export default function WorkTimeForm() {
         action: () => {
           // Clear the last entry if there's more than one
           if (fields.length > 1) {
-            remove(fields.length - 1);
+            const lastIndex = fields.length - 1;
+            // If the timer is running on the last entry, stop it silently
+            if (activeTimerRef.current?.index === lastIndex) {
+              if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+              setActiveTimer(null);
+              setElapsedSeconds(0);
+              localStorage.removeItem('wt_activeTimer');
+            }
+            remove(lastIndex);
             toast.info(t('workTimeForm.lastRemoved'));
           }
         },
@@ -404,16 +499,65 @@ export default function WorkTimeForm() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  onClick={() => remove(index)}
-                  disabled={fields.length === 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {activeTimer?.index === index ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors font-mono tabular-nums"
+                            onClick={handleStopTimer}
+                          >
+                            <TimerOff className="h-4 w-4 mr-1.5 animate-pulse" />
+                            {formatElapsed(elapsedSeconds)}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => handleStartTimer(index)}
+                            disabled={activeTimer !== null}
+                          >
+                            <Timer className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          {activeTimer?.index === index
+                            ? t('workTimeForm.timer.stop')
+                            : activeTimer !== null
+                              ? t('workTimeForm.timer.otherRunning')
+                              : t('workTimeForm.timer.start')}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    onClick={() => {
+                      // If timer is running on this entry, stop it silently before removing
+                      if (activeTimer?.index === index) {
+                        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                        setActiveTimer(null);
+                        setElapsedSeconds(0);
+                        localStorage.removeItem('wt_activeTimer');
+                      }
+                      remove(index);
+                    }}
+                    disabled={fields.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

@@ -259,6 +259,11 @@ const en = {
         complete: 'Complete',
         left: 'remaining',
         total: 'Total'
+      },
+      timer: {
+        start: 'Start timer',
+        stop: 'Stop timer',
+        otherRunning: 'Another timer is active'
       }
     }
   }
