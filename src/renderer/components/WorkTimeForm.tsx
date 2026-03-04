@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useForm, useFieldArray, useWatch, Control, FieldValues } from 'react-hook-form';
-import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, TimerOff } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, TimerOff, GripVertical } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
@@ -92,7 +93,7 @@ export default function WorkTimeForm() {
   } = useForm<{ entries: WorkTimeEntry[] }>({
     defaultValues: { entries: getInitialValues() || [defaultValue] }
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
+  const { fields, append, remove, move } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
   const { data: tasks } = useTasks();
   // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
@@ -142,7 +143,9 @@ export default function WorkTimeForm() {
         const { index, startedAt } = JSON.parse(saved) as { index: number; startedAt: string };
         return { index, startedAt: new Date(startedAt) };
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return null;
   });
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
@@ -152,14 +155,83 @@ export default function WorkTimeForm() {
         const { startedAt } = JSON.parse(saved) as { startedAt: string };
         return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return 0;
   });
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Ref that always points to the latest activeTimer — avoids stale closures in
   // keyboard shortcut callbacks registered before the next render.
   const activeTimerRef = useRef(activeTimer);
-  useEffect(() => { activeTimerRef.current = activeTimer; }, [activeTimer]);
+  useEffect(() => {
+    activeTimerRef.current = activeTimer;
+  }, [activeTimer]);
+
+  // ── Drag & drop state ─────────────────────────────────────────────────────
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    // Transparent 1×1 image — hides the default browser drag ghost; the card
+    // itself shows opacity feedback instead.
+    const ghost = new Image();
+    ghost.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    move(draggedIndex, dropIndex);
+    // Rearrange previousValues to keep cascade tracking consistent
+    const newPrev = [...previousValues.current];
+    const [movedPrev] = newPrev.splice(draggedIndex, 1);
+    newPrev.splice(dropIndex, 0, movedPrev);
+    previousValues.current = newPrev;
+    // Update live timer index if the dragged or displaced entry owns it
+    if (activeTimerRef.current) {
+      const timerIdx = activeTimerRef.current.index;
+      let newIdx = timerIdx;
+      if (timerIdx === draggedIndex) {
+        newIdx = dropIndex;
+      } else if (draggedIndex < dropIndex && timerIdx > draggedIndex && timerIdx <= dropIndex) {
+        newIdx = timerIdx - 1;
+      } else if (draggedIndex > dropIndex && timerIdx >= dropIndex && timerIdx < draggedIndex) {
+        newIdx = timerIdx + 1;
+      }
+      if (newIdx !== timerIdx) {
+        const updated = { ...activeTimerRef.current, index: newIdx };
+        setActiveTimer(updated);
+        localStorage.setItem(
+          'wt_activeTimer',
+          JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+        );
+      }
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+  // ── End drag & drop ──────────────────────────────────────────────────────
 
   // Start/stop the 1-second tick whenever activeTimer changes
   useEffect(() => {
@@ -169,11 +241,18 @@ export default function WorkTimeForm() {
         setElapsedSeconds(Math.floor((Date.now() - activeTimer.startedAt.getTime()) / 1000));
       }, 1000);
     }
-    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
   }, [activeTimer]);
 
   // Clear interval on unmount
-  useEffect(() => () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    },
+    []
+  );
 
   const formatElapsed = (secs: number): string => {
     const h = Math.floor(secs / 3600);
@@ -495,10 +574,30 @@ export default function WorkTimeForm() {
 
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {fields.map((field, index) => (
-          <Card key={field.id} className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+          <Card
+            key={field.id}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={cn(
+              'animate-in fade-in-0 slide-in-from-top-2 duration-300 transition-[opacity,border-color]',
+              draggedIndex === index && 'opacity-40 border-dashed',
+              dragOverIndex === index && draggedIndex !== index && 'border-primary border-2'
+            )}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground touch-none"
+                    title={t('workTimeForm.dragToReorder')}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+                  <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
+                </div>
                 <div className="flex items-center gap-1">
                   <TooltipProvider>
                     <Tooltip>
