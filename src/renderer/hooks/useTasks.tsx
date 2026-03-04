@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
-import { AlertTriangle, ExternalLink } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
@@ -9,6 +9,78 @@ import { Task } from '../../types/tasks';
 import Select from '../components/ui/select-custom';
 import DeleteButton from '../components/DeleteButton';
 import PullTaskDialog from '../components/PullTaskDialog';
+
+// ── Inline editable task link cell ────────────────────────────────────────────
+function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(task.taskLink ?? '');
+
+  function handleSave() {
+    onSave({ ...task, taskLink: value.trim() });
+    setEditing(false);
+  }
+
+  function handleCancel() {
+    setValue(task.taskLink ?? '');
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave();
+            if (e.key === 'Escape') handleCancel();
+          }}
+          className="h-6 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-none"
+          placeholder="https://..."
+        />
+        <button type="button" onClick={handleSave} className="text-green-600 hover:text-green-500">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" onClick={handleCancel} className="text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  const link = task.taskLink;
+  const taskId = link?.match(/\/tasks\/(\d+)/)?.[1];
+
+  return (
+    <div className="flex items-center gap-1 group">
+      {link ? (
+        <button
+          type="button"
+          onClick={() => window.Main.openExternal(link)}
+          title={link}
+          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" />
+          {taskId ? `#${taskId}` : 'Ver en TW'}
+        </button>
+      ) : (
+        <span className="text-muted-foreground text-xs">—</span>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setValue(task.taskLink ?? '');
+          setEditing(true);
+        }}
+        title="Editar link"
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
 
 function useTasks() {
   const {
@@ -148,22 +220,7 @@ function useTasks() {
             accessorFn: (row: Task) => row.taskLink,
             id: 'taskLink',
             header: () => 'Task Link',
-            cell: ({ row }) => {
-              const link = row.original.taskLink;
-              if (!link) return <span className="text-muted-foreground text-xs">—</span>;
-              const taskId = link.match(/\/tasks\/(\d+)/)?.[1];
-              return (
-                <button
-                  type="button"
-                  onClick={() => window.Main.openExternal(link)}
-                  title={link}
-                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                >
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                  {taskId ? `#${taskId}` : 'Ver en TW'}
-                </button>
-              );
-            },
+            cell: ({ row }) => <TaskLinkCell task={row.original} onSave={onEdit} />,
             footer: (props: ColumnFooterProps) => props.column.id
           },
           {
