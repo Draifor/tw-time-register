@@ -82,6 +82,23 @@ const es = {
         noTaskHint:
           'Hay entradas de TW cuya tarea no existe en tu lista local. Agrégalas en la pestaña de Tareas para poder sincronizarlas.',
         pullAgain: 'Importar de nuevo',
+        reimport: 'Re-importar entradas',
+        addMissingTasks: 'Agregar {{count}} tareas faltantes',
+        addMissingTitle: 'Agregar tareas faltantes de TW',
+        addMissingSubtitle:
+          'Estas tareas existen en TW pero no en tu lista local. Edita el nombre con el que quieres guardarlas y asignales un tipo.',
+        loadingDetails: 'Cargando detalles desde TW...',
+        loadError: 'Error al cargar los detalles de las tareas',
+        localName: 'Nombre local',
+        typeLabel: 'Tipo',
+        selectType: 'Selecciona un tipo...',
+        skipTask: 'Omitir',
+        includeTask: 'Incluir',
+        saveTasksBtn: 'Guardar {{count}} tareas',
+        savingTasks: 'Guardando...',
+        tasksSaved: '{{count}} tareas guardadas. Puedes volver a importar para descargar sus entradas.',
+        taskSaveError: 'Error al guardar tareas',
+        taskSaveFailed: 'tareas fallaron',
         successToast: '{{count}} entradas importadas desde TW',
         noneImported: 'No hay entradas nuevas para importar',
         errorToast: 'Error al importar desde TW'

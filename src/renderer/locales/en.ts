@@ -82,6 +82,23 @@ const en = {
         noTaskHint:
           'Some TW entries have tasks that do not exist in your local list. Add them in the Tasks tab to be able to sync them.',
         pullAgain: 'Import again',
+        reimport: 'Re-import entries',
+        addMissingTasks: 'Add {{count}} missing tasks',
+        addMissingTitle: 'Add missing TW tasks',
+        addMissingSubtitle:
+          'These tasks exist in TW but not in your local list. Edit the name to save them with and assign a type.',
+        loadingDetails: 'Loading details from TW...',
+        loadError: 'Failed to load task details',
+        localName: 'Local name',
+        typeLabel: 'Type',
+        selectType: 'Select a type...',
+        skipTask: 'Skip',
+        includeTask: 'Include',
+        saveTasksBtn: 'Save {{count}} tasks',
+        savingTasks: 'Saving...',
+        tasksSaved: '{{count}} tasks saved. You can re-import to download their entries.',
+        taskSaveError: 'Failed to save tasks',
+        taskSaveFailed: 'tasks failed',
         successToast: '{{count}} entries imported from TW',
         noneImported: 'No new entries to import',
         errorToast: 'Failed to import from TW'

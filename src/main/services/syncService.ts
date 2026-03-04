@@ -209,6 +209,8 @@ export interface PullFromTWResult {
   imported: number;
   skippedExisting: number;
   skippedNoTask: number;
+  /** Unique TW task IDs that had no matching local task — used to offer "add missing tasks" UI */
+  missingTwTaskIds: string[];
   results: PullEntryResult[];
 }
 
@@ -241,23 +243,20 @@ function twDateToISO(twDate: string): string {
  * @param options.fromDate  YYYY-MM-DD (omit for no lower bound)
  * @param options.toDate    YYYY-MM-DD (omit for no upper bound)
  */
-export async function pullEntriesFromTW(options: {
-  fromDate?: string;
-  toDate?: string;
-}): Promise<PullFromTWResult> {
+export async function pullEntriesFromTW(options: { fromDate?: string; toDate?: string }): Promise<PullFromTWResult> {
   const db = await openDb();
 
   // 1. Fetch from TW
   const fetchResult = await fetchUserTimeEntriesInRange(options);
   if (!fetchResult.success || !fetchResult.entries) {
-    return { total: 0, imported: 0, skippedExisting: 0, skippedNoTask: 0, results: [] };
+    return { total: 0, imported: 0, skippedExisting: 0, skippedNoTask: 0, missingTwTaskIds: [], results: [] };
   }
 
   const twEntries = fetchResult.entries;
 
   // 2. Build map: twTaskId (numeric string) → local task_id
   const taskRows = await db.all<{ task_id: number; task_link: string }>(
-    'SELECT task_id, task_link FROM tasks WHERE task_link IS NOT NULL AND task_link != ""'
+    "SELECT task_id, task_link FROM tasks WHERE task_link IS NOT NULL AND task_link != ''"
   );
   const twTaskIdToLocalId = new Map<string, number>();
   for (const row of taskRows) {
@@ -273,6 +272,7 @@ export async function pullEntriesFromTW(options: {
 
   // 4. Process each TW entry
   const results: PullEntryResult[] = [];
+  const missingTaskIds = new Set<string>();
 
   for (const entry of twEntries) {
     // Already in local DB — skip
@@ -290,6 +290,7 @@ export async function pullEntriesFromTW(options: {
         status: 'skipped_no_task',
         message: `No local task matched TW task_id=${entry.taskId}`
       });
+      missingTaskIds.add(entry.taskId);
       continue;
     }
 
@@ -323,6 +324,7 @@ export async function pullEntriesFromTW(options: {
     imported: results.filter((r) => r.status === 'imported').length,
     skippedExisting: results.filter((r) => r.status === 'skipped_existing').length,
     skippedNoTask: results.filter((r) => r.status === 'skipped_no_task').length,
+    missingTwTaskIds: [...missingTaskIds],
     results
   };
 }

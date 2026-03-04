@@ -289,13 +289,77 @@ export async function updateTimeEntryInTW(
 }
 
 /**
+ * Fetch name + parent context for one or more TW task IDs (in parallel).
+ * Used to surface "missing tasks" after a pull so the user can add them locally.
+ */
+export interface TWTaskDetail {
+  twTaskId: string;
+  name: string;
+  /** The todo-list or parent task name — context to help the user identify the task */
+  parentName: string;
+  taskLink: string;
+}
+
+export async function fetchTWTaskDetails(
+  twTaskIds: string[]
+): Promise<{ success: boolean; tasks?: TWTaskDetail[]; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) {
+    return { success: false, message: 'TeamWork credentials not configured' };
+  }
+  const headers = {
+    Authorization: buildAuthHeader(username, password),
+    'Content-Type': 'application/json'
+  };
+
+  const results = await Promise.all(
+    twTaskIds.map(async (id): Promise<TWTaskDetail | null> => {
+      try {
+        const response = await axios.get(`https://${domain}.teamwork.com/tasks/${id}.json`, {
+          headers,
+          timeout: 10000
+        });
+        const item =
+          (response.data?.['todo-item'] as Record<string, unknown>) ??
+          (response.data?.task as Record<string, unknown>) ??
+          {};
+
+        const name = String(item.content ?? item.name ?? item.title ?? `Task ${id}`);
+
+        // Build parent context: prefer parent task name, fall back to list name, then project name
+        const parentTaskName = String(item['parent-task'] ?? item.parentTask ?? '').trim();
+        const listName = String(item['todo-list-name'] ?? item.todoListName ?? '').trim();
+        const projectName = String(item['project-name'] ?? item.projectName ?? '').trim();
+        const parentName = parentTaskName || listName || projectName || '';
+
+        return {
+          twTaskId: id,
+          name,
+          parentName,
+          taskLink: `https://${domain}.teamwork.com/app/tasks/${id}`
+        };
+      } catch {
+        return {
+          twTaskId: id,
+          name: `Task ${id}`,
+          parentName: '',
+          taskLink: `https://${domain}.teamwork.com/app/tasks/${id}`
+        };
+      }
+    })
+  );
+
+  return { success: true, tasks: results.filter((t): t is TWTaskDetail => t !== null) };
+}
+
+/**
  * Fetch all time entries for the current user across all tasks.
  * Supports an optional date range (fromDate / toDate in YYYY-MM-DD format).
  * Paginates automatically until all pages are retrieved.
  */
 export async function fetchUserTimeEntriesInRange(options: {
   fromDate?: string; // YYYY-MM-DD, optional
-  toDate?: string;   // YYYY-MM-DD, optional
+  toDate?: string; // YYYY-MM-DD, optional
 }): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
   const { domain, username, password, userId } = await getTWCredentials();
   if (!domain || !username || !password || !userId) {

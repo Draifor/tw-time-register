@@ -267,6 +267,7 @@ export interface PullFromTWResult {
   imported: number;
   skippedExisting: number;
   skippedNoTask: number;
+  missingTwTaskIds: string[];
   results: PullEntryResult[];
 }
 
@@ -276,6 +277,18 @@ export interface PullFromTWResult {
  */
 export const pullEntriesFromTW = async (options: { fromDate?: string; toDate?: string }): Promise<PullFromTWResult> =>
   window.Main.pullEntriesFromTW(options);
+
+// TW task details for "add missing tasks"
+export interface TWTaskDetail {
+  twTaskId: string;
+  name: string;
+  parentName: string;
+  taskLink: string;
+}
+
+export const fetchTWTaskDetails = async (
+  twTaskIds: string[]
+): Promise<{ success: boolean; tasks?: TWTaskDetail[]; message?: string }> => window.Main.fetchTWTaskDetails(twTaskIds);
 
 // Database backup
 export interface BackupResult {

@@ -55,7 +55,8 @@ import {
   sendTimeEntryToTW,
   extractTWTaskId,
   fetchTWSubtasks,
-  debugTWSubtasks
+  debugTWSubtasks,
+  fetchTWTaskDetails
 } from '../services/apiService';
 import { smartSyncEntries, pullEntriesFromTW } from '../services/syncService';
 
@@ -289,6 +290,11 @@ ipcMain.handle('smartSyncEntries', async (_event, entryIds: number[]) => {
 // Pull time entries from TW into local DB
 ipcMain.handle('pullEntriesFromTW', async (_event, options: { fromDate?: string; toDate?: string }) => {
   return pullEntriesFromTW(options);
+});
+
+// Fetch TW task name + parent for a list of task IDs (for "add missing tasks" UI)
+ipcMain.handle('fetchTWTaskDetails', async (_event, twTaskIds: string[]) => {
+  return fetchTWTaskDetails(twTaskIds);
 });
 
 // Database backup handlers
