@@ -228,12 +228,22 @@ function addMinutesToTime(time: string, totalMinutes: number): string {
   return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
 }
 
-/** Convert TW date YYYYMMDD → YYYY-MM-DD */
+/** Convert TW date to YYYY-MM-DD.
+ *  Handles:
+ *  - YYYYMMDD  (8 chars)  → from /tasks/{id}/time_entries.json
+ *  - YYYY-MM-DDThh:mm:ssZ  (ISO datetime) → from /time_entries.json global endpoint
+ *  - YYYY-MM-DD (already correct)
+ */
 function twDateToISO(twDate: string): string {
   if (twDate.length === 8) {
+    // YYYYMMDD
     return `${twDate.slice(0, 4)}-${twDate.slice(4, 6)}-${twDate.slice(6, 8)}`;
   }
-  return twDate; // already ISO or unknown format
+  if (twDate.length > 10 && twDate[10] === 'T') {
+    // ISO datetime — strip to date part only
+    return twDate.slice(0, 10);
+  }
+  return twDate; // already YYYY-MM-DD or unknown — keep as-is
 }
 
 /**
