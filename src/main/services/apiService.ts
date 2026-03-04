@@ -399,7 +399,8 @@ export async function fetchUserTimeEntriesInRange(options: {
 
       const entries: TWTimeEntry[] = raw.map((e) => ({
         id: String(e.id),
-        taskId: String(e['task-id'] ?? e.taskId ?? ''),
+        // TW v1 /time_entries.json uses 'todo-item-id'; some endpoints use 'task-id'
+        taskId: String(e['todo-item-id'] ?? e['task-id'] ?? e.taskId ?? ''),
         date: String(e.date ?? ''),
         time: String(e.time ?? ''),
         hours: Number(e.hours ?? 0),
