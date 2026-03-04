@@ -420,6 +420,62 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
   - Todos los strings hardcodeados reemplazados por `t()` — 0 strings en inglés sin traducir
   - Commit: `68a3540`
 
+### ✅ Fase 17: UX — Add Task Form + Vista Diaria (COMPLETADA - Mar 2026)
+- **`TasksTable.tsx`**: formulario colapsable para agregar tarea (reemplaza el "add row" inline)
+  - Estado local aislado (7 `useState`): `open`, `taskName`, `typeName`, `taskLink`, `description`, `nameError`, `typeError`
+  - `useQuery` propio para tipos de tarea — nunca dispara un refresh de la tabla principal al cambiar tipo
+  - Validación inline: nombre y tipo obligatorios; Enter = submit, Escape = cerrar+resetear
+  - i18n: sección `tasks.form.*` (15 claves ES+EN: labels, placeholders, errores, toasts)
+  - Commit: `e79c4d0`
+- **`HomePage.tsx`**: nueva card "Registro del Día" bajo las estadísticas rápidas
+  - Carga `fetchTimeEntriesByDate` + `getDailyTimeInfo` en paralelo al montar
+  - `useMemo` agrupa entradas por tarea con `parseDuration` — ordenadas de mayor a menor tiempo
+  - Barra de progreso general (`totalMinutes / maxMinutes`) — amarilla si supera el límite
+  - Lista por tarea: nombre truncado, `formatDuration`, mini-barra proporcional, count si > 1 entrada
+  - Texto "Faltan Xh Ym" cuando hay horas restantes; empty state con botón a `/worktime`
+  - Skeleton loaders durante carga; i18n: `home.dailyView`, `home.noEntriesYet`, `home.remaining`
+  - Commit: `8d82f79`
+
+### ✅ Fase 18: TypeTasks — Correcciones de Integridad (COMPLETADA - Mar 2026)
+- **`typeTasksService.ts`**: unicidad case-insensitive al crear/editar tipo — devuelve error si ya existe
+- **Cascade protect**: DELETE de tipo bloqueado si tiene tareas asociadas — mensaje de error claro
+- **`TypeTasksTable.tsx`**: formulario colapsable inline para agregar tipo (mismo patrón que TasksTable) en lugar del botón add-row
+- **Fix `key={value}`** en el selector de tipo para forzar re-render al recibir nuevo `defaultValue` desde la BD
+
+### ✅ Fase 19: Pull desde TW — Sync Bidireccional Completo (COMPLETADA - Mar 2026)
+- **`apiService.ts`**:
+  - `fetchUserTimeEntriesInRange(userId, fromDate, toDate)` — auto-paginación, campo `todo-item-id` para obtener taskId
+  - `fetchTWTaskDetails(twTaskIds[])` — fetch paralelo de `/tasks/{id}.json`; `parent-task` es objeto `{id, content}`, extrae `.content`
+  - `fetchUserTimeEntriesForTask` ampliado con `fromDate?/toDate?` opcionales
+- **`syncService.ts`**:
+  - `pullEntriesFromTW(options)` — acepta `twTaskId?` opcional; sin él usa rango global, con él lo pasa a `fetchUserTimeEntriesForTask`
+  - `twDateToISO()` — maneja `YYYYMMDD`, `YYYY-MM-DDThh:mm:ssZ` (strip a `[:10]`) y `YYYY-MM-DD`
+  - `PullFromTWResult`: `{ total, imported, skippedExisting, skippedNoTask, missingTwTaskIds: string[], results }`
+- **`PullFromTWDialog.tsx`** — asistente 3 pasos:
+  1. Configuración (selector de período: última semana / último mes / rango personalizado)
+  2. Resultado del pull (contadores de importadas, omitidas, sin tarea)
+  3. Agregar tareas faltantes — cards con nombre TW + link, selector de tipo, botón guardar/omitir
+- **`PullTaskDialog.tsx`** — pull de entradas de una sola tarea (2 pasos: config → resultado), sin paso addTasks
+  - Botón `ArrowDownToLine` por fila en la columna Actions de TasksTable
+  - Deshabilitado si la tarea no tiene `taskLink`; envuelto en `TooltipProvider`
+- **IPC chain completo**: `databaseIpc.ts` → `preload.ts` → `renderer/services/timesService.ts`
+- **Fixes críticos**:
+  - Campo TW correcto: `todo-item-id` (no `task-id`) en `/time_entries.json`
+  - `[object Object]` en parentName: `parent-task` es objeto, extraer `.content`
+  - Fechas ISO datetime (`2026-02-27T19:00:00Z`) → strip a `YYYY-MM-DD`
+  - `openExternal` IPC para abrir tareas de TW en el navegador desde el dialog
+
+### ✅ Fase 20: Tasks Table — Mejoras de UX y Link Editable (COMPLETADA - Mar 2026)
+- **`taskService.ts`**: `getTasks()` cambia `INNER JOIN` → `LEFT JOIN` — tareas huérfanas (tipo eliminado) ya no desaparecen
+- **`TasksTable.tsx`**:
+  - Icono `AlertTriangle` ámbar para tareas sin tipo; selector muestra placeholder "Asignar tipo…"
+  - Columna Task Link: badge compacto `#taskId` con icono `ExternalLink` (abre en navegador)
+- **`useTasks.tsx`**: componente interno `TaskLinkCell`
+  - **Vista**: badge `#ID` + `ExternalLink` + icono `Pencil` (visible al hover)
+  - **Edición**: `<input>` inline pre-relleno + ✓ (`Check`) / ✗ (`X`); `Enter` guarda, `Escape` cancela
+  - Llama a `onEdit` (mutación existente) → invalida caché `['tasks']`
+  - Commit: `26ca44b`
+
 ---
 
 ## Roadmap
@@ -435,12 +491,14 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - [x] **Duplicar entrada** (clonar fila en TimeLogsTable con un click) ✅
 - [x] **Timer en vivo** — botón play/stop que auto-calcula la duración al detener ✅
 - [x] **i18n completa** — Tasks page, TypeTasks, Import dialogs totalmente traducidos ✅
-- [ ] **Vista diaria** en HomePage con resumen de horas por tarea del día
+- [x] **Vista diaria** en HomePage con resumen de horas por tarea del día ✅
 - [ ] Exportar reporte a CSV / Excel
 
-### v1.5.0 — Sync Avanzado
+### ✅ v1.5.0 — Sync Avanzado (EN PROGRESO - Mar 2026)
 - [ ] **Eliminar entrada en TW** desde TimeLogsTable (DELETE en `apiService` ya existe)
-- [ ] **Pull desde TW** — importar time entries existentes en TW al histórico local
+- [x] **Pull desde TW** — importar time entries con selector de período (global y por tarea) ✅
+- [x] **Agregar tareas faltantes** — step 3 del pull dialog crea tareas TW no mapeadas ✅
+- [x] **Tasks table**: mostrar tareas huérfanas, link editable inline, badge compacto ✅
 - [ ] **Conflictos de sync** — detectar y mostrar entradas modificadas en ambos lados
 - [ ] Indicador de "última sincronización" por entrada
 
@@ -465,11 +523,11 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 2. **Migrar gradualmente** - No cambiar todo de golpe
 3. **Mantener tipos** - Actualizar interfaces afectadas
 
-### Prioridades actuales (post v1.4.0)
-1. **Tests de componentes React**: WorkTimeForm, TimeLogsTable (siguiente expansión de cobertura)
-2. **Vista diaria** en HomePage con resumen de horas por tarea del día
+### Prioridades actuales (post v1.5.0 parcial)
+1. **Eliminar entrada en TW** desde TimeLogsTable (DELETE en `apiService` ya existe)
+2. **Conflictos de sync** — detectar entradas modificadas en ambos lados
 3. **Drag & drop** para reordenar entradas en `WorkTimeForm`
-4. **v1.5.0 Sync Avanzado**: eliminar entrada en TW, pull desde TW, conflictos
+4. **Tests de componentes React**: WorkTimeForm, TimeLogsTable
 
 ---
 
