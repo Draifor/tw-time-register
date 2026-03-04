@@ -327,6 +327,12 @@ const api = {
   exportDatabase: () => ipcRenderer.invoke('exportDatabase'),
   importDatabase: () => ipcRenderer.invoke('importDatabase'),
 
+  // TW Task Comments
+  uploadPendingFileToTW: (fileName: string, fileBuffer: ArrayBuffer) =>
+    ipcRenderer.invoke('uploadPendingFileToTW', fileName, fileBuffer),
+  addCommentToTWTask: (twTaskId: string, body: string, pendingFileAttachments: string) =>
+    ipcRenderer.invoke('addCommentToTWTask', twTaskId, body, pendingFileAttachments),
+
   // Auto-updater
   installUpdate: () => ipcRenderer.invoke('install-update'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

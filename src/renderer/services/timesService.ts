@@ -303,3 +303,17 @@ export interface BackupResult {
 
 export const exportDatabase = async (): Promise<BackupResult> => window.Main.exportDatabase();
 export const importDatabase = async (): Promise<BackupResult> => window.Main.importDatabase();
+
+// TW Task Comments
+export const uploadPendingFileToTW = async (
+  fileName: string,
+  fileBuffer: ArrayBuffer
+): Promise<{ success: boolean; ref?: string; message?: string }> =>
+  window.Main.uploadPendingFileToTW(fileName, fileBuffer);
+
+export const addCommentToTWTask = async (
+  twTaskId: string,
+  body: string,
+  pendingFileAttachments: string = ''
+): Promise<{ success: boolean; commentId?: number; message?: string }> =>
+  window.Main.addCommentToTWTask(twTaskId, body, pendingFileAttachments);

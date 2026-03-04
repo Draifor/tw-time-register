@@ -56,7 +56,9 @@ import {
   extractTWTaskId,
   fetchTWSubtasks,
   debugTWSubtasks,
-  fetchTWTaskDetails
+  fetchTWTaskDetails,
+  addCommentToTWTask,
+  uploadPendingFileToTW
 } from '../services/apiService';
 import { smartSyncEntries, pullEntriesFromTW } from '../services/syncService';
 
@@ -307,4 +309,14 @@ ipcMain.handle('exportDatabase', async () => {
 
 ipcMain.handle('importDatabase', async () => {
   return importDatabase();
+});
+
+// Upload a file to TW pending files and return its ref
+ipcMain.handle('uploadPendingFileToTW', async (_event, fileName: string, fileBuffer: ArrayBuffer) => {
+  return uploadPendingFileToTW(fileName, fileBuffer);
+});
+
+// Add a comment (with optional file refs) to a TW task
+ipcMain.handle('addCommentToTWTask', async (_event, twTaskId: string, body: string, pendingFileAttachments: string) => {
+  return addCommentToTWTask(twTaskId, body, pendingFileAttachments);
 });
