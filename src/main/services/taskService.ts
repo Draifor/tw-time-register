@@ -25,10 +25,12 @@ export async function addTask({ typeName, taskName, taskLink, description }: Tas
   await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description]);
 }
 
-// Function to get all tasks
-export async function getTasks(): Promise<Task[]> {
+// Function to get all tasks, optionally filtered by a search term
+export async function getTasks(search?: string): Promise<Task[]> {
   const db = await openDB();
-  const query = `SELECT
+  const params: string[] = [];
+
+  let query = `SELECT
       ${columnsDB.TABLE_NAME}.${columnsDB.ID},
       ${columnsDB.TABLE_NAME}.${columnsDB.TASK_NAME},
       ${columnsDB.TABLE_NAME}.${columnsDB.TASK_LINK},
@@ -39,17 +41,26 @@ export async function getTasks(): Promise<Task[]> {
     LEFT JOIN
       ${typeTasksDBColumns.TABLE_NAME} ON ${columnsDB.TABLE_NAME}.${columnsDB.TYPE_ID} = ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.ID}`;
 
-  const response: TaskDB[] = await db.all(query);
+  if (search?.trim()) {
+    const term = `%${search.trim()}%`;
+    query += ` WHERE (${columnsDB.TABLE_NAME}.${columnsDB.TASK_NAME} LIKE ?
+      OR ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME} LIKE ?
+      OR ${columnsDB.TABLE_NAME}.${columnsDB.DESCRIPTION} LIKE ?)`;
+    params.push(term, term, term);
+  }
 
-  return response.map((task) => {
-    return {
-      id: task.task_id,
-      typeName: task.type_name ?? '',
-      taskName: task.task_name,
-      taskLink: task.task_link,
-      description: task.description
-    };
-  });
+  query += ` ORDER BY ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME} ASC,
+      ${columnsDB.TABLE_NAME}.${columnsDB.TASK_NAME} ASC`;
+
+  const response: TaskDB[] = await db.all(query, params);
+
+  return response.map((task) => ({
+    id: task.task_id,
+    typeName: task.type_name ?? '',
+    taskName: task.task_name,
+    taskLink: task.task_link,
+    description: task.description
+  }));
 }
 
 // Function to get a task by id

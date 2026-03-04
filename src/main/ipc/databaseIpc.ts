@@ -247,8 +247,8 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle('getTasks', async () => {
-  return getTasks();
+ipcMain.handle('getTasks', async (_event, search?: string) => {
+  return getTasks(search);
 });
 
 ipcMain.handle('getTaskById', async (_event, id: number) => {

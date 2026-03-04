@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { Plus, ChevronUp, Loader2 } from 'lucide-react';
+import { Plus, ChevronUp, Loader2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import DataTable from './DataTable';
 import ImportTasksDialog from './ImportTasksDialog';
@@ -17,7 +17,17 @@ import { Card, CardContent } from './ui/card';
 
 function TasksTable() {
   const { t } = useTranslation();
-  const { data, isLoading, isEditable, error, columns, onEdit } = useTasks();
+
+  // ── Server-side search state ───────────────────────────────────────────────
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data, isLoading, isEditable, error, columns, onEdit } = useTasks({ searchTerm: debouncedSearch });
   const queryClient = useQueryClient();
 
   // ── Add-task form state ────────────────────────────────────────────────────
@@ -82,8 +92,26 @@ function TasksTable() {
   return (
     <div className="space-y-3">
       {/* ── Header row ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder={t('tasks.search')}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-8 pr-8"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput('')}
+              className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground shrink-0">
           {data && data.length > 0 ? t('tasks.taskCount', { count: data.length }) : t('tasks.noTasks')}
         </p>
         <div className="flex items-center gap-2">
@@ -208,6 +236,7 @@ function TasksTable() {
         error={error ? { message: String((error as Error)?.message) || t('common.errorOccurred') } : null}
         columns={columns}
         onPersist={(row: Task) => onEdit(row)}
+        hideSearch
       />
     </div>
   );

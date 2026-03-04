@@ -246,6 +246,7 @@ const es = {
       tabTypes: 'Tipos',
       taskCount: '{{count}} tareas',
       noTasks: 'Sin tareas aún',
+      search: 'Buscar en tareas...',
       tableTitle: 'Tareas de TeamWork',
       typesTableTitle: 'Tipos de Tarea',
       typeForm: {
@@ -399,6 +400,7 @@ const es = {
       saveErrorTitle: 'Error al guardar entradas',
       saveErrorDesc: 'Por favor, inténtalo de nuevo más tarde.',
       lastRemoved: 'Última entrada eliminada',
+      dragToReorder: 'Arrastra para reordenar',
       overtimeTitle: 'Tiempo extra el {{date}}',
       overtimeDesc: 'Estás registrando {{overH}}h {{overM}}m sobre el límite de {{maxH}}h.',
       summary: {

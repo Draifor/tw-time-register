@@ -24,6 +24,7 @@ interface DataTableProps<T extends FieldValues> {
   title?: string;
   onAddRow?: () => void;
   onPersist?: (row: T) => void;
+  hideSearch?: boolean;
 }
 
 // Skeleton loader component
@@ -119,7 +120,8 @@ function DataTable<T extends FieldValues>({
   error,
   title,
   onAddRow,
-  onPersist
+  onPersist,
+  hideSearch = false
 }: DataTableProps<T>) {
   const { table, globalFilter, setGlobalFilter, loadMoreRows, hasMoreRows, visibleRowCount, totalRows } = useTable({
     columns,
@@ -173,13 +175,15 @@ function DataTable<T extends FieldValues>({
       )}
       <CardContent>
         <div className="flex items-center justify-between gap-4 mb-4">
-          <Input
-            type="text"
-            value={globalFilter || ''}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
-            placeholder="Search..."
-            className="max-w-sm"
-          />
+          {!hideSearch && (
+            <Input
+              type="text"
+              value={globalFilter || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
+              placeholder="Search..."
+              className="max-w-sm"
+            />
+          )}
           {isEditable && onAddRow && (
             <Button onClick={onAddRow} size="sm" className="gap-1">
               <Plus className="h-4 w-4" />

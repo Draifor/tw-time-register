@@ -1,7 +1,7 @@
 import { Task } from '../../types/tasks';
 
-export const fetchTasks = async () => {
-  const response = await window.Main.getTasks();
+export const fetchTasks = async (search?: string) => {
+  const response = await window.Main.getTasks(search);
   return response;
 };
 

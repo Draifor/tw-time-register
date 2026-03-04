@@ -71,11 +71,6 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
   const [globalFilter, setGlobalFilter] = useState('');
   const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
 
-  const saveDataToDB = (rowIndex: number, columnId: string, value: unknown) => {
-    // Simulate an API call
-    console.log(`Saving data to DB: row ${rowIndex}, column ${columnId}, value ${value}`);
-  };
-
   // When the user clears/changes the filter, reset the scroll window
   useEffect(() => {
     setVisibleRowCount(INITIAL_ROWS);
@@ -128,12 +123,9 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
         );
         if (updatedRow && onPersist) {
           onPersist(updatedRow);
-        } else {
-          saveDataToDB(rowIndex, columnId, value);
         }
       }
-    },
-    debugTable: true
+    }
   });
   return {
     table,

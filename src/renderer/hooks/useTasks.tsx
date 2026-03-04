@@ -83,14 +83,14 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
   );
 }
 
-function useTasks() {
+function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
   const {
     data,
     isPending: isLoading,
     error
   } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: fetchTasks
+    queryKey: ['tasks', searchTerm],
+    queryFn: () => fetchTasks(searchTerm || undefined)
   });
   const queryClient = useQueryClient();
 

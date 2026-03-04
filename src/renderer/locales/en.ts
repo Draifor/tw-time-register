@@ -246,6 +246,7 @@ const en = {
       tabTypes: 'Types',
       taskCount: '{{count}} tasks',
       noTasks: 'No tasks yet',
+      search: 'Search tasks...',
       tableTitle: 'TeamWork Tasks',
       typesTableTitle: 'Task Types',
       typeForm: {
@@ -399,6 +400,7 @@ const en = {
       saveErrorTitle: 'Error saving entries',
       saveErrorDesc: 'Please try again later.',
       lastRemoved: 'Last entry removed',
+      dragToReorder: 'Drag to reorder',
       overtimeTitle: 'Overtime on {{date}}',
       overtimeDesc: 'You are registering {{overH}}h {{overM}}m over the {{maxH}}h limit.',
       summary: {

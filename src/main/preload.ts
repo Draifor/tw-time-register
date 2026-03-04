@@ -293,7 +293,7 @@ const api = {
 
   // Tasks
   addTask: (task: Task) => ipcRenderer.invoke('addTask', task),
-  getTasks: () => ipcRenderer.invoke('getTasks'),
+  getTasks: (search?: string) => ipcRenderer.invoke('getTasks', search),
   getTaskById: (id: number) => ipcRenderer.invoke('getTaskById', id),
   updateTask: (task: Task) => ipcRenderer.invoke('updateTask', task),
   deleteTask: (id: number) => ipcRenderer.invoke('deleteTask', id),
