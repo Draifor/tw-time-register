@@ -60,7 +60,32 @@ const es = {
       editEntry: 'Editar entrada',
       sendToTW: 'Enviar a TeamWork',
       duplicateEntry: 'Duplicar entrada',
-      duplicateSuccess: 'Entrada "{{name}}" duplicada'
+      duplicateSuccess: 'Entrada "{{name}}" duplicada',
+      pull: {
+        trigger: 'Importar desde TW',
+        title: 'Importar registros de TW',
+        subtitle: 'Descarga tus time entries de TeamWork al historial local. Solo se importan entradas nuevas.',
+        periodLabel: 'Período a importar',
+        lastWeek: 'Última semana',
+        lastMonth: 'Último mes',
+        custom: 'Rango personalizado',
+        allHistory: 'Todo el histórico',
+        allHistoryWarning: 'Se descargarán todas tus entradas de TW. Puede tardar unos segundos.',
+        fromLabel: 'Desde',
+        toLabel: 'Hasta',
+        pullBtn: 'Importar',
+        pulling: 'Importando...',
+        resultSubtitle: '{{total}} entradas procesadas en TW',
+        imported: 'Importadas',
+        alreadyExisted: 'Ya existían',
+        noTask: 'Sin tarea local',
+        noTaskHint:
+          'Hay entradas de TW cuya tarea no existe en tu lista local. Agrégalas en la pestaña de Tareas para poder sincronizarlas.',
+        pullAgain: 'Importar de nuevo',
+        successToast: '{{count}} entradas importadas desde TW',
+        noneImported: 'No hay entradas nuevas para importar',
+        errorToast: 'Error al importar desde TW'
+      }
     },
     nav: {
       home: 'Inicio',
@@ -98,7 +123,10 @@ const es = {
       statsSummary: 'Resumen de registro de tiempo',
       today: 'Hoy',
       thisWeek: 'Esta Semana',
-      pendingEntries: 'Entradas Pendientes'
+      pendingEntries: 'Entradas Pendientes',
+      dailyView: 'Registro del Día',
+      noEntriesYet: 'Sin entradas hoy. ¡Empieza a registrar!',
+      remaining: 'Faltan {{time}}'
     },
     reports: {
       title: 'Reportes',

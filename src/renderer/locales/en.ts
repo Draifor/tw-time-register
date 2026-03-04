@@ -60,7 +60,32 @@ const en = {
       editEntry: 'Edit entry',
       sendToTW: 'Send to TeamWork',
       duplicateEntry: 'Duplicate entry',
-      duplicateSuccess: 'Entry "{{name}}" duplicated'
+      duplicateSuccess: 'Entry "{{name}}" duplicated',
+      pull: {
+        trigger: 'Import from TW',
+        title: 'Import entries from TW',
+        subtitle: 'Download your TeamWork time entries into the local history. Only new entries will be imported.',
+        periodLabel: 'Period to import',
+        lastWeek: 'Last week',
+        lastMonth: 'Last month',
+        custom: 'Custom range',
+        allHistory: 'Full history',
+        allHistoryWarning: 'All your TW entries will be downloaded. This may take a few seconds.',
+        fromLabel: 'From',
+        toLabel: 'To',
+        pullBtn: 'Import',
+        pulling: 'Importing...',
+        resultSubtitle: '{{total}} entries processed in TW',
+        imported: 'Imported',
+        alreadyExisted: 'Already existed',
+        noTask: 'No local task',
+        noTaskHint:
+          'Some TW entries have tasks that do not exist in your local list. Add them in the Tasks tab to be able to sync them.',
+        pullAgain: 'Import again',
+        successToast: '{{count}} entries imported from TW',
+        noneImported: 'No new entries to import',
+        errorToast: 'Failed to import from TW'
+      }
     },
     nav: {
       home: 'Home',
@@ -98,7 +123,10 @@ const en = {
       statsSummary: 'Your time tracking summary',
       today: 'Today',
       thisWeek: 'This Week',
-      pendingEntries: 'Pending Entries'
+      pendingEntries: 'Pending Entries',
+      dailyView: "Today's Log",
+      noEntriesYet: 'No entries yet today. Start tracking!',
+      remaining: '{{time}} remaining'
     },
     reports: {
       title: 'Reports',
