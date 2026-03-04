@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { pullEntriesFromTW, PullFromTWResult } from '../services/timesService';
 import { Task } from '../../types/tasks';
 
@@ -93,22 +93,24 @@ export default function PullTaskDialog({ task }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              disabled={!hasLink}
-              title={hasLink ? t('timeLogs.pull.taskTrigger') : t('timeLogs.pull.noTaskLink')}
-            >
-              <ArrowDownToLine className="h-3.5 w-3.5" />
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{hasLink ? t('timeLogs.pull.taskTrigger') : t('timeLogs.pull.noTaskLink')}</TooltipContent>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={!hasLink}
+                title={hasLink ? t('timeLogs.pull.taskTrigger') : t('timeLogs.pull.noTaskLink')}
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{hasLink ? t('timeLogs.pull.taskTrigger') : t('timeLogs.pull.noTaskLink')}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
