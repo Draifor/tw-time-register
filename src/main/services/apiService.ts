@@ -479,3 +479,91 @@ export async function registerTimeEntry(
 ): Promise<{ success: boolean; twEntryId?: number; message?: string }> {
   return sendTimeEntryToTW({ twTaskId: taskId, description, date, startTime: time, hours, minutes, isBillable });
 }
+
+/**
+ * Upload a pending file to TeamWork.
+ * Returns the pending file ref.
+ */
+export async function uploadPendingFileToTW(
+  fileName: string,
+  fileBuffer: ArrayBuffer
+): Promise<{ success: boolean; ref?: string; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer]);
+    formData.append('file', blob, fileName);
+
+    const response = await axios.post(`https://${domain}.teamwork.com/pendingfiles.json`, formData, {
+      headers: {
+        Authorization: buildAuthHeader(username, password)
+      },
+      timeout: 30000
+    });
+
+    if (response.data?.pendingFile?.ref) {
+      return { success: true, ref: response.data.pendingFile.ref };
+    }
+
+    return { success: false, message: 'No ref returned from API' };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
+    return {
+      success: false,
+      message:
+        axiosError.response?.data?.MESSAGE ||
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        'Failed to upload file'
+    };
+  }
+}
+
+/**
+ * Add a comment to a task in TeamWork.
+ */
+export async function addCommentToTWTask(
+  twTaskId: string,
+  body: string,
+  pendingFileAttachments: string = ''
+): Promise<{ success: boolean; commentId?: number; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    const payload = {
+      comment: {
+        body,
+        'content-type': 'text',
+        notify: '',
+        isprivate: false,
+        pendingFileAttachments
+      }
+    };
+
+    const response = await axios.post(`https://${domain}.teamwork.com/tasks/${twTaskId}/comments.json`, payload, {
+      headers: {
+        Authorization: buildAuthHeader(username, password),
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+
+    return {
+      success: true,
+      commentId: response.data?.commentId || response.data?.id
+    };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
+    return {
+      success: false,
+      message:
+        axiosError.response?.data?.MESSAGE ||
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        'Failed to add comment'
+    };
+  }
+}
