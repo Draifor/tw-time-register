@@ -198,6 +198,15 @@ const en = {
       noTasks: 'No tasks yet',
       tableTitle: 'TeamWork Tasks',
       typesTableTitle: 'Task Types',
+      typeForm: {
+        addTypeBtn: 'New type',
+        typeNameLabel: 'Type name',
+        typeNamePlaceholder: 'e.g. FORE, RECA, Internal Processes…',
+        submitBtn: 'Add type',
+        nameRequired: 'Name is required',
+        addSuccess: 'Type added successfully',
+        addError: 'Failed to add type'
+      },
       form: {
         addTaskBtn: 'New task',
         taskNameLabel: 'Task name',

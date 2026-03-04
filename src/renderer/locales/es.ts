@@ -198,6 +198,15 @@ const es = {
       noTasks: 'Sin tareas aún',
       tableTitle: 'Tareas de TeamWork',
       typesTableTitle: 'Tipos de Tarea',
+      typeForm: {
+        addTypeBtn: 'Nuevo tipo',
+        typeNameLabel: 'Nombre del tipo',
+        typeNamePlaceholder: 'Ej. FORE, RECA, Procesos Internos…',
+        submitBtn: 'Agregar tipo',
+        nameRequired: 'El nombre es obligatorio',
+        addSuccess: 'Tipo agregado correctamente',
+        addError: 'Error al agregar el tipo'
+      },
       form: {
         addTaskBtn: 'Nueva tarea',
         taskNameLabel: 'Nombre de tarea',

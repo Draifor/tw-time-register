@@ -57,6 +57,7 @@ function useTypeTasks() {
               const value = row.original.typeName;
               return (
                 <input
+                  key={value}
                   defaultValue={value}
                   className="w-full bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none px-1 py-0.5 text-sm transition-colors"
                   onBlur={(e) => {
@@ -95,10 +96,6 @@ function useTypeTasks() {
     [onEdit, onDelete]
   );
 
-  function handleAddRow() {
-    onAdd('New Type');
-  }
-
   const sortedData = useMemo(() => [...data].sort((a, b) => a.typeName.localeCompare(b.typeName)), [data]);
 
   return {
@@ -107,7 +104,7 @@ function useTypeTasks() {
     error,
     columns,
     isEditable: true,
-    handleAddRow
+    onAdd
   };
 }
 
