@@ -43,6 +43,7 @@ import {
   type TimeEntry
 } from '../services/timesService';
 import PullFromTWDialog from './PullFromTWDialog';
+import TaskCommentDialog from './TaskCommentDialog';
 
 interface EditData {
   date: string;
@@ -679,6 +680,13 @@ function TimeLogsTable() {
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
+                      {/* Comment button — only when the entry has a TW task link */}
+                      {(() => {
+                        const twId = entry.taskLink?.match(/\/tasks\/(\d+)/)?.[1];
+                        return twId ? (
+                          <TaskCommentDialog twTaskId={twId} taskName={entry.taskName || entry.description || ''} />
+                        ) : null;
+                      })()}
                       {/* Sync button — only for pending */}
                       {!entry.isSent && (
                         <TooltipProvider>

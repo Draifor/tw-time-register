@@ -9,6 +9,7 @@ import { Task } from '../../types/tasks';
 import Select from '../components/ui/select-custom';
 import DeleteButton from '../components/DeleteButton';
 import PullTaskDialog from '../components/PullTaskDialog';
+import TaskCommentDialog from '../components/TaskCommentDialog';
 
 // ── Inline editable task link cell ────────────────────────────────────────────
 function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) => void }) {
@@ -238,6 +239,15 @@ function useTasks() {
               footer: (props: ColumnFooterProps) => props.column.id,
               columns: [
                 { id: 'pull', header: 'Sync', cell: ({ row }: RowT) => <PullTaskDialog task={row.original} /> },
+                {
+                  id: 'comment',
+                  header: 'Comment',
+                  cell: ({ row }: RowT) => {
+                    const task = row.original;
+                    const twId = task.taskLink?.match(/\/tasks\/(\d+)/)?.[1];
+                    return twId ? <TaskCommentDialog twTaskId={twId} taskName={task.taskName || ''} /> : null;
+                  }
+                },
                 {
                   id: 'delete',
                   header: 'Delete',
