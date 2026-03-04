@@ -100,6 +100,10 @@ const es = {
         taskSaveError: 'Error al guardar tareas',
         taskSaveFailed: 'tareas fallaron',
         openInTW: 'Abrir en TeamWork',
+        taskTrigger: 'Importar registros desde TW',
+        noTaskLink: 'Esta tarea no tiene enlace de TW configurado',
+        taskTitle: 'Sincronizar: {{name}}',
+        taskSubtitle: 'Importa desde TW los registros de esta tarea que aún no están en tu BD local.',
         successToast: '{{count}} entradas importadas desde TW',
         noneImported: 'No hay entradas nuevas para importar',
         errorToast: 'Error al importar desde TW'

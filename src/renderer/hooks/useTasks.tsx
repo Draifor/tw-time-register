@@ -7,6 +7,7 @@ import fetchTypeTasks from '../services/typeTasksService';
 import { Task } from '../../types/tasks';
 import Select from '../components/ui/select-custom';
 import DeleteButton from '../components/DeleteButton';
+import PullTaskDialog from '../components/PullTaskDialog';
 
 function useTasks() {
   const {
@@ -151,8 +152,11 @@ function useTasks() {
               header: 'Actions',
               footer: (props: ColumnFooterProps) => props.column.id,
               columns: [
-                {
-                  id: 'delete',
+                {                  id: 'pull',
+                  header: 'Sync',
+                  cell: ({ row }: RowT) => <PullTaskDialog task={row.original} />
+                },
+                {                  id: 'delete',
                   header: 'Delete',
                   cell: ({ row }: RowT) => (
                     <DeleteButton

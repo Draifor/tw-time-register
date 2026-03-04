@@ -313,8 +313,8 @@ const api = {
   // Bidirectional sync — only syncs entries belonging to the logged-in TW user
   smartSyncEntries: (entryIds: number[]) => ipcRenderer.invoke('smartSyncEntries', entryIds),
 
-  // Pull entries from TW into local DB
-  pullEntriesFromTW: (options: { fromDate?: string; toDate?: string }) =>
+  // Pull entries from TW into local DB (optionally scoped to one task)
+  pullEntriesFromTW: (options: { fromDate?: string; toDate?: string; twTaskId?: string }) =>
     ipcRenderer.invoke('pullEntriesFromTW', options),
 
   // Fetch TW task name + parent for "add missing tasks" UI

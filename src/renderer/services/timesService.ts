@@ -275,8 +275,12 @@ export interface PullFromTWResult {
  * Pull time entries from TW into the local database.
  * Omit fromDate/toDate to pull the full history.
  */
-export const pullEntriesFromTW = async (options: { fromDate?: string; toDate?: string }): Promise<PullFromTWResult> =>
-  window.Main.pullEntriesFromTW(options);
+export const pullEntriesFromTW = async (options: {
+  fromDate?: string;
+  toDate?: string;
+  /** When set, scopes the pull to this single TW task */
+  twTaskId?: string;
+}): Promise<PullFromTWResult> => window.Main.pullEntriesFromTW(options);
 
 // TW task details for "add missing tasks"
 export interface TWTaskDetail {

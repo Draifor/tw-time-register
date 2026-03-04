@@ -15,7 +15,12 @@
  */
 
 import { extractTwTaskId } from '../database/models/TaskLinks';
-import { sendTimeEntryToTW, updateTimeEntryInTW, fetchUserTimeEntriesInRange } from './apiService';
+import {
+  sendTimeEntryToTW,
+  updateTimeEntryInTW,
+  fetchUserTimeEntriesInRange,
+  fetchUserTimeEntriesForTask
+} from './apiService';
 import { recordSync, getLastSuccessfulSync } from './historyService';
 import { markEntryAsSent } from './timeLogService';
 import { getTWCredentials } from './settingsService';
@@ -243,11 +248,25 @@ function twDateToISO(twDate: string): string {
  * @param options.fromDate  YYYY-MM-DD (omit for no lower bound)
  * @param options.toDate    YYYY-MM-DD (omit for no upper bound)
  */
-export async function pullEntriesFromTW(options: { fromDate?: string; toDate?: string }): Promise<PullFromTWResult> {
+export async function pullEntriesFromTW(options: {
+  fromDate?: string;
+  toDate?: string;
+  /** When set, scopes the pull to this single TW task ID */
+  twTaskId?: string;
+}): Promise<PullFromTWResult> {
   const db = await openDb();
 
-  // 1. Fetch from TW
-  const fetchResult = await fetchUserTimeEntriesInRange(options);
+  // 1. Fetch from TW (scoped to one task or all tasks)
+  let fetchResult: Awaited<ReturnType<typeof fetchUserTimeEntriesInRange>>;
+  if (options.twTaskId) {
+    const { userId } = await getTWCredentials();
+    fetchResult = await fetchUserTimeEntriesForTask(options.twTaskId, userId, {
+      fromDate: options.fromDate,
+      toDate: options.toDate
+    });
+  } else {
+    fetchResult = await fetchUserTimeEntriesInRange(options);
+  }
   if (!fetchResult.success || !fetchResult.entries) {
     return { total: 0, imported: 0, skippedExisting: 0, skippedNoTask: 0, missingTwTaskIds: [], results: [] };
   }

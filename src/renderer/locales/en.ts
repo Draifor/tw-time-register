@@ -100,6 +100,10 @@ const en = {
         taskSaveError: 'Failed to save tasks',
         taskSaveFailed: 'tasks failed',
         openInTW: 'Open in TeamWork',
+        taskTrigger: 'Pull entries from TW',
+        noTaskLink: 'This task has no TW link configured',
+        taskTitle: 'Sync: {{name}}',
+        taskSubtitle: 'Pull time entries from TW for this task into your local database.',
         successToast: '{{count}} entries imported from TW',
         noneImported: 'No new entries to import',
         errorToast: 'Failed to import from TW'

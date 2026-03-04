@@ -205,14 +205,20 @@ export interface TWTimeEntry {
  */
 export async function fetchUserTimeEntriesForTask(
   twTaskId: string,
-  userId: string
+  userId: string,
+  options?: { fromDate?: string; toDate?: string }
 ): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
   const { domain, username, password } = await getTWCredentials();
   if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
 
+  const toYYYYMMDD = (iso: string) => iso.replace(/-/g, '');
+  const params: Record<string, string> = { userId };
+  if (options?.fromDate) params.fromDate = toYYYYMMDD(options.fromDate);
+  if (options?.toDate) params.toDate = toYYYYMMDD(options.toDate);
+
   try {
     const response = await axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}/time_entries.json`, {
-      params: { userId },
+      params,
       headers: {
         Authorization: buildAuthHeader(username, password),
         'Content-Type': 'application/json'
