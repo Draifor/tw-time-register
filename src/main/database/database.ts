@@ -49,11 +49,15 @@ let db: DatabaseWrapper | null = null;
 /**
  * Writable path for the SQLite DB (AppData\Roaming\tw-time-register).
  * This location is always writable, even in a packaged app.
+ *
+ * In development (app.isPackaged === false) a separate file is used so the
+ * dev environment never touches the production database.
  */
 export function getDbPath(): string {
   const userData = app.getPath('userData');
   fs.mkdirSync(userData, { recursive: true });
-  return path.join(userData, 'worktime.sqlite');
+  const filename = app.isPackaged ? 'worktime.sqlite' : 'worktime-dev.sqlite';
+  return path.join(userData, filename);
 }
 
 /** Absolute path to the SQLite file — kept for backup/import/export. */
