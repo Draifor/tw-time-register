@@ -36,7 +36,7 @@ export async function getTasks(): Promise<Task[]> {
       ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME}
     FROM
       ${columnsDB.TABLE_NAME}
-    JOIN
+    LEFT JOIN
       ${typeTasksDBColumns.TABLE_NAME} ON ${columnsDB.TABLE_NAME}.${columnsDB.TYPE_ID} = ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.ID}`;
 
   const response: TaskDB[] = await db.all(query);
@@ -44,7 +44,7 @@ export async function getTasks(): Promise<Task[]> {
   return response.map((task) => {
     return {
       id: task.task_id,
-      typeName: task.type_name,
+      typeName: task.type_name ?? '',
       taskName: task.task_name,
       taskLink: task.task_link,
       description: task.description

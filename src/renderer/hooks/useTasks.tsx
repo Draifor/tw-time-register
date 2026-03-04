@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
+import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
@@ -113,21 +114,34 @@ function useTasks() {
             id: 'typeName',
             header: () => 'Task Type',
             cell: ({ row }) => {
-              if (!typeTasks) return row.original.typeName;
+              const isOrphan = !row.original.typeName;
               return (
-                <Select
-                  options={typeTasks.map((tt: { typeName: string }) => ({
-                    value: tt.typeName,
-                    label: tt.typeName
-                  }))}
-                  value={{
-                    value: row.original.typeName ?? '',
-                    label: row.original.typeName ?? ''
-                  }}
-                  onChange={(selectedOption: { value: string; label: string } | null) =>
-                    onEdit({ ...row.original, typeName: selectedOption?.value ?? '' })
-                  }
-                />
+                <div className="flex items-center gap-1.5">
+                  {isOrphan && (
+                    <span title="Sin tipo asignado">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    </span>
+                  )}
+                  {typeTasks ? (
+                    <Select
+                      options={typeTasks.map((tt: { typeName: string }) => ({
+                        value: tt.typeName,
+                        label: tt.typeName
+                      }))}
+                      value={
+                        row.original.typeName
+                          ? { value: row.original.typeName, label: row.original.typeName }
+                          : null
+                      }
+                      placeholder="Asignar tipo…"
+                      onChange={(selectedOption: { value: string; label: string } | null) =>
+                        onEdit({ ...row.original, typeName: selectedOption?.value ?? '' })
+                      }
+                    />
+                  ) : (
+                    row.original.typeName || '—'
+                  )}
+                </div>
               );
             },
             footer: (props: ColumnFooterProps) => props.column.id
