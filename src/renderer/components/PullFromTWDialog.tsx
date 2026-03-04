@@ -416,8 +416,8 @@ export default function PullFromTWDialog() {
                           }
                           className={`shrink-0 text-xs px-2 py-0.5 rounded border transition-colors ${
                             row.selected
-                              ? 'border-destructive/40 text-destructive hover:bg-destructive/10'
-                              : 'border-green-400/60 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30'
+                              ? 'border-border text-muted-foreground hover:border-destructive/60 hover:text-destructive hover:bg-destructive/5'
+                              : 'border-green-500/60 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30'
                           }`}
                         >
                           {row.selected ? t('timeLogs.pull.skipTask') : t('timeLogs.pull.includeTask')}

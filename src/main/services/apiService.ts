@@ -327,7 +327,13 @@ export async function fetchTWTaskDetails(
         const name = String(item.content ?? item.name ?? item.title ?? `Task ${id}`);
 
         // Build parent context: prefer parent task name, fall back to list name, then project name
-        const parentTaskName = String(item['parent-task'] ?? item.parentTask ?? '').trim();
+        // Note: 'parent-task' is an object { id, content } in TW API — extract .content
+        const parentTaskObj = item['parent-task'] ?? item.parentTask;
+        const parentTaskName = (
+          typeof parentTaskObj === 'object' && parentTaskObj !== null
+            ? String((parentTaskObj as Record<string, unknown>).content ?? '')
+            : String(parentTaskObj ?? '')
+        ).trim();
         const listName = String(item['todo-list-name'] ?? item.todoListName ?? '').trim();
         const projectName = String(item['project-name'] ?? item.projectName ?? '').trim();
         const parentName = parentTaskName || listName || projectName || '';
