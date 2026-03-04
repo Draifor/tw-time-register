@@ -320,6 +320,9 @@ const api = {
   // Fetch TW task name + parent for "add missing tasks" UI
   fetchTWTaskDetails: (twTaskIds: string[]) => ipcRenderer.invoke('fetchTWTaskDetails', twTaskIds),
 
+  // Open a URL in the system default browser
+  openExternal: (url: string) => ipcRenderer.send('open-external', url),
+
   // Database backup
   exportDatabase: () => ipcRenderer.invoke('exportDatabase'),
   importDatabase: () => ipcRenderer.invoke('importDatabase'),

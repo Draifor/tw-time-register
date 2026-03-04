@@ -99,6 +99,7 @@ const es = {
         tasksSaved: '{{count}} tareas guardadas. Puedes volver a importar para descargar sus entradas.',
         taskSaveError: 'Error al guardar tareas',
         taskSaveFailed: 'tareas fallaron',
+        openInTW: 'Abrir en TeamWork',
         successToast: '{{count}} entradas importadas desde TW',
         noneImported: 'No hay entradas nuevas para importar',
         errorToast: 'Error al importar desde TW'

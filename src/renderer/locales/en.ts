@@ -99,6 +99,7 @@ const en = {
         tasksSaved: '{{count}} tasks saved. You can re-import to download their entries.',
         taskSaveError: 'Failed to save tasks',
         taskSaveFailed: 'tasks failed',
+        openInTW: 'Open in TeamWork',
         successToast: '{{count}} entries imported from TW',
         noneImported: 'No new entries to import',
         errorToast: 'Failed to import from TW'

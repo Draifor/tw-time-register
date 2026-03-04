@@ -10,7 +10,8 @@ import {
   SkipForward,
   AlertCircle,
   Plus,
-  Tag
+  Tag,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -385,13 +386,25 @@ export default function PullFromTWDialog() {
                     >
                       {/* Header: TW info + toggle */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium truncate text-foreground">{row.name}</p>
-                          {row.parentName && (
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-semibold truncate text-foreground">{row.name}</p>
+                            <button
+                              type="button"
+                              title={t('timeLogs.pull.openInTW')}
+                              onClick={() => window.Main.openExternal(row.taskLink)}
+                              className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          {row.parentName ? (
                             <Badge variant="secondary" className="mt-0.5 text-xs gap-1 max-w-full truncate">
                               <Tag className="h-2.5 w-2.5 shrink-0" />
                               <span className="truncate">{row.parentName}</span>
                             </Badge>
+                          ) : (
+                            <p className="text-xs text-muted-foreground mt-0.5">#{row.twTaskId}</p>
                           )}
                         </div>
                         <button
