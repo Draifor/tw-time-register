@@ -51,7 +51,7 @@ Herramienta personal para registrar el tiempo de trabajo diario de forma eficien
 ### Calidad
 
 - **ESLint** v9 (flat config) + **Prettier** v3 + **typescript-eslint** v8
-- **Vitest** v4 — 41 tests unitarios, 0 fallos
+- **Vitest** v4 — 108 tests unitarios, 0 fallos
 
 ### Distribución
 
@@ -77,24 +77,28 @@ src/
 │   ├── ipc/
 │   │   └── databaseIpc.ts       # Todos los handlers IPC
 │   └── services/
-│       ├── apiService.ts        # GET/POST/PUT/DELETE TeamWork API
-│       ├── syncService.ts       # smartSyncEntries() — sync bidireccional
+│       ├── apiService.ts        # GET/POST/PUT/DELETE TeamWork API + fetchUserTimeEntriesInRange
+│       ├── syncService.ts       # smartSyncEntries() + pullEntriesFromTW()
 │       ├── historyService.ts    # CRUD sync_history
 │       ├── timeLogService.ts    # markEntryAsSent/NotSent, getUnsentEntries
 │       ├── taskLinkService.ts   # getLinkedTasks, updateTaskLink
 │       ├── timeEntriesService.ts # CRUD time_entries
-│       ├── taskService.ts       # CRUD tasks
-│       ├── settingsService.ts   # work_settings + credenciales TW
+│       ├── taskService.ts       # CRUD tasks (LEFT JOIN para tareas huérfanas)
+│       ├── typeTasksService.ts  # CRUD tipos (unicidad case-insensitive, cascade protect)
+│       ├── settingsService.ts   # work_settings + credenciales TW + syncHolidaysFromApi
 │       └── encryptionService.ts # DPAPI via safeStorage
 ├── renderer/                    # Proceso React
 │   ├── App.tsx                  # HashRouter + rutas
 │   ├── components/
-│   │   ├── WorkTimeForm.tsx     # Formulario principal de tiempos
-│   │   ├── TimeLogsTable.tsx    # Tabla con edición inline + sync
-│   │   ├── TasksTable.tsx
-│   │   ├── TypeTasksTable.tsx
+│   │   ├── WorkTimeForm.tsx     # Formulario principal + timer en vivo
+│   │   ├── TimeLogsTable.tsx    # Edición inline + sync + duplicar entrada
+│   │   ├── TasksTable.tsx       # + formulario colapsable + PullTaskDialog por fila
+│   │   ├── TypeTasksTable.tsx   # + formulario colapsable + protección cascade
+│   │   ├── PullFromTWDialog.tsx # Asistente 3 pasos: config → resultado → tareas faltantes
+│   │   ├── PullTaskDialog.tsx   # Pull de una sola tarea (2 pasos)
 │   │   └── ui/                  # Componentes shadcn/ui
 │   ├── hooks/
+│   │   ├── useTasks.tsx         # TaskLinkCell: badge #ID + edición inline
 │   │   ├── useTWSession.ts      # Sesión TW activa → badge en NavBar
 │   │   └── useAutoUpdater.ts    # Estado del auto-updater
 │   ├── lib/
@@ -109,11 +113,17 @@ src/
 │   │   └── SettingsPage.tsx
 │   └── services/
 │       └── timesService.ts      # Wrappers window.Main.* + SmartSyncResult
-└── tests/                       # Vitest
+└── tests/                       # Vitest — 108 tests, 8 suites, 0 fallos
     ├── setup.ts
     ├── main/
     │   ├── models/TaskLinks.test.ts
-    │   └── services/syncService.test.ts, historyService.test.ts
+    │   └── services/
+    │       ├── syncService.test.ts
+    │       ├── historyService.test.ts
+    │       ├── timeEntriesService.test.ts
+    │       ├── apiService.test.ts
+    │       ├── settingsService.test.ts
+    │       └── encryptionService.test.ts
     └── renderer/
         └── timeUtils.test.ts
 ```
@@ -135,17 +145,22 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 
 ## ✅ Funcionalidades
 
-- **WorkTimeForm** — campos dinámicos, cálculo encadenado inicio/fin, persistencia localStorage
-- **TimeLogsTable** — edición inline, sync individual y masivo, búsqueda + filtros por fecha y tarea
+- **WorkTimeForm** — campos dinámicos, cálculo encadenado inicio/fin, persistencia localStorage, **timer en vivo** (play/stop auto-calcula duración)
+- **TimeLogsTable** — edición inline, sync individual y masivo, búsqueda + filtros, **duplicar entrada** con un click
 - **Sync bidireccional** — `smartSyncEntries()`: POST / PUT según `sync_history`, siempre con `person-id = userId`
+- **Pull desde TW** — `pullEntriesFromTW()`: importa time entries de TW en un rango de fechas (global o por tarea)
+  - `PullFromTWDialog` — 3 pasos: período → resultado → agregar tareas TW faltantes
+  - `PullTaskDialog` — pull escopado a una sola tarea desde la columna de acciones
+- **Tasks table** — tareas huérfanas visibles (`LEFT JOIN`), **link editable inline** (badge `#ID` + icono lápiz), botón pull por fila
+- **TypeTasks** — unicidad case-insensitive, cascade protect (bloquea DELETE si hay tareas)
 - **ImportTasksDialog** — asistente 3 pasos para importar subtareas de TW (templates RECA/FORE y OTHER)
 - **ReportsPage** — horas por tarea y por día, 4 tarjetas resumen, filtro por rango de fechas
-- **SettingsPage** — credenciales TW encriptadas (DPAPI), horario, días laborales, festivos
+- **SettingsPage** — credenciales TW encriptadas (DPAPI), horario, días laborales, festivos colombianos (Nager.Date API)
 - **NavBar** — badge de sesión TW activa, badge de auto-updater
 - **i18n** — ES/EN completo en todos los componentes y páginas
 - **Seguridad** — credenciales TW cifradas con `safeStorage` (DPAPI en Windows)
 - **Auto-updater** — descarga en segundo plano, toasts de estado, botón "Buscar actualizaciones"
-- **41 tests** — modelos, historyService, syncService, timeUtils
+- **108 tests** — modelos, servicios core (encryption, settings, timeEntries, api, sync, history), timeUtils
 
 ---
 
