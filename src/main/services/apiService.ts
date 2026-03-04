@@ -289,6 +289,79 @@ export async function updateTimeEntryInTW(
 }
 
 /**
+ * Fetch all time entries for the current user across all tasks.
+ * Supports an optional date range (fromDate / toDate in YYYY-MM-DD format).
+ * Paginates automatically until all pages are retrieved.
+ */
+export async function fetchUserTimeEntriesInRange(options: {
+  fromDate?: string; // YYYY-MM-DD, optional
+  toDate?: string;   // YYYY-MM-DD, optional
+}): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
+  const { domain, username, password, userId } = await getTWCredentials();
+  if (!domain || !username || !password || !userId) {
+    return { success: false, message: 'TeamWork credentials not configured or missing userId' };
+  }
+
+  const headers = {
+    Authorization: buildAuthHeader(username, password),
+    'Content-Type': 'application/json'
+  };
+
+  const toYYYYMMDD = (iso: string) => iso.replace(/-/g, '');
+
+  const params: Record<string, string | number> = {
+    userId,
+    pageSize: 500,
+    page: 1
+  };
+  if (options.fromDate) params.fromDate = toYYYYMMDD(options.fromDate);
+  if (options.toDate) params.toDate = toYYYYMMDD(options.toDate);
+
+  const allEntries: TWTimeEntry[] = [];
+
+  try {
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      params.page = page;
+      const response = await axios.get(`https://${domain}.teamwork.com/time_entries.json`, {
+        params,
+        headers,
+        timeout: 20000
+      });
+
+      const raw: Record<string, unknown>[] = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
+
+      const entries: TWTimeEntry[] = raw.map((e) => ({
+        id: String(e.id),
+        taskId: String(e['task-id'] ?? e.taskId ?? ''),
+        date: String(e.date ?? ''),
+        time: String(e.time ?? ''),
+        hours: Number(e.hours ?? 0),
+        minutes: Number(e.minutes ?? 0),
+        description: String(e.description ?? ''),
+        isBillable: e.isbillable === true || e.isbillable === 'true'
+      }));
+
+      allEntries.push(...entries);
+
+      // TW returns less than pageSize when it's the last page
+      hasMore = raw.length === 500;
+      page++;
+    }
+
+    return { success: true, entries: allEntries };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    return {
+      success: false,
+      message: axiosError.response?.data?.message || axiosError.message || 'Failed to fetch time entries'
+    };
+  }
+}
+
+/**
  * Delete a time entry from TeamWork.
  */
 export async function deleteTimeEntryFromTW(twEntryId: string): Promise<{ success: boolean; message?: string }> {

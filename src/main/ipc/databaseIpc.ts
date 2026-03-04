@@ -57,7 +57,7 @@ import {
   fetchTWSubtasks,
   debugTWSubtasks
 } from '../services/apiService';
-import { smartSyncEntries } from '../services/syncService';
+import { smartSyncEntries, pullEntriesFromTW } from '../services/syncService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
@@ -284,6 +284,11 @@ ipcMain.handle('importTasksFromCSV', async (_event, rows: CSVTaskRow[]) => {
 // Always uses the tw_user_id from credentials — only touches the current user's entries.
 ipcMain.handle('smartSyncEntries', async (_event, entryIds: number[]) => {
   return smartSyncEntries(entryIds);
+});
+
+// Pull time entries from TW into local DB
+ipcMain.handle('pullEntriesFromTW', async (_event, options: { fromDate?: string; toDate?: string }) => {
+  return pullEntriesFromTW(options);
 });
 
 // Database backup handlers

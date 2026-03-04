@@ -254,6 +254,29 @@ export interface SmartSyncResult {
 export const smartSyncEntries = async (entryIds: number[]): Promise<SmartSyncResult> =>
   window.Main.smartSyncEntries(entryIds);
 
+// Pull from TW
+export interface PullEntryResult {
+  twEntryId: string;
+  localEntryId: number | null;
+  status: 'imported' | 'skipped_existing' | 'skipped_no_task';
+  message?: string;
+}
+
+export interface PullFromTWResult {
+  total: number;
+  imported: number;
+  skippedExisting: number;
+  skippedNoTask: number;
+  results: PullEntryResult[];
+}
+
+/**
+ * Pull time entries from TW into the local database.
+ * Omit fromDate/toDate to pull the full history.
+ */
+export const pullEntriesFromTW = async (options: { fromDate?: string; toDate?: string }): Promise<PullFromTWResult> =>
+  window.Main.pullEntriesFromTW(options);
+
 // Database backup
 export interface BackupResult {
   success: boolean;

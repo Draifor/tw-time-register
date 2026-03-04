@@ -15,7 +15,7 @@
  */
 
 import { extractTwTaskId } from '../database/models/TaskLinks';
-import { sendTimeEntryToTW, updateTimeEntryInTW } from './apiService';
+import { sendTimeEntryToTW, updateTimeEntryInTW, fetchUserTimeEntriesInRange } from './apiService';
 import { recordSync, getLastSuccessfulSync } from './historyService';
 import { markEntryAsSent } from './timeLogService';
 import { getTWCredentials } from './settingsService';
@@ -190,6 +190,139 @@ export async function smartSyncEntries(entryIds: number[]): Promise<SmartSyncRes
     total: entries.length,
     succeeded,
     failed: entries.length - succeeded,
+    results
+  };
+}
+
+// ── Pull from TW ───────────────────────────────────────────────────────────────
+
+export interface PullEntryResult {
+  twEntryId: string;
+  /** null when no matching local task was found */
+  localEntryId: number | null;
+  status: 'imported' | 'skipped_existing' | 'skipped_no_task';
+  message?: string;
+}
+
+export interface PullFromTWResult {
+  total: number;
+  imported: number;
+  skippedExisting: number;
+  skippedNoTask: number;
+  results: PullEntryResult[];
+}
+
+/** Add minutes to an HH:MM string. Returns HH:MM clamped at 23:59. */
+function addMinutesToTime(time: string, totalMinutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = Math.min(h * 60 + m + totalMinutes, 23 * 60 + 59);
+  const rh = Math.floor(total / 60);
+  const rm = total % 60;
+  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+}
+
+/** Convert TW date YYYYMMDD → YYYY-MM-DD */
+function twDateToISO(twDate: string): string {
+  if (twDate.length === 8) {
+    return `${twDate.slice(0, 4)}-${twDate.slice(4, 6)}-${twDate.slice(6, 8)}`;
+  }
+  return twDate; // already ISO or unknown format
+}
+
+/**
+ * Pull time entries from TeamWork into the local database.
+ *
+ * - Only imports entries that don't already exist in sync_history
+ *   (identified by tw_time_entry_id).
+ * - Entries for tasks that have no matching local task are skipped.
+ * - Imported entries are marked as sent (isSent = 1) automatically because
+ *   they already exist in TW — a future edit + sync will do a PUT.
+ *
+ * @param options.fromDate  YYYY-MM-DD (omit for no lower bound)
+ * @param options.toDate    YYYY-MM-DD (omit for no upper bound)
+ */
+export async function pullEntriesFromTW(options: {
+  fromDate?: string;
+  toDate?: string;
+}): Promise<PullFromTWResult> {
+  const db = await openDb();
+
+  // 1. Fetch from TW
+  const fetchResult = await fetchUserTimeEntriesInRange(options);
+  if (!fetchResult.success || !fetchResult.entries) {
+    return { total: 0, imported: 0, skippedExisting: 0, skippedNoTask: 0, results: [] };
+  }
+
+  const twEntries = fetchResult.entries;
+
+  // 2. Build map: twTaskId (numeric string) → local task_id
+  const taskRows = await db.all<{ task_id: number; task_link: string }>(
+    'SELECT task_id, task_link FROM tasks WHERE task_link IS NOT NULL AND task_link != ""'
+  );
+  const twTaskIdToLocalId = new Map<string, number>();
+  for (const row of taskRows) {
+    const twId = extractTwTaskId(row.task_link);
+    if (twId) twTaskIdToLocalId.set(twId, row.task_id);
+  }
+
+  // 3. Build set of already-known tw_time_entry_ids
+  const knownRows = await db.all<{ tw_time_entry_id: string }>(
+    'SELECT DISTINCT tw_time_entry_id FROM sync_history WHERE tw_time_entry_id IS NOT NULL AND success = 1'
+  );
+  const knownTwIds = new Set(knownRows.map((r) => r.tw_time_entry_id));
+
+  // 4. Process each TW entry
+  const results: PullEntryResult[] = [];
+
+  for (const entry of twEntries) {
+    // Already in local DB — skip
+    if (knownTwIds.has(entry.id)) {
+      results.push({ twEntryId: entry.id, localEntryId: null, status: 'skipped_existing' });
+      continue;
+    }
+
+    // No matching local task — skip
+    const localTaskId = twTaskIdToLocalId.get(entry.taskId);
+    if (!localTaskId) {
+      results.push({
+        twEntryId: entry.id,
+        localEntryId: null,
+        status: 'skipped_no_task',
+        message: `No local task matched TW task_id=${entry.taskId}`
+      });
+      continue;
+    }
+
+    const isoDate = twDateToISO(entry.date);
+    const startTime = entry.time || '09:00';
+    const durationMinutes = entry.hours * 60 + entry.minutes;
+    const endTime = addMinutesToTime(startTime, durationMinutes);
+
+    // INSERT into time_entries
+    const insertResult = await db.run(
+      `INSERT INTO time_entries
+         (task_id, description, entry_date, hora_inicio, hora_fin, facturable, send)
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+      [localTaskId, entry.description, isoDate, startTime, endTime, entry.isBillable ? 1 : 0]
+    );
+    const newEntryId = insertResult.lastID;
+
+    // Record in sync_history so future edits do a PUT
+    await db.run(
+      `INSERT INTO sync_history
+         (entry_id, action, tw_time_entry_id, tw_task_id, success)
+       VALUES (?, 'created', ?, ?, 1)`,
+      [newEntryId, entry.id, entry.taskId]
+    );
+
+    results.push({ twEntryId: entry.id, localEntryId: newEntryId, status: 'imported' });
+  }
+
+  return {
+    total: twEntries.length,
+    imported: results.filter((r) => r.status === 'imported').length,
+    skippedExisting: results.filter((r) => r.status === 'skipped_existing').length,
+    skippedNoTask: results.filter((r) => r.status === 'skipped_no_task').length,
     results
   };
 }

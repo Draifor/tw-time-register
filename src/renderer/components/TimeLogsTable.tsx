@@ -42,6 +42,7 @@ import {
   resetTimeEntryToUnsent,
   type TimeEntry
 } from '../services/timesService';
+import PullFromTWDialog from './PullFromTWDialog';
 
 interface EditData {
   date: string;
@@ -318,6 +319,8 @@ function TimeLogsTable() {
             {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {`Sync ${pendingCount}`}
           </Button>
+          {/* Pull from TW button */}
+          <PullFromTWDialog />
         </div>
 
         {/* Expanded filters */}

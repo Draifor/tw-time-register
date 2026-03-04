@@ -313,6 +313,10 @@ const api = {
   // Bidirectional sync — only syncs entries belonging to the logged-in TW user
   smartSyncEntries: (entryIds: number[]) => ipcRenderer.invoke('smartSyncEntries', entryIds),
 
+  // Pull entries from TW into local DB
+  pullEntriesFromTW: (options: { fromDate?: string; toDate?: string }) =>
+    ipcRenderer.invoke('pullEntriesFromTW', options),
+
   // Database backup
   exportDatabase: () => ipcRenderer.invoke('exportDatabase'),
   importDatabase: () => ipcRenderer.invoke('importDatabase'),
