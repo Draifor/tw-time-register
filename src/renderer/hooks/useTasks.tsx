@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
@@ -129,9 +129,7 @@ function useTasks() {
                         label: tt.typeName
                       }))}
                       value={
-                        row.original.typeName
-                          ? { value: row.original.typeName, label: row.original.typeName }
-                          : null
+                        row.original.typeName ? { value: row.original.typeName, label: row.original.typeName } : null
                       }
                       placeholder="Asignar tipo…"
                       onChange={(selectedOption: { value: string; label: string } | null) =>
@@ -150,6 +148,21 @@ function useTasks() {
             accessorFn: (row: Task) => row.taskLink,
             id: 'taskLink',
             header: () => 'Task Link',
+            cell: ({ row }) => {
+              const link = row.original.taskLink;
+              if (!link) return <span className="text-muted-foreground text-xs">—</span>;
+              return (
+                <button
+                  type="button"
+                  onClick={() => window.Main.openExternal(link)}
+                  className="flex items-center gap-1 text-xs text-primary hover:underline max-w-[200px] truncate"
+                  title={link}
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{link.replace(/^https?:\/\//, '')}</span>
+                </button>
+              );
+            },
             footer: (props: ColumnFooterProps) => props.column.id
           },
           {
@@ -166,11 +179,9 @@ function useTasks() {
               header: 'Actions',
               footer: (props: ColumnFooterProps) => props.column.id,
               columns: [
-                {                  id: 'pull',
-                  header: 'Sync',
-                  cell: ({ row }: RowT) => <PullTaskDialog task={row.original} />
-                },
-                {                  id: 'delete',
+                { id: 'pull', header: 'Sync', cell: ({ row }: RowT) => <PullTaskDialog task={row.original} /> },
+                {
+                  id: 'delete',
                   header: 'Delete',
                   cell: ({ row }: RowT) => (
                     <DeleteButton
