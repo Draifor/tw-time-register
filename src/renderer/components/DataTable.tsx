@@ -130,6 +130,10 @@ function DataTable<T extends FieldValues>({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
+  // When filtering: show all matching rows; when not: respect the infinite-scroll window
+  const allRows = table.getRowModel().rows;
+  const rowsToRender = globalFilter ? allRows : allRows.slice(0, visibleRowCount);
+
   // Handle scroll to load more rows
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -198,8 +202,8 @@ function DataTable<T extends FieldValues>({
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
+              {rowsToRender?.length ? (
+                rowsToRender.map((row) => (
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
@@ -234,7 +238,9 @@ function DataTable<T extends FieldValues>({
         {totalRows > 0 && (
           <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
             <span>
-              Showing {visibleRowCount} of {totalRows} rows
+              {globalFilter
+                ? `${allRows.length} result${allRows.length !== 1 ? 's' : ''} of ${totalRows}`
+                : `Showing ${Math.min(visibleRowCount, totalRows)} of ${totalRows} rows`}
             </span>
             {hasMoreRows && (
               <div className="flex items-center gap-2">

@@ -76,12 +76,13 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
     console.log(`Saving data to DB: row ${rowIndex}, column ${columnId}, value ${value}`);
   };
 
-  // Get visible data slice for infinite scroll
-  const visibleData = useMemo(() => {
-    return localData.slice(0, visibleRowCount);
-  }, [localData, visibleRowCount]);
+  // When the user clears/changes the filter, reset the scroll window
+  useEffect(() => {
+    setVisibleRowCount(INITIAL_ROWS);
+  }, [globalFilter]);
 
-  const hasMoreRows = visibleRowCount < localData.length;
+  // Infinite scroll: only relevant when no filter is active
+  const hasMoreRows = !globalFilter && visibleRowCount < localData.length;
 
   const loadMoreRows = useCallback(() => {
     if (hasMoreRows) {
@@ -100,7 +101,7 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
   }, [data]);
 
   const table = useReactTable<T>({
-    data: visibleData,
+    data: localData,
     columns: memoColumns as ColumnDef<T>[],
     defaultColumn: defaultColumn(isEditable ?? false),
     state: {
