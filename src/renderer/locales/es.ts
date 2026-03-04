@@ -415,6 +415,20 @@ const es = {
         stop: 'Detener timer',
         otherRunning: 'Hay otro timer activo'
       }
+    },
+    taskComment: {
+      triggerTooltip: 'Agregar comentario en TW',
+      title: 'Nuevo comentario',
+      bodyLabel: 'Comentario',
+      bodyPlaceholder: '¿Qué quieres comentar?',
+      dropZoneHint: 'Arrastra archivos aquí',
+      dropZoneOr: '— o haz clic para seleccionar —',
+      removeFile: 'Quitar archivo',
+      sendBtn: 'Enviar comentario',
+      sending: 'Enviando...',
+      success: 'Comentario enviado a TeamWork',
+      error: 'Error al enviar el comentario',
+      uploadError: 'Error al subir el archivo'
     }
   }
 };

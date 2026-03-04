@@ -415,6 +415,20 @@ const en = {
         stop: 'Stop timer',
         otherRunning: 'Another timer is active'
       }
+    },
+    taskComment: {
+      triggerTooltip: 'Add comment in TW',
+      title: 'New Comment',
+      bodyLabel: 'Comment',
+      bodyPlaceholder: 'What do you want to comment?',
+      dropZoneHint: 'Drag files here',
+      dropZoneOr: '— or click to select —',
+      removeFile: 'Remove file',
+      sendBtn: 'Send comment',
+      sending: 'Sending...',
+      success: 'Comment sent to TeamWork',
+      error: 'Failed to send comment',
+      uploadError: 'Error uploading file'
     }
   }
 };
