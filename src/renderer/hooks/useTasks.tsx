@@ -151,15 +151,16 @@ function useTasks() {
             cell: ({ row }) => {
               const link = row.original.taskLink;
               if (!link) return <span className="text-muted-foreground text-xs">—</span>;
+              const taskId = link.match(/\/tasks\/(\d+)/)?.[1];
               return (
                 <button
                   type="button"
                   onClick={() => window.Main.openExternal(link)}
-                  className="flex items-center gap-1 text-xs text-primary hover:underline max-w-[200px] truncate"
                   title={link}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                 >
                   <ExternalLink className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{link.replace(/^https?:\/\//, '')}</span>
+                  {taskId ? `#${taskId}` : 'Ver en TW'}
                 </button>
               );
             },
