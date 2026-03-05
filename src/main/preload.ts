@@ -317,6 +317,10 @@ const api = {
   pullEntriesFromTW: (options: { fromDate?: string; toDate?: string; twTaskId?: string }) =>
     ipcRenderer.invoke('pullEntriesFromTW', options),
 
+  // DEBUG: raw time entries from TW (no transformation) for field inspection
+  debugRawTWEntries: (options: { fromDate?: string; toDate?: string; limit?: number }) =>
+    ipcRenderer.invoke('debugRawTWEntries', options),
+
   // Fetch TW task name + parent for "add missing tasks" UI
   fetchTWTaskDetails: (twTaskIds: string[]) => ipcRenderer.invoke('fetchTWTaskDetails', twTaskIds),
 

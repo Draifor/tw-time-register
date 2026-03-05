@@ -61,6 +61,7 @@ import {
   uploadPendingFileToTW
 } from '../services/apiService';
 import { smartSyncEntries, pullEntriesFromTW } from '../services/syncService';
+import { debugRawTWEntries } from '../services/apiService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
@@ -296,6 +297,11 @@ ipcMain.handle(
     return pullEntriesFromTW(options);
   }
 );
+
+// DEBUG: return raw (untransformed) time entries from TW for field inspection
+ipcMain.handle('debugRawTWEntries', async (_event, options: { fromDate?: string; toDate?: string; limit?: number }) => {
+  return debugRawTWEntries(options);
+});
 
 // Fetch TW task name + parent for a list of task IDs (for "add missing tasks" UI)
 ipcMain.handle('fetchTWTaskDetails', async (_event, twTaskIds: string[]) => {

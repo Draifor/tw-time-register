@@ -282,6 +282,14 @@ export const pullEntriesFromTW = async (options: {
   twTaskId?: string;
 }): Promise<PullFromTWResult> => window.Main.pullEntriesFromTW(options);
 
+// DEBUG: raw TW entries for field inspection
+export const debugRawTWEntries = async (options: {
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+}): Promise<{ success: boolean; raw?: Record<string, unknown>[]; message?: string }> =>
+  window.Main.debugRawTWEntries(options);
+
 // TW task details for "add missing tasks"
 export interface TWTaskDetail {
   twTaskId: string;
