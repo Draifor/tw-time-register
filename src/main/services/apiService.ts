@@ -228,16 +228,23 @@ export async function fetchUserTimeEntriesForTask(
 
     const raw: Record<string, unknown>[] = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
 
-    const entries: TWTimeEntry[] = raw.map((e) => ({
-      id: String(e.id),
-      taskId: String(e['task-id'] ?? e.taskId ?? twTaskId),
-      date: String(e.date ?? ''),
-      time: String(e.time ?? ''),
-      hours: Number(e.hours ?? 0),
-      minutes: Number(e.minutes ?? 0),
-      description: String(e.description ?? ''),
-      isBillable: e.isbillable === true || e.isbillable === 'true'
-    }));
+    const entries: TWTimeEntry[] = raw.map((e) => {
+      // TW does not return a `time` field. The start time lives in
+      // `dateUserPerspective` (local-timezone ISO string) when has-start-time=1.
+      const hasStart = e['has-start-time'] === '1' || e['has-start-time'] === 1;
+      const perspective = String(e.dateUserPerspective ?? '');
+      const startTime = hasStart && perspective.length >= 16 ? perspective.slice(11, 16) : '';
+      return {
+        id: String(e.id),
+        taskId: String(e['task-id'] ?? e.taskId ?? twTaskId),
+        date: String(e.date ?? ''),
+        time: startTime,
+        hours: Number(e.hours ?? 0),
+        minutes: Number(e.minutes ?? 0),
+        description: String(e.description ?? ''),
+        isBillable: e.isbillable === true || e.isbillable === 'true' || e.isbillable === '1'
+      };
+    });
 
     return { success: true, entries };
   } catch (error) {
@@ -409,17 +416,24 @@ export async function fetchUserTimeEntriesInRange(options: {
 
       const raw: Record<string, unknown>[] = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
 
-      const entries: TWTimeEntry[] = raw.map((e) => ({
-        id: String(e.id),
-        // TW v1 /time_entries.json uses 'todo-item-id'; some endpoints use 'task-id'
-        taskId: String(e['todo-item-id'] ?? e['task-id'] ?? e.taskId ?? ''),
-        date: String(e.date ?? ''),
-        time: String(e.time ?? ''),
-        hours: Number(e.hours ?? 0),
-        minutes: Number(e.minutes ?? 0),
-        description: String(e.description ?? ''),
-        isBillable: e.isbillable === true || e.isbillable === 'true'
-      }));
+      const entries: TWTimeEntry[] = raw.map((e) => {
+        // TW does not return a `time` field. The start time lives in
+        // `dateUserPerspective` (local-timezone ISO string) when has-start-time=1.
+        const hasStart = e['has-start-time'] === '1' || e['has-start-time'] === 1;
+        const perspective = String(e.dateUserPerspective ?? '');
+        const startTime = hasStart && perspective.length >= 16 ? perspective.slice(11, 16) : '';
+        return {
+          id: String(e.id),
+          // TW v1 /time_entries.json uses 'todo-item-id'; some endpoints use 'task-id'
+          taskId: String(e['todo-item-id'] ?? e['task-id'] ?? e.taskId ?? ''),
+          date: String(e.date ?? ''),
+          time: startTime,
+          hours: Number(e.hours ?? 0),
+          minutes: Number(e.minutes ?? 0),
+          description: String(e.description ?? ''),
+          isBillable: e.isbillable === true || e.isbillable === 'true' || e.isbillable === '1'
+        };
+      });
 
       allEntries.push(...entries);
 
@@ -435,6 +449,39 @@ export async function fetchUserTimeEntriesInRange(options: {
       success: false,
       message: axiosError.response?.data?.message || axiosError.message || 'Failed to fetch time entries'
     };
+  }
+}
+
+/**
+ * DEBUG — Fetch the first page of raw time entries from TW (no transformation).
+ * Use this to inspect the exact field names and values returned by the API.
+ */
+export async function debugRawTWEntries(options: {
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+}): Promise<{ success: boolean; raw?: Record<string, unknown>[]; message?: string }> {
+  const { domain, username, password, userId } = await getTWCredentials();
+  if (!domain || !username || !password || !userId) {
+    return { success: false, message: 'TeamWork credentials not configured or missing userId' };
+  }
+
+  const toYYYYMMDD = (iso: string) => iso.replace(/-/g, '');
+  const params: Record<string, string | number> = { userId, pageSize: options.limit ?? 10, page: 1 };
+  if (options.fromDate) params.fromDate = toYYYYMMDD(options.fromDate);
+  if (options.toDate) params.toDate = toYYYYMMDD(options.toDate);
+
+  try {
+    const response = await axios.get(`https://${domain}.teamwork.com/time_entries.json`, {
+      params,
+      headers: { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' },
+      timeout: 15000
+    });
+    const raw = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
+    return { success: true, raw };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    return { success: false, message: axiosError.response?.data?.message || axiosError.message || 'Failed' };
   }
 }
 

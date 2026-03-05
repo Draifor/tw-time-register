@@ -228,6 +228,37 @@ function addMinutesToTime(time: string, totalMinutes: number): string {
   return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
 }
 
+/**
+ * Normalise the `time` field from a TW API response to HH:MM (24-hour).
+ * TW may return:
+ *   ""            → no start time recorded  → ''
+ *   "9:00am"      → 12-hour AM/PM format    → "09:00"
+ *   "13:30pm"     → 12-hour PM format       → "13:30"
+ *   "09:00"       → already 24-hour         → "09:00"
+ */
+function parseTWTime(twTime: string): string {
+  if (!twTime) return '';
+
+  // 12-hour format: h:mm(am|pm)
+  const ampm = twTime.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (ampm) {
+    let h = Number(ampm[1]);
+    const m = Number(ampm[2]);
+    const period = ampm[3].toLowerCase();
+    if (period === 'pm' && h !== 12) h += 12;
+    if (period === 'am' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  // Already HH:MM or H:MM (24-hour)
+  const hhmm = twTime.match(/^(\d{1,2}):(\d{2})$/);
+  if (hhmm) {
+    return `${String(Number(hhmm[1])).padStart(2, '0')}:${hhmm[2]}`;
+  }
+
+  return '';
+}
+
 /** Convert TW date to YYYY-MM-DD.
  *  Handles:
  *  - YYYYMMDD  (8 chars)  → from /tasks/{id}/time_entries.json
@@ -324,9 +355,9 @@ export async function pullEntriesFromTW(options: {
     }
 
     const isoDate = twDateToISO(entry.date);
-    const startTime = entry.time || '09:00';
+    const startTime = parseTWTime(entry.time);
     const durationMinutes = entry.hours * 60 + entry.minutes;
-    const endTime = addMinutesToTime(startTime, durationMinutes);
+    const endTime = startTime ? addMinutesToTime(startTime, durationMinutes) : '';
 
     // INSERT into time_entries
     const insertResult = await db.run(
