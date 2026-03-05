@@ -388,3 +388,58 @@ export async function pullEntriesFromTW(options: {
     results
   };
 }
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+
+export interface DeleteEntryResult {
+  localDeleted: boolean;
+  twDeleted?: boolean;
+  twMessage?: string;
+}
+
+/**
+ * Delete a local time entry and, optionally, its counterpart in TeamWork.
+ *
+ * If deleteFromTW is true, the function:
+ *  1. Looks up the tw_time_entry_id in sync_history (last successful sync).
+ *  2. Calls the TW DELETE endpoint.
+ *  3. Only deletes locally if TW deletion succeeded (prevents orphans).
+ *  4. Records a 'deleted' row in sync_history.
+ *
+ * If no TW entry is found in sync_history the function falls back to local-only
+ * deletion and sets twDeleted = false.
+ */
+export async function deleteEntryAndSync(entryId: number, deleteFromTW: boolean): Promise<DeleteEntryResult> {
+  const db = await openDb();
+
+  if (deleteFromTW) {
+    // Find the most recent successful tw_time_entry_id for this entry
+    const histRow = await db.get<{ tw_time_entry_id: string }>(
+      `SELECT tw_time_entry_id FROM sync_history
+       WHERE entry_id = ? AND success = 1 AND tw_time_entry_id IS NOT NULL
+       ORDER BY history_id DESC LIMIT 1`,
+      [entryId]
+    );
+
+    if (histRow?.tw_time_entry_id) {
+      const { deleteTimeEntryFromTW } = await import('./apiService');
+      const twResult = await deleteTimeEntryFromTW(histRow.tw_time_entry_id);
+
+      if (!twResult.success) {
+        return { localDeleted: false, twDeleted: false, twMessage: twResult.message };
+      }
+
+      // Record deletion in history
+      await db.run(
+        `INSERT INTO sync_history (entry_id, action, tw_time_entry_id, tw_task_id, success)
+         SELECT ?, 'deleted', tw_time_entry_id, tw_task_id, 1
+         FROM sync_history WHERE entry_id = ? AND success = 1 ORDER BY history_id DESC LIMIT 1`,
+        [entryId, entryId]
+      );
+    }
+    // If no TW entry found, proceed to local delete only (nothing to delete in TW)
+  }
+
+  await db.run('DELETE FROM time_entries WHERE entry_id = ?', [entryId]);
+  return { localDeleted: true, twDeleted: deleteFromTW ? true : undefined };
+}

@@ -39,11 +39,13 @@ import {
   addTimeEntry,
   updateTimeEntry,
   deleteTimeEntry,
+  deleteEntryAndSync,
   resetTimeEntryToUnsent,
   type TimeEntry
 } from '../services/timesService';
 import PullFromTWDialog from './PullFromTWDialog';
 import TaskCommentDialog from './TaskCommentDialog';
+import DeleteEntryDialog from './DeleteEntryDialog';
 
 interface EditData {
   date: string;
@@ -75,6 +77,7 @@ function TimeLogsTable() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TimeEntry | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   // Filter state
@@ -130,21 +133,21 @@ function TimeLogsTable() {
     }
   };
 
-  const handleDelete = async (entry: TimeEntry) => {
+  const handleDelete = async (entry: TimeEntry, deleteFromTW: boolean) => {
     setDeletingId(entry.entryId);
     try {
-      const ok = await deleteTimeEntry(entry.entryId);
-      if (ok) {
+      const result = await deleteEntryAndSync(entry.entryId, deleteFromTW);
+      if (result.localDeleted) {
         toast.success(t('timeLogs.deleteSuccess', { name: entry.taskName || entry.description }));
         queryClient.invalidateQueries({ queryKey: ['workTimes'] });
       } else {
-        toast.error(t('timeLogs.deleteError'));
+        toast.error(t('timeLogs.deleteTWFailed'), { description: result.twMessage });
       }
     } catch (err) {
-      console.error('Delete error:', err);
       toast.error(String(err));
     } finally {
       setDeletingId(null);
+      setDeleteTarget(null);
     }
   };
 
@@ -523,46 +526,28 @@ function TimeLogsTable() {
                           </Tooltip>
                         </TooltipProvider>
                         {/* Delete in edit mode */}
-                        <AlertDialog>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                    disabled={savingEdit || deletingId === entry.entryId}
-                                  >
-                                    {deletingId === entry.entryId ? (
-                                      <RefreshCw className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </AlertDialogTrigger>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{t('timeLogs.deleteEntry')}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>{t('timeLogs.deleteConfirmTitle')}</AlertDialogTitle>
-                              <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={() => handleDelete(entry)}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                disabled={savingEdit || deletingId === entry.entryId}
+                                onClick={() => setDeleteTarget(entry)}
                               >
-                                {t('common.delete')}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                {deletingId === entry.entryId ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{t('timeLogs.deleteEntry')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </td>
                   </tr>
@@ -713,46 +698,28 @@ function TimeLogsTable() {
                         </TooltipProvider>
                       )}
                       {/* Delete button */}
-                      <AlertDialog>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                  disabled={editingId !== null || deletingId === entry.entryId}
-                                >
-                                  {deletingId === entry.entryId ? (
-                                    <RefreshCw className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{t('timeLogs.deleteEntry')}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t('timeLogs.deleteConfirmTitle')}</AlertDialogTitle>
-                            <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => handleDelete(entry)}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              disabled={editingId !== null || deletingId === entry.entryId}
+                              onClick={() => setDeleteTarget(entry)}
                             >
-                              {t('common.delete')}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              {deletingId === entry.entryId ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('timeLogs.deleteEntry')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </td>
                 </tr>
@@ -762,6 +729,16 @@ function TimeLogsTable() {
         </table>
       </div>
     </div>
+
+    {/* ── Delete confirmation dialog ─────────────────────────────── */}
+    <DeleteEntryDialog
+      open={deleteTarget !== null}
+      isSent={deleteTarget?.isSent ?? false}
+      entryLabel={deleteTarget ? (deleteTarget.taskName || deleteTarget.description || String(deleteTarget.entryId)) : ''}
+      isDeleting={deletingId !== null}
+      onConfirm={(deleteFromTW) => deleteTarget && handleDelete(deleteTarget, deleteFromTW)}
+      onCancel={() => setDeleteTarget(null)}
+    />
   );
 }
 

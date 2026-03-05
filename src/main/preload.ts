@@ -321,6 +321,10 @@ const api = {
   debugRawTWEntries: (options: { fromDate?: string; toDate?: string; limit?: number }) =>
     ipcRenderer.invoke('debugRawTWEntries', options),
 
+  // Delete a local entry and optionally its TW counterpart
+  deleteEntryAndSync: (entryId: number, deleteFromTW: boolean) =>
+    ipcRenderer.invoke('deleteEntryAndSync', entryId, deleteFromTW),
+
   // Fetch TW task name + parent for "add missing tasks" UI
   fetchTWTaskDetails: (twTaskIds: string[]) => ipcRenderer.invoke('fetchTWTaskDetails', twTaskIds),
 

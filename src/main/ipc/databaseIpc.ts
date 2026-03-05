@@ -60,7 +60,7 @@ import {
   addCommentToTWTask,
   uploadPendingFileToTW
 } from '../services/apiService';
-import { smartSyncEntries, pullEntriesFromTW } from '../services/syncService';
+import { smartSyncEntries, pullEntriesFromTW, deleteEntryAndSync } from '../services/syncService';
 import { debugRawTWEntries } from '../services/apiService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
@@ -301,6 +301,11 @@ ipcMain.handle(
 // DEBUG: return raw (untransformed) time entries from TW for field inspection
 ipcMain.handle('debugRawTWEntries', async (_event, options: { fromDate?: string; toDate?: string; limit?: number }) => {
   return debugRawTWEntries(options);
+});
+
+// Delete a local entry and optionally its TW counterpart
+ipcMain.handle('deleteEntryAndSync', async (_event, entryId: number, deleteFromTW: boolean) => {
+  return deleteEntryAndSync(entryId, deleteFromTW);
 });
 
 // Fetch TW task name + parent for a list of task IDs (for "add missing tasks" UI)

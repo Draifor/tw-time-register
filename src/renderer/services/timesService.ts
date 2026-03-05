@@ -78,6 +78,16 @@ export const deleteTimeEntry = async (entryId: number): Promise<boolean> => {
   return window.Main.deleteTimeEntry(entryId);
 };
 
+export interface DeleteEntryResult {
+  localDeleted: boolean;
+  twDeleted?: boolean;
+  twMessage?: string;
+}
+
+/** Delete a local entry. When deleteFromTW=true also removes it from TW. */
+export const deleteEntryAndSync = async (entryId: number, deleteFromTW: boolean): Promise<DeleteEntryResult> =>
+  window.Main.deleteEntryAndSync(entryId, deleteFromTW);
+
 export const markEntriesAsSent = async (entryIds: number[]): Promise<void> => {
   return window.Main.markEntriesAsSent(entryIds);
 };
