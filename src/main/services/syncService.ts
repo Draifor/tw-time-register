@@ -421,23 +421,30 @@ export async function deleteEntryAndSync(entryId: number, deleteFromTW: boolean)
       [entryId]
     );
 
-    if (histRow?.tw_time_entry_id) {
-      const { deleteTimeEntryFromTW } = await import('./apiService');
-      const twResult = await deleteTimeEntryFromTW(histRow.tw_time_entry_id);
-
-      if (!twResult.success) {
-        return { localDeleted: false, twDeleted: false, twMessage: twResult.message };
-      }
-
-      // Record deletion in history
-      await db.run(
-        `INSERT INTO sync_history (entry_id, action, tw_time_entry_id, tw_task_id, success)
-         SELECT ?, 'deleted', tw_time_entry_id, tw_task_id, 1
-         FROM sync_history WHERE entry_id = ? AND success = 1 ORDER BY history_id DESC LIMIT 1`,
-        [entryId, entryId]
-      );
+    if (!histRow?.tw_time_entry_id) {
+      // No TW ID on record — delete locally but tell the caller so the UI can warn
+      await db.run('DELETE FROM time_entries WHERE entry_id = ?', [entryId]);
+      return {
+        localDeleted: true,
+        twDeleted: false,
+        twMessage: 'No TW entry ID found in sync history — entry may still exist in TeamWork'
+      };
     }
-    // If no TW entry found, proceed to local delete only (nothing to delete in TW)
+
+    const { deleteTimeEntryFromTW } = await import('./apiService');
+    const twResult = await deleteTimeEntryFromTW(histRow.tw_time_entry_id);
+
+    if (!twResult.success) {
+      return { localDeleted: false, twDeleted: false, twMessage: twResult.message };
+    }
+
+    // Record deletion in history
+    await db.run(
+      `INSERT INTO sync_history (entry_id, action, tw_time_entry_id, tw_task_id, success)
+       SELECT ?, 'deleted', tw_time_entry_id, tw_task_id, 1
+       FROM sync_history WHERE entry_id = ? AND success = 1 ORDER BY history_id DESC LIMIT 1`,
+      [entryId, entryId]
+    );
   }
 
   await db.run('DELETE FROM time_entries WHERE entry_id = ?', [entryId]);

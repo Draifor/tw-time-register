@@ -47,7 +47,9 @@ export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting
 
           {/* TW deletion option — only shown for synced entries */}
           {isSent && (
-            <label className="flex items-start gap-3 cursor-pointer select-none rounded-md border p-3 hover:bg-muted/50 transition-colors">
+            <label
+              className={`flex items-start gap-3 cursor-pointer select-none rounded-md border p-3 hover:bg-muted/50 transition-colors ${deleteFromTW ? 'border-destructive/60 bg-destructive/5' : ''}`}
+            >
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 accent-destructive cursor-pointer"
@@ -55,15 +57,15 @@ export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting
                 onChange={(e) => setDeleteFromTW(e.target.checked)}
                 disabled={isDeleting}
               />
-              <span className="text-sm">{t('timeLogs.deleteAlsoInTW')}</span>
+              <span className="text-sm font-medium">{t('timeLogs.deleteAlsoInTW')}</span>
             </label>
           )}
 
           {/* Warning banner — shown only when TW deletion is selected */}
           {deleteFromTW && (
-            <div className="flex items-start gap-2.5 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+            <div className="flex items-start gap-2.5 rounded-md border border-destructive/70 bg-destructive/15 p-3">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
-              <p className="text-xs text-destructive leading-relaxed">{t('timeLogs.deleteTWWarning')}</p>
+              <p className="text-sm text-destructive leading-relaxed">{t('timeLogs.deleteTWWarning')}</p>
             </div>
           )}
         </div>

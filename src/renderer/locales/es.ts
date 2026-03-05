@@ -56,9 +56,11 @@ const es = {
       deleteConfirmTitle: '¿Eliminar esta entrada?',
       deleteConfirmDesc: 'La entrada se eliminará de la base de datos local.',
       deleteAlsoInTW: 'Eliminar también en TeamWork',
-      deleteTWWarning: 'Esta acción eliminará permanentemente la entrada en TeamWork. No se puede deshacer desde la aplicación.',
+      deleteTWWarning:
+        'Esta acción eliminará permanentemente la entrada en TeamWork. No se puede deshacer desde la aplicación.',
       deleteLocalAndTW: 'Eliminar local y en TW',
       deleteTWFailed: 'No se pudo eliminar en TeamWork',
+      deletedLocalOnly: 'Eliminado solo en local — no se encontró ID de TW',
       deleting: 'Eliminando…',
       yes: 'Sí',
       editResync: 'Editar y reenviar a TW',

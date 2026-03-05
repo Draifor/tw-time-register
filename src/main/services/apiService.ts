@@ -86,7 +86,9 @@ export async function sendTimeEntryToTW(
         timeout: 10000
       }
     );
-    return { success: true, twEntryId: response.data?.timeLogEntryId };
+    // TW API v1 returns the new entry id as `timeLogEntryId`; fallback to `id`
+    const rawId = response.data?.timeLogEntryId ?? response.data?.id;
+    return { success: true, twEntryId: rawId ? Number(rawId) : undefined };
   } catch (error) {
     const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
     const msg =

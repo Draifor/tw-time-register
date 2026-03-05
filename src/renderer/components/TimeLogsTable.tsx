@@ -22,23 +22,11 @@ import { Skeleton } from './ui/skeleton';
 import Combobox from './ui/combobox';
 import TimePickerInput from './ui/time-picker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from './ui/alert-dialog';
 import useTimeLogs from '../hooks/useTimeLogs';
 import {
   smartSyncEntries,
   addTimeEntry,
   updateTimeEntry,
-  deleteTimeEntry,
   deleteEntryAndSync,
   resetTimeEntryToUnsent,
   type TimeEntry
@@ -138,8 +126,12 @@ function TimeLogsTable() {
     try {
       const result = await deleteEntryAndSync(entry.entryId, deleteFromTW);
       if (result.localDeleted) {
-        toast.success(t('timeLogs.deleteSuccess', { name: entry.taskName || entry.description }));
         queryClient.invalidateQueries({ queryKey: ['workTimes'] });
+        if (deleteFromTW && result.twDeleted === false) {
+          toast.warning(t('timeLogs.deletedLocalOnly'), { description: result.twMessage });
+        } else {
+          toast.success(t('timeLogs.deleteSuccess', { name: entry.taskName || entry.description }));
+        }
       } else {
         toast.error(t('timeLogs.deleteTWFailed'), { description: result.twMessage });
       }
@@ -728,17 +720,19 @@ function TimeLogsTable() {
           </tbody>
         </table>
       </div>
-    </div>
 
-    {/* ── Delete confirmation dialog ─────────────────────────────── */}
-    <DeleteEntryDialog
-      open={deleteTarget !== null}
-      isSent={deleteTarget?.isSent ?? false}
-      entryLabel={deleteTarget ? (deleteTarget.taskName || deleteTarget.description || String(deleteTarget.entryId)) : ''}
-      isDeleting={deletingId !== null}
-      onConfirm={(deleteFromTW) => deleteTarget && handleDelete(deleteTarget, deleteFromTW)}
-      onCancel={() => setDeleteTarget(null)}
-    />
+      {/* ── Delete confirmation dialog ─────────────────────────────── */}
+      <DeleteEntryDialog
+        open={deleteTarget !== null}
+        isSent={deleteTarget?.isSent ?? false}
+        entryLabel={
+          deleteTarget ? deleteTarget.taskName || deleteTarget.description || String(deleteTarget.entryId) : ''
+        }
+        isDeleting={deletingId !== null}
+        onConfirm={(deleteFromTW) => deleteTarget && handleDelete(deleteTarget, deleteFromTW)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
   );
 }
 

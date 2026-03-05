@@ -56,9 +56,11 @@ const en = {
       deleteConfirmTitle: 'Delete this entry?',
       deleteConfirmDesc: 'The entry will be removed from the local database.',
       deleteAlsoInTW: 'Also delete from TeamWork',
-      deleteTWWarning: 'This will permanently delete the entry from TeamWork. This action cannot be undone from the app.',
+      deleteTWWarning:
+        'This will permanently delete the entry from TeamWork. This action cannot be undone from the app.',
       deleteLocalAndTW: 'Delete local & from TW',
       deleteTWFailed: 'Could not delete from TeamWork',
+      deletedLocalOnly: 'Deleted locally only — no TW entry ID found',
       deleting: 'Deleting…',
       yes: 'Yes',
       editResync: 'Edit & re-sync to TW',
