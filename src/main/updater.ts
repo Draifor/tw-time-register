@@ -56,8 +56,8 @@ export function initAutoUpdater(window: BrowserWindow): void {
 
   // Forward errors to renderer.
   // Manual checks: ALWAYS surface the error (user explicitly asked to check).
-  // Background checks: suppress "no assets/no releases" noise (repo not fully published yet).
-  // Real errors (network failure, config issues, etc.) always surface regardless.
+  // Background checks: suppress transient / noise errors so the user isn't
+  // bombarded with toasts on every network hiccup or PC resume.
   autoUpdater.on('error', (err: Error) => {
     if (manualCheck) {
       // User-triggered: always show the error so they know something is wrong
@@ -65,20 +65,35 @@ export function initAutoUpdater(window: BrowserWindow): void {
       return;
     }
 
-    // Background check: only suppress known "no release assets" noise
-    const isNoReleases =
-      err.message.includes('Unable to find latest version') ||
-      err.message.includes('Cannot parse releases feed') ||
-      err.message.includes('404') ||
-      err.message.includes('406');
+    // Background check: suppress known "no release assets" noise AND transient
+    // network errors (ENOTFOUND / ECONNRESET / ETIMEDOUT / etc.) that fire when
+    // the PC wakes from sleep before the NIC is ready.
+    const msg = err.message ?? '';
+    const isSuppressable =
+      msg.includes('Unable to find latest version') ||
+      msg.includes('Cannot parse releases feed') ||
+      msg.includes('404') ||
+      msg.includes('406') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('ECONNRESET') ||
+      msg.includes('ETIMEDOUT') ||
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ERR_NETWORK') ||
+      msg.includes('ERR_INTERNET_DISCONNECTED') ||
+      msg.includes('net::ERR_');
 
-    if (!isNoReleases) {
+    if (!isSuppressable) {
       window.webContents.send('update-error', { message: err.message });
     }
   });
 
-  // Check once on startup, then every 4 hours — errors are intentionally silent
-  autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  // Wait 30 s after startup before the first background check.
+  // This gives the OS time to fully establish the network connection
+  // (especially relevant after a fast boot or wake from sleep).
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }, 30_000);
+
   setInterval(
     () => {
       autoUpdater.checkForUpdatesAndNotify().catch(() => {});
