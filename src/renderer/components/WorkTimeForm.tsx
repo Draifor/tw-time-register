@@ -15,7 +15,13 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { getNextAvailableSlot, getDailyTimeInfo, NextSlotSuggestion } from '../services/timesService';
+import {
+  getNextAvailableSlot,
+  getDailyTimeInfo,
+  getWorkSettings,
+  isWorkDay,
+  NextSlotSuggestion
+} from '../services/timesService';
 
 type WorkTimeEntry = {
   date: string;
@@ -26,10 +32,42 @@ type WorkTimeEntry = {
   task: { value: string; label: string } | string;
   isBillable: boolean;
   afterLunch: boolean;
+  manualStartTime: boolean;
+};
+
+const getLocalISODate = (date: Date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getMinutesFromDate = (date?: Date): number => {
+  if (!date) return 0;
+  return date.getHours() * 60 + date.getMinutes();
+};
+
+const buildEpochTime = (minutes: number): Date => {
+  const normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const out = new Date('1970-01-01T00:00:00');
+  out.setHours(Math.floor(normalized / 60), normalized % 60, 0, 0);
+  return out;
+};
+
+const parseTimeToMinutes = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+};
+
+const addDaysToISO = (isoDate: string, days: number): string => {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return getLocalISODate(d);
 };
 
 export default function WorkTimeForm() {
   const { t } = useTranslation();
+
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
     const [hours, minutes] = (slot?.startTime || '09:00').split(':').map(Number);
@@ -39,24 +77,26 @@ export default function WorkTimeForm() {
     return {
       description: '',
       hours: [new Date('1970-01-01T00:00:00')],
-      date: slot?.date || new Date().toISOString().split('T')[0],
+      date: slot?.date || getLocalISODate(),
       task: '',
       startTime: [startTimeDate],
       endTime: [startTimeDate],
       isBillable: false,
-      afterLunch: false
+      afterLunch: false,
+      manualStartTime: false
     };
   }, []);
 
   const defaultValue: WorkTimeEntry = {
     description: '',
     hours: [new Date('1970-01-01T00:00:00')],
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalISODate(),
     task: '',
     startTime: [new Date('1970-01-01T09:00:00')],
     endTime: [new Date('1970-01-01T09:00:00')],
     isBillable: false,
-    afterLunch: false
+    afterLunch: false,
+    manualStartTime: false
   };
 
   // Capture synchronously whether a real draft exists at mount time.
@@ -74,7 +114,8 @@ export default function WorkTimeForm() {
           ...entry,
           hours: entry.hours.map((d) => new Date(d)),
           startTime: entry.startTime.map((d) => new Date(d)),
-          endTime: entry.endTime.map((d) => new Date(d))
+          endTime: entry.endTime.map((d) => new Date(d)),
+          manualStartTime: entry.manualStartTime ?? false
         }));
       } catch (e) {
         console.error('Failed to parse saved form data', e);
@@ -131,7 +172,9 @@ export default function WorkTimeForm() {
     );
   }, [tasks]);
 
-  const previousValues = useRef<{ startTime: Date[]; hours: Date[]; afterLunch: boolean }[]>([]);
+  const previousValues = useRef<{ startTime: Date[]; hours: Date[]; afterLunch: boolean; manualStartTime: boolean }[]>(
+    []
+  );
 
   // ── Live timer ───────────────────────────────────────────────────────────────
   // One timer active at a time. Persisted to localStorage so it survives
@@ -272,6 +315,7 @@ export default function WorkTimeForm() {
       const startDate = new Date('1970-01-01T00:00:00');
       startDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
       setValue(`entries.${index}.startTime`, [startDate]);
+      setValue(`entries.${index}.manualStartTime`, false);
       const state = { index, startedAt: now };
       setActiveTimer(state);
       setElapsedSeconds(0);
@@ -303,15 +347,9 @@ export default function WorkTimeForm() {
     const hours = hoursArray[0];
 
     if (startTime && hours) {
-      // Use local time consistently for both start and duration — no UTC conversion needed
-      const hoursToAdd = hours.getHours();
-      const minutesToAdd = hours.getMinutes();
-
-      const newEndTime = new Date(startTime);
-      newEndTime.setHours(startTime.getHours() + hoursToAdd);
-      newEndTime.setMinutes(startTime.getMinutes() + minutesToAdd);
-
-      return [newEndTime];
+      const startMinutes = getMinutesFromDate(startTime);
+      const durationMinutes = getMinutesFromDate(hours);
+      return [buildEpochTime(startMinutes + durationMinutes)];
     }
 
     return [new Date('1970-01-01T09:00:00')];
@@ -330,7 +368,8 @@ export default function WorkTimeForm() {
         previousValues.current[index] = {
           startTime: entry.startTime,
           hours: entry.hours,
-          afterLunch: entry.afterLunch ?? false
+          afterLunch: entry.afterLunch ?? false,
+          manualStartTime: entry.manualStartTime ?? false
         };
         return;
       }
@@ -345,7 +384,8 @@ export default function WorkTimeForm() {
         previousValues.current[index] = {
           ...previousValues.current[index],
           afterLunch: entry.afterLunch,
-          startTime: [shifted]
+          startTime: [shifted],
+          manualStartTime: entry.manualStartTime ?? false
         };
         return;
       }
@@ -354,21 +394,22 @@ export default function WorkTimeForm() {
 
       // Solo actualiza si startTime o hours cambiaron
       if (
-        entry.startTime[0]?.getTime() !== prevEntry.startTime?.[0]?.getTime() ||
-        entry.hours[0]?.getTime() !== prevEntry.hours?.[0]?.getTime()
+        getMinutesFromDate(entry.startTime?.[0]) !== getMinutesFromDate(prevEntry.startTime?.[0]) ||
+        getMinutesFromDate(entry.hours?.[0]) !== getMinutesFromDate(prevEntry.hours?.[0])
       ) {
         setValue(`entries.${index}.endTime`, newEndTime);
         previousValues.current[index] = {
           startTime: entry.startTime,
           hours: entry.hours,
-          afterLunch: entry.afterLunch ?? false
+          afterLunch: entry.afterLunch ?? false,
+          manualStartTime: entry.manualStartTime ?? false
         };
 
         // Cascade: propagate endTime → startTime of the next entry.
         // We intentionally do NOT update previousValues[index+1].startTime here,
         // so the next render detects it as a change and recalculates endTime[index+1]
         // (which in turn cascades to index+2, etc.).
-        if (result[index + 1] !== undefined) {
+        if (result[index + 1] !== undefined && !result[index + 1].manualStartTime) {
           setValue(`entries.${index + 1}.startTime`, newEndTime);
         }
       }
@@ -456,7 +497,7 @@ export default function WorkTimeForm() {
 
   const handleAddEntry = async () => {
     const lastEntry = result[result.length - 1];
-    const currentDate = lastEntry?.date || new Date().toISOString().split('T')[0];
+    const currentDate = lastEntry?.date || getLocalISODate();
 
     // Calculate draft time already in the form for this date
     const draftMinutes = result.reduce((acc, entry) => {
@@ -500,14 +541,50 @@ export default function WorkTimeForm() {
       console.error('Error getting daily info:', error);
     }
 
-    // If last entry has endTime, use it as the next startTime
+    let shouldMoveToNextWorkDay = false;
+    try {
+      const dailyInfo = await getDailyTimeInfo(currentDate);
+      const remainingAfterDraft = dailyInfo.remainingMinutes - draftMinutes;
+      shouldMoveToNextWorkDay = remainingAfterDraft <= 0;
+    } catch {
+      // If info fails, keep current behavior fallback below.
+    }
+
+    if (shouldMoveToNextWorkDay) {
+      try {
+        const settings = await getWorkSettings();
+        let candidate = addDaysToISO(currentDate, 1);
+        for (let i = 0; i < 370; i++) {
+          const workable = await isWorkDay(candidate);
+          if (workable) break;
+          candidate = addDaysToISO(candidate, 1);
+        }
+
+        const defaultStart = buildEpochTime(parseTimeToMinutes(settings.defaultStartTime || '09:00'));
+        const end = calculateEndTime([defaultStart], [suggestedDuration]);
+        append({
+          ...defaultValue,
+          date: candidate,
+          startTime: [defaultStart],
+          endTime: end,
+          hours: [suggestedDuration],
+          manualStartTime: false
+        });
+        return;
+      } catch {
+        // Fall through to existing behavior if settings/workday checks fail.
+      }
+    }
+
+    // If last entry has endTime and we still have room in the current day, use it as next startTime
     if (lastEntry?.endTime?.[0]) {
       const newEntry = {
         ...defaultValue,
         date: lastEntry.date,
         startTime: lastEntry.endTime,
         endTime: calculateEndTime(lastEntry.endTime, [suggestedDuration]),
-        hours: [suggestedDuration]
+        hours: [suggestedDuration],
+        manualStartTime: false
       };
       append(newEntry);
     } else {
@@ -516,6 +593,7 @@ export default function WorkTimeForm() {
         const slot = await getNextAvailableSlot();
         const entry = createDefaultEntry(slot);
         entry.hours = [suggestedDuration];
+        entry.endTime = calculateEndTime(entry.startTime, [suggestedDuration]);
         append(entry);
       } catch {
         append(defaultValue);
@@ -721,7 +799,10 @@ export default function WorkTimeForm() {
                       enableTime: true,
                       noCalendar: true,
                       dateFormat: 'h:i K',
-                      defaultDate: '09:00'
+                      defaultDate: '09:00',
+                      onChange: () => {
+                        setValue(`entries.${index}.manualStartTime`, true, { shouldDirty: true });
+                      }
                     }}
                   />
                   {errors?.entries?.[index]?.startTime && (
