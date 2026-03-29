@@ -155,7 +155,16 @@ const en = {
       pendingEntries: 'Pending Entries',
       dailyView: "Today's Log",
       noEntriesYet: 'No entries yet today. Start tracking!',
-      remaining: '{{time}} remaining'
+      remaining: '{{time}} remaining',
+      monthlyReport: 'Monthly Report',
+      monthlyReportDesc: 'Summary of time logged in {{month}}',
+      monthNoEntries: 'No entries for this month.',
+      monthSent: 'Sent to TeamWork',
+      monthLocalOnly: 'Local only',
+      monthEntriesCount: '{{count}} entries',
+      monthTotal: 'Month total: {{total}}',
+      monthDailyChart: 'Hours logged per day',
+      monthNoDailyData: 'No daily data to display.'
     },
     reports: {
       title: 'Reports',
@@ -414,8 +423,8 @@ const en = {
       afterLunch: 'Post-lunch',
       addEntry: 'Add Entry',
       addEntryTooltip: 'Add new entry',
-      register: 'Register in TeamWork',
-      saveTooltip: 'Save entries',
+      register: 'Save to local database',
+      saveTooltip: 'Save entries locally (not sent to TeamWork yet)',
       escHint: 'Press Esc to remove last entry',
       savedTitle: 'Entries saved successfully!',
       savedDesc: '{{count}} time entries registered.',

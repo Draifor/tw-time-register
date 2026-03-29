@@ -155,7 +155,16 @@ const es = {
       pendingEntries: 'Entradas Pendientes',
       dailyView: 'Registro del Día',
       noEntriesYet: 'Sin entradas hoy. ¡Empieza a registrar!',
-      remaining: 'Faltan {{time}}'
+      remaining: 'Faltan {{time}}',
+      monthlyReport: 'Reporte del Mes',
+      monthlyReportDesc: 'Resumen de tiempos registrados en {{month}}',
+      monthNoEntries: 'No hay registros para este mes.',
+      monthSent: 'Enviado a TeamWork',
+      monthLocalOnly: 'Solo local',
+      monthEntriesCount: '{{count}} registro(s)',
+      monthTotal: 'Total del mes: {{total}}',
+      monthDailyChart: 'Horas registradas por día',
+      monthNoDailyData: 'No hay datos diarios para mostrar.'
     },
     reports: {
       title: 'Reportes',
@@ -414,8 +423,8 @@ const es = {
       afterLunch: 'Post-almuerzo',
       addEntry: 'Agregar Entrada',
       addEntryTooltip: 'Agregar nueva entrada',
-      register: 'Registrar en TeamWork',
-      saveTooltip: 'Guardar entradas',
+      register: 'Guardar en base de datos local',
+      saveTooltip: 'Guardar entradas localmente (aun no se envían a TeamWork)',
       escHint: 'Presiona Esc para eliminar la última entrada',
       savedTitle: '¡Entradas guardadas!',
       savedDesc: '{{count}} entradas de tiempo registradas.',

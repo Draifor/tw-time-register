@@ -9,6 +9,7 @@ import {
   getTimeStats,
   TimeStats,
   minutesToHoursMinutes,
+  fetchTimeEntries,
   fetchTimeEntriesByDate,
   getDailyTimeInfo,
   TimeEntry,
@@ -23,9 +24,14 @@ function HomePage() {
   const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
   const [dailyInfo, setDailyInfo] = useState<DailyTimeInfo | null>(null);
   const [isDailyLoading, setIsDailyLoading] = useState(true);
+  const [monthEntries, setMonthEntries] = useState<TimeEntry[]>([]);
+  const [isMonthLoading, setIsMonthLoading] = useState(true);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
     const loadStats = async () => {
       try {
@@ -50,8 +56,24 @@ function HomePage() {
       }
     };
 
+    const loadMonthlyData = async () => {
+      try {
+        const entries = await fetchTimeEntries();
+        const currentMonthEntries = entries.filter((entry) => {
+          const d = new Date(`${entry.date}T00:00:00`);
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+        setMonthEntries(currentMonthEntries);
+      } catch {
+        // silent
+      } finally {
+        setIsMonthLoading(false);
+      }
+    };
+
     loadStats();
     loadDailyData();
+    loadMonthlyData();
   }, []);
 
   const formatTime = (minutes: number) => {
@@ -82,6 +104,62 @@ function HomePage() {
     day: 'numeric',
     month: 'long'
   });
+
+  const monthSummary = useMemo(() => {
+    const result = {
+      sentMinutes: 0,
+      localMinutes: 0,
+      sentCount: 0,
+      localCount: 0,
+      totalMinutes: 0
+    };
+
+    for (const entry of monthEntries) {
+      const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
+      const mins = hours * 60 + minutes;
+      result.totalMinutes += mins;
+      if (entry.isSent) {
+        result.sentMinutes += mins;
+        result.sentCount += 1;
+      } else {
+        result.localMinutes += mins;
+        result.localCount += 1;
+      }
+    }
+
+    return result;
+  }, [monthEntries]);
+
+  const sentPct = monthSummary.totalMinutes > 0 ? (monthSummary.sentMinutes / monthSummary.totalMinutes) * 100 : 0;
+  const localPct = monthSummary.totalMinutes > 0 ? (monthSummary.localMinutes / monthSummary.totalMinutes) * 100 : 0;
+
+  const currentMonthLabel = new Date().toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric'
+  });
+
+  const monthDailySummary = useMemo(() => {
+    const byDay = new Map<string, { sentMinutes: number; localMinutes: number; totalMinutes: number }>();
+
+    for (const entry of monthEntries) {
+      const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
+      const mins = hours * 60 + minutes;
+      const dayKey = entry.date;
+      const existing = byDay.get(dayKey) ?? { sentMinutes: 0, localMinutes: 0, totalMinutes: 0 };
+
+      if (entry.isSent) existing.sentMinutes += mins;
+      else existing.localMinutes += mins;
+      existing.totalMinutes += mins;
+      byDay.set(dayKey, existing);
+    }
+
+    const rows = Array.from(byDay.entries())
+      .map(([date, values]) => ({ date, ...values }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const maxMinutes = rows.reduce((acc, row) => Math.max(acc, row.totalMinutes), 0);
+    return { rows, maxMinutes };
+  }, [monthEntries]);
 
   return (
     <div className="space-y-8">
@@ -170,6 +248,105 @@ function HomePage() {
               <div className="text-sm text-muted-foreground">{t('home.pendingEntries')}</div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('home.monthlyReport')}</CardTitle>
+          <CardDescription>{t('home.monthlyReportDesc', { month: currentMonthLabel })}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isMonthLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ) : monthEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('home.monthNoEntries')}</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
+                <div className="h-full bg-emerald-500" style={{ width: `${sentPct.toFixed(1)}%` }} />
+                <div className="h-full bg-amber-500" style={{ width: `${localPct.toFixed(1)}%` }} />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    {t('home.monthSent')}
+                  </p>
+                  <p className="mt-1 text-xl font-semibold text-emerald-800 dark:text-emerald-200">
+                    {formatTime(monthSummary.sentMinutes)}
+                  </p>
+                  <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
+                    {t('home.monthEntriesCount', { count: monthSummary.sentCount })}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                    {t('home.monthLocalOnly')}
+                  </p>
+                  <p className="mt-1 text-xl font-semibold text-amber-800 dark:text-amber-200">
+                    {formatTime(monthSummary.localMinutes)}
+                  </p>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-300/80">
+                    {t('home.monthEntriesCount', { count: monthSummary.localCount })}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                {t('home.monthTotal', { total: formatTime(monthSummary.totalMinutes) })}
+              </p>
+
+              <div className="pt-2">
+                <p className="text-sm font-medium mb-2">{t('home.monthDailyChart')}</p>
+                {monthDailySummary.rows.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{t('home.monthNoDailyData')}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {monthDailySummary.rows.map((row) => {
+                      const rowDate = new Date(`${row.date}T00:00:00`);
+                      const dayLabel = rowDate.toLocaleDateString(undefined, {
+                        day: '2-digit',
+                        month: 'short'
+                      });
+                      const weekDayLabel = rowDate.toLocaleDateString(undefined, {
+                        weekday: 'short'
+                      });
+
+                      const totalPct =
+                        monthDailySummary.maxMinutes > 0
+                          ? Math.max(4, (row.totalMinutes / monthDailySummary.maxMinutes) * 100)
+                          : 0;
+
+                      const sentPctInBar = row.totalMinutes > 0 ? (row.sentMinutes / row.totalMinutes) * 100 : 0;
+                      const localPctInBar = row.totalMinutes > 0 ? (row.localMinutes / row.totalMinutes) * 100 : 0;
+
+                      return (
+                        <div key={row.date} className="grid grid-cols-[96px_1fr_auto] items-center gap-3">
+                          <span className="text-xs text-muted-foreground" title={rowDate.toLocaleDateString()}>
+                            {dayLabel} · {weekDayLabel}
+                          </span>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full flex" style={{ width: `${totalPct.toFixed(1)}%` }}>
+                              <div className="h-full bg-emerald-500" style={{ width: `${sentPctInBar.toFixed(1)}%` }} />
+                              <div className="h-full bg-amber-500" style={{ width: `${localPctInBar.toFixed(1)}%` }} />
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            {formatTime(row.totalMinutes)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
