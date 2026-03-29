@@ -332,6 +332,36 @@ export const uploadPendingFileToTW = async (
 export const addCommentToTWTask = async (
   twTaskId: string,
   body: string,
-  pendingFileAttachments: string = ''
+  pendingFileAttachments: string = '',
+  notify: string = ''
 ): Promise<{ success: boolean; commentId?: number; message?: string }> =>
-  window.Main.addCommentToTWTask(twTaskId, body, pendingFileAttachments);
+  window.Main.addCommentToTWTask(twTaskId, body, pendingFileAttachments, notify);
+
+// Comment Templates
+export interface CommentTemplate {
+  templateId: number;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export const getCommentTemplates = async (): Promise<CommentTemplate[]> => window.Main.getCommentTemplates();
+export const addCommentTemplate = async (title: string, body: string): Promise<CommentTemplate> =>
+  window.Main.addCommentTemplate(title, body);
+export const updateCommentTemplate = async (
+  templateId: number,
+  title: string,
+  body: string
+): Promise<CommentTemplate> => window.Main.updateCommentTemplate(templateId, title, body);
+export const deleteCommentTemplate = async (templateId: number): Promise<void> =>
+  window.Main.deleteCommentTemplate(templateId);
+
+// TW People (notify picker)
+export interface TWPerson {
+  id: string;
+  name: string;
+  email: string;
+}
+export const fetchTWPeopleForTask = async (
+  twTaskId: string
+): Promise<{ success: boolean; people?: TWPerson[]; message?: string }> => window.Main.fetchTWPeopleForTask(twTaskId);

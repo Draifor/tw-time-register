@@ -155,7 +155,16 @@ const en = {
       pendingEntries: 'Pending Entries',
       dailyView: "Today's Log",
       noEntriesYet: 'No entries yet today. Start tracking!',
-      remaining: '{{time}} remaining'
+      remaining: '{{time}} remaining',
+      monthlyReport: 'Monthly Report',
+      monthlyReportDesc: 'Summary of time logged in {{month}}',
+      monthNoEntries: 'No entries for this month.',
+      monthSent: 'Sent to TeamWork',
+      monthLocalOnly: 'Local only',
+      monthEntriesCount: '{{count}} entries',
+      monthTotal: 'Month total: {{total}}',
+      monthDailyChart: 'Hours logged per day',
+      monthNoDailyData: 'No daily data to display.'
     },
     reports: {
       title: 'Reports',
@@ -229,6 +238,21 @@ const en = {
         syncing: 'Syncing...',
         syncSuccess: '{{inserted}} holidays synced for {{year}}',
         syncError: 'Error syncing holidays. Check your internet connection.'
+      },
+      templates: {
+        title: 'Comment Templates',
+        description: 'Create reusable templates for your TeamWork comments',
+        addTitle: 'New template',
+        titlePlaceholder: 'Template title (e.g. "Sprint update")',
+        bodyPlaceholder: 'Comment content…',
+        saveBtn: 'Save template',
+        empty: 'No templates yet. Create one above.',
+        addSuccess: 'Template saved',
+        addError: 'Error saving template',
+        updateSuccess: 'Template updated',
+        deleteSuccess: 'Template deleted',
+        deleteTitle: 'Delete template?',
+        deleteDescription: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.'
       },
       database: {
         title: 'Database',
@@ -399,8 +423,8 @@ const en = {
       afterLunch: 'Post-lunch',
       addEntry: 'Add Entry',
       addEntryTooltip: 'Add new entry',
-      register: 'Register in TeamWork',
-      saveTooltip: 'Save entries',
+      register: 'Save to local database',
+      saveTooltip: 'Save entries locally (not sent to TeamWork yet)',
       escHint: 'Press Esc to remove last entry',
       savedTitle: 'Entries saved successfully!',
       savedDesc: '{{count}} time entries registered.',
@@ -437,7 +461,14 @@ const en = {
       sending: 'Sending...',
       success: 'Comment sent to TeamWork',
       error: 'Failed to send comment',
-      uploadError: 'Error uploading file'
+      uploadError: 'Error uploading file',
+      useTemplate: 'Use template',
+      notifyNone: 'Notify...',
+      notifyCount: '{{count}} person(s) selected',
+      notifySearch: 'Search person...',
+      notifyEmpty: 'No results',
+      notifyLoading: 'Loading people...',
+      removeNotify: 'Remove'
     }
   }
 };

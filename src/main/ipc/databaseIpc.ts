@@ -57,11 +57,18 @@ import {
   fetchTWSubtasks,
   debugTWSubtasks,
   fetchTWTaskDetails,
+  fetchTWPeopleForTask,
   addCommentToTWTask,
   uploadPendingFileToTW
 } from '../services/apiService';
 import { smartSyncEntries, pullEntriesFromTW, deleteEntryAndSync } from '../services/syncService';
 import { debugRawTWEntries } from '../services/apiService';
+import {
+  getCommentTemplates,
+  addCommentTemplate,
+  updateCommentTemplate,
+  deleteCommentTemplate
+} from '../services/commentTemplateService';
 
 ipcMain.handle('addWorkTime', async (_event, description: string, hours: number, date: string) => {
   return addWorkTime(description, hours, date);
@@ -327,7 +334,21 @@ ipcMain.handle('uploadPendingFileToTW', async (_event, fileName: string, fileBuf
   return uploadPendingFileToTW(fileName, fileBuffer);
 });
 
-// Add a comment (with optional file refs) to a TW task
-ipcMain.handle('addCommentToTWTask', async (_event, twTaskId: string, body: string, pendingFileAttachments: string) => {
-  return addCommentToTWTask(twTaskId, body, pendingFileAttachments);
-});
+// Add a comment (with optional file refs and notify list) to a TW task
+ipcMain.handle(
+  'addCommentToTWTask',
+  async (_event, twTaskId: string, body: string, pendingFileAttachments: string, notify: string) => {
+    return addCommentToTWTask(twTaskId, body, pendingFileAttachments, notify);
+  }
+);
+
+// Comment templates
+ipcMain.handle('getCommentTemplates', async () => getCommentTemplates());
+ipcMain.handle('addCommentTemplate', async (_event, title: string, body: string) => addCommentTemplate(title, body));
+ipcMain.handle('updateCommentTemplate', async (_event, templateId: number, title: string, body: string) =>
+  updateCommentTemplate(templateId, title, body)
+);
+ipcMain.handle('deleteCommentTemplate', async (_event, templateId: number) => deleteCommentTemplate(templateId));
+
+// TW People (for notify picker)
+ipcMain.handle('fetchTWPeopleForTask', async (_event, twTaskId: string) => fetchTWPeopleForTask(twTaskId));

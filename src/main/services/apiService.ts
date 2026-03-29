@@ -571,12 +571,67 @@ export async function uploadPendingFileToTW(
 }
 
 /**
+ * Fetch people scoped to the project that owns a given TW task.
+ *
+ * Flow:
+ *   1. GET /tasks/{twTaskId}.json  →  extract project-id
+ *   2. GET /projects/{projectId}/people.json  →  project members only
+ *
+ * Falls back to an empty list (not a hard error) so the notify picker
+ * stays functional even when the task or project can't be resolved.
+ */
+export async function fetchTWPeopleForTask(twTaskId: string): Promise<{
+  success: boolean;
+  people?: { id: string; name: string; email: string }[];
+  message?: string;
+}> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  const headers = { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' };
+
+  try {
+    // Step 1: resolve project-id from task
+    const taskResp = await axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}.json`, {
+      headers,
+      timeout: 10000
+    });
+    const item =
+      (taskResp.data?.['todo-item'] as Record<string, unknown>) ??
+      (taskResp.data?.task as Record<string, unknown>) ??
+      {};
+    const projectId = String(item['project-id'] ?? item.projectId ?? '');
+    if (!projectId) return { success: true, people: [] };
+
+    // Step 2: fetch project members
+    const peopleResp = await axios.get(`https://${domain}.teamwork.com/projects/${projectId}/people.json`, {
+      headers,
+      timeout: 10000
+    });
+    const raw: Record<string, unknown>[] = (peopleResp.data?.people as Record<string, unknown>[]) ?? [];
+    const people = raw.map((p) => ({
+      id: String(p.id),
+      name: `${p['first-name'] ?? ''} ${p['last-name'] ?? ''}`.trim(),
+      email: String(p['email-address'] ?? '')
+    }));
+    return { success: true, people };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    return {
+      success: false,
+      message: axiosError.response?.data?.message || axiosError.message || 'Failed to fetch people for task'
+    };
+  }
+}
+
+/**
  * Add a comment to a task in TeamWork.
  */
 export async function addCommentToTWTask(
   twTaskId: string,
   body: string,
-  pendingFileAttachments: string = ''
+  pendingFileAttachments: string = '',
+  notify: string = ''
 ): Promise<{ success: boolean; commentId?: number; message?: string }> {
   const { domain, username, password } = await getTWCredentials();
   if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
@@ -586,7 +641,7 @@ export async function addCommentToTWTask(
       comment: {
         body,
         'content-type': 'text',
-        notify: '',
+        notify,
         isprivate: false,
         pendingFileAttachments
       }

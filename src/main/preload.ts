@@ -338,8 +338,18 @@ const api = {
   // TW Task Comments
   uploadPendingFileToTW: (fileName: string, fileBuffer: ArrayBuffer) =>
     ipcRenderer.invoke('uploadPendingFileToTW', fileName, fileBuffer),
-  addCommentToTWTask: (twTaskId: string, body: string, pendingFileAttachments: string) =>
-    ipcRenderer.invoke('addCommentToTWTask', twTaskId, body, pendingFileAttachments),
+  addCommentToTWTask: (twTaskId: string, body: string, pendingFileAttachments: string, notify: string) =>
+    ipcRenderer.invoke('addCommentToTWTask', twTaskId, body, pendingFileAttachments, notify),
+
+  // Comment templates
+  getCommentTemplates: () => ipcRenderer.invoke('getCommentTemplates'),
+  addCommentTemplate: (title: string, body: string) => ipcRenderer.invoke('addCommentTemplate', title, body),
+  updateCommentTemplate: (templateId: number, title: string, body: string) =>
+    ipcRenderer.invoke('updateCommentTemplate', templateId, title, body),
+  deleteCommentTemplate: (templateId: number) => ipcRenderer.invoke('deleteCommentTemplate', templateId),
+
+  // TW People (notify picker)
+  fetchTWPeopleForTask: (twTaskId: string) => ipcRenderer.invoke('fetchTWPeopleForTask', twTaskId),
 
   // Auto-updater
   installUpdate: () => ipcRenderer.invoke('install-update'),

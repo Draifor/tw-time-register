@@ -155,7 +155,16 @@ const es = {
       pendingEntries: 'Entradas Pendientes',
       dailyView: 'Registro del Día',
       noEntriesYet: 'Sin entradas hoy. ¡Empieza a registrar!',
-      remaining: 'Faltan {{time}}'
+      remaining: 'Faltan {{time}}',
+      monthlyReport: 'Reporte del Mes',
+      monthlyReportDesc: 'Resumen de tiempos registrados en {{month}}',
+      monthNoEntries: 'No hay registros para este mes.',
+      monthSent: 'Enviado a TeamWork',
+      monthLocalOnly: 'Solo local',
+      monthEntriesCount: '{{count}} registro(s)',
+      monthTotal: 'Total del mes: {{total}}',
+      monthDailyChart: 'Horas registradas por día',
+      monthNoDailyData: 'No hay datos diarios para mostrar.'
     },
     reports: {
       title: 'Reportes',
@@ -229,6 +238,21 @@ const es = {
         syncing: 'Sincronizando...',
         syncSuccess: '{{inserted}} festivos sincronizados para {{year}}',
         syncError: 'Error al sincronizar festivos. Verifica tu conexión a internet.'
+      },
+      templates: {
+        title: 'Plantillas de comentarios',
+        description: 'Crea plantillas reutilizables para tus comentarios en TeamWork',
+        addTitle: 'Nueva plantilla',
+        titlePlaceholder: 'Título de la plantilla (ej. "Avance de sprint")',
+        bodyPlaceholder: 'Contenido del comentario…',
+        saveBtn: 'Guardar plantilla',
+        empty: 'No hay plantillas aún. Crea una arriba.',
+        addSuccess: 'Plantilla guardada',
+        addError: 'Error al guardar la plantilla',
+        updateSuccess: 'Plantilla actualizada',
+        deleteSuccess: 'Plantilla eliminada',
+        deleteTitle: '¿Eliminar plantilla?',
+        deleteDescription: '¿Estás seguro de eliminar "{{name}}"? Esta acción no se puede deshacer.'
       },
       database: {
         title: 'Base de datos',
@@ -399,8 +423,8 @@ const es = {
       afterLunch: 'Post-almuerzo',
       addEntry: 'Agregar Entrada',
       addEntryTooltip: 'Agregar nueva entrada',
-      register: 'Registrar en TeamWork',
-      saveTooltip: 'Guardar entradas',
+      register: 'Guardar en base de datos local',
+      saveTooltip: 'Guardar entradas localmente (aun no se envían a TeamWork)',
       escHint: 'Presiona Esc para eliminar la última entrada',
       savedTitle: '¡Entradas guardadas!',
       savedDesc: '{{count}} entradas de tiempo registradas.',
@@ -437,7 +461,14 @@ const es = {
       sending: 'Enviando...',
       success: 'Comentario enviado a TeamWork',
       error: 'Error al enviar el comentario',
-      uploadError: 'Error al subir el archivo'
+      uploadError: 'Error al subir el archivo',
+      useTemplate: 'Usar plantilla',
+      notifyNone: 'Notificar a...',
+      notifyCount: '{{count}} persona(s) seleccionada(s)',
+      notifySearch: 'Buscar persona...',
+      notifyEmpty: 'Sin resultados',
+      notifyLoading: 'Cargando personas...',
+      removeNotify: 'Quitar'
     }
   }
 };
