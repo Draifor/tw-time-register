@@ -15,7 +15,11 @@ import {
   Database,
   Upload,
   Download,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -35,7 +39,12 @@ import {
   testTWConnection,
   exportDatabase,
   importDatabase,
-  Holiday
+  getCommentTemplates,
+  addCommentTemplate,
+  updateCommentTemplate,
+  deleteCommentTemplate,
+  Holiday,
+  type CommentTemplate
 } from '../services/timesService';
 import { TW_SESSION_UPDATED_EVENT } from '../hooks/useTWSession';
 import { useForm, Controller } from 'react-hook-form';
@@ -103,6 +112,13 @@ export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbImporting, setDbImporting] = useState(false);
 
+  // Comment templates state
+  const [templates, setTemplates] = useState<CommentTemplate[]>([]);
+  const [newTplTitle, setNewTplTitle] = useState('');
+  const [newTplBody, setNewTplBody] = useState('');
+  const [editingTpl, setEditingTpl] = useState<{ id: number; title: string; body: string } | null>(null);
+  const [tplSaving, setTplSaving] = useState(false);
+
   const { control, handleSubmit, reset, watch, setValue } = useForm<SettingsFormData>({
     defaultValues: {
       defaultStartTime: '09:00',
@@ -121,10 +137,11 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [settings, holidayList, twCreds] = await Promise.all([
+        const [settings, holidayList, twCreds, tplList] = await Promise.all([
           getWorkSettings(),
           getHolidays(),
-          getTWCredentials()
+          getTWCredentials(),
+          getCommentTemplates()
         ]);
 
         reset({
@@ -138,6 +155,7 @@ export default function SettingsPage() {
         });
 
         setHolidays(holidayList);
+        setTemplates(tplList);
         setTwDomain(twCreds.domain || '');
         setTwUsername(twCreds.username || '');
         setTwPassword(twCreds.password || '');
@@ -298,6 +316,50 @@ export default function SettingsPage() {
       toast.error(String(err));
     } finally {
       setDbImporting(false);
+    }
+  };
+
+  // Comment template handlers
+  const handleAddTemplate = async () => {
+    if (!newTplTitle.trim() || !newTplBody.trim()) return;
+    setTplSaving(true);
+    try {
+      const tpl = await addCommentTemplate(newTplTitle.trim(), newTplBody.trim());
+      setTemplates((prev) => [...prev, tpl].sort((a, b) => a.title.localeCompare(b.title)));
+      setNewTplTitle('');
+      setNewTplBody('');
+      toast.success(t('settings.templates.addSuccess'));
+    } catch {
+      toast.error(t('settings.templates.addError'));
+    } finally {
+      setTplSaving(false);
+    }
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!editingTpl || !editingTpl.title.trim() || !editingTpl.body.trim()) return;
+    setTplSaving(true);
+    try {
+      const updated = await updateCommentTemplate(editingTpl.id, editingTpl.title.trim(), editingTpl.body.trim());
+      setTemplates((prev) =>
+        prev.map((t) => (t.templateId === editingTpl.id ? updated : t)).sort((a, b) => a.title.localeCompare(b.title))
+      );
+      setEditingTpl(null);
+      toast.success(t('settings.templates.updateSuccess'));
+    } catch {
+      toast.error(t('settings.templates.addError'));
+    } finally {
+      setTplSaving(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: number) => {
+    try {
+      await deleteCommentTemplate(templateId);
+      setTemplates((prev) => prev.filter((tpl) => tpl.templateId !== templateId));
+      toast.success(t('settings.templates.deleteSuccess'));
+    } catch {
+      toast.error(t('settings.templates.addError'));
     }
   };
 
@@ -679,6 +741,145 @@ export default function SettingsPage() {
               ))
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Comment Templates Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            {t('settings.templates.title')}
+          </CardTitle>
+          <CardDescription>{t('settings.templates.description')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add new template form */}
+          <div className="space-y-2 rounded-md border p-3">
+            <p className="text-sm font-medium">{t('settings.templates.addTitle')}</p>
+            <Input
+              value={newTplTitle}
+              onChange={(e) => setNewTplTitle(e.target.value)}
+              placeholder={t('settings.templates.titlePlaceholder')}
+              maxLength={80}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleAddTemplate();
+              }}
+            />
+            <textarea
+              value={newTplBody}
+              onChange={(e) => setNewTplBody(e.target.value)}
+              placeholder={t('settings.templates.bodyPlaceholder')}
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleAddTemplate()}
+              disabled={tplSaving || !newTplTitle.trim() || !newTplBody.trim()}
+              className="gap-2"
+            >
+              {tplSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {t('settings.templates.saveBtn')}
+            </Button>
+          </div>
+
+          {/* Template list */}
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('settings.templates.empty')}</p>
+          ) : (
+            <div className="space-y-2">
+              {templates.map((tpl) =>
+                editingTpl?.id === tpl.templateId ? (
+                  <div key={tpl.templateId} className="space-y-2 rounded-md border border-primary/40 p-3">
+                    <Input
+                      value={editingTpl.title}
+                      onChange={(e) => setEditingTpl({ ...editingTpl, title: e.target.value })}
+                      maxLength={80}
+                    />
+                    <textarea
+                      value={editingTpl.body}
+                      onChange={(e) => setEditingTpl({ ...editingTpl, body: e.target.value })}
+                      rows={3}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void handleUpdateTemplate()}
+                        disabled={tplSaving}
+                        className="gap-1"
+                      >
+                        {tplSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        {t('common.save')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingTpl(null)}
+                        className="gap-1"
+                      >
+                        <X className="h-4 w-4" />
+                        {t('common.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={tpl.templateId} className="flex items-start justify-between gap-3 rounded-md border p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{tpl.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 whitespace-pre-wrap">
+                        {tpl.body}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => setEditingTpl({ id: tpl.templateId, title: tpl.title, body: tpl.body })}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t('settings.templates.deleteTitle')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t('settings.templates.deleteDescription', { name: tpl.title })}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => void handleDeleteTemplate(tpl.templateId)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {t('common.delete')}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

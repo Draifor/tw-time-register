@@ -230,6 +230,21 @@ const en = {
         syncSuccess: '{{inserted}} holidays synced for {{year}}',
         syncError: 'Error syncing holidays. Check your internet connection.'
       },
+      templates: {
+        title: 'Comment Templates',
+        description: 'Create reusable templates for your TeamWork comments',
+        addTitle: 'New template',
+        titlePlaceholder: 'Template title (e.g. "Sprint update")',
+        bodyPlaceholder: 'Comment content…',
+        saveBtn: 'Save template',
+        empty: 'No templates yet. Create one above.',
+        addSuccess: 'Template saved',
+        addError: 'Error saving template',
+        updateSuccess: 'Template updated',
+        deleteSuccess: 'Template deleted',
+        deleteTitle: 'Delete template?',
+        deleteDescription: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.'
+      },
       database: {
         title: 'Database',
         description: 'Export your database as a backup or to transfer it to another installation',
@@ -437,7 +452,14 @@ const en = {
       sending: 'Sending...',
       success: 'Comment sent to TeamWork',
       error: 'Failed to send comment',
-      uploadError: 'Error uploading file'
+      uploadError: 'Error uploading file',
+      useTemplate: 'Use template',
+      notifyNone: 'Notify...',
+      notifyCount: '{{count}} person(s) selected',
+      notifySearch: 'Search person...',
+      notifyEmpty: 'No results',
+      notifyLoading: 'Loading people...',
+      removeNotify: 'Remove'
     }
   }
 };

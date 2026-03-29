@@ -230,6 +230,21 @@ const es = {
         syncSuccess: '{{inserted}} festivos sincronizados para {{year}}',
         syncError: 'Error al sincronizar festivos. Verifica tu conexión a internet.'
       },
+      templates: {
+        title: 'Plantillas de comentarios',
+        description: 'Crea plantillas reutilizables para tus comentarios en TeamWork',
+        addTitle: 'Nueva plantilla',
+        titlePlaceholder: 'Título de la plantilla (ej. "Avance de sprint")',
+        bodyPlaceholder: 'Contenido del comentario…',
+        saveBtn: 'Guardar plantilla',
+        empty: 'No hay plantillas aún. Crea una arriba.',
+        addSuccess: 'Plantilla guardada',
+        addError: 'Error al guardar la plantilla',
+        updateSuccess: 'Plantilla actualizada',
+        deleteSuccess: 'Plantilla eliminada',
+        deleteTitle: '¿Eliminar plantilla?',
+        deleteDescription: '¿Estás seguro de eliminar "{{name}}"? Esta acción no se puede deshacer.'
+      },
       database: {
         title: 'Base de datos',
         description: 'Exporta tu BD para hacer una copia de seguridad o para llevarla a otra instalación',
@@ -437,7 +452,14 @@ const es = {
       sending: 'Enviando...',
       success: 'Comentario enviado a TeamWork',
       error: 'Error al enviar el comentario',
-      uploadError: 'Error al subir el archivo'
+      uploadError: 'Error al subir el archivo',
+      useTemplate: 'Usar plantilla',
+      notifyNone: 'Notificar a...',
+      notifyCount: '{{count}} persona(s) seleccionada(s)',
+      notifySearch: 'Buscar persona...',
+      notifyEmpty: 'Sin resultados',
+      notifyLoading: 'Cargando personas...',
+      removeNotify: 'Quitar'
     }
   }
 };

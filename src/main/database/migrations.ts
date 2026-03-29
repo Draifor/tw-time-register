@@ -77,4 +77,26 @@ export async function runMigrations(): Promise<void> {
     )
   `);
   console.log('Migration: sync_history table ensured');
+
+  // Migration: create comment_templates table (idempotent)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS comment_templates (
+      template_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title       TEXT NOT NULL,
+      body        TEXT NOT NULL,
+      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('Migration: comment_templates table ensured');
+
+  // Migration: create tw_people cache table (idempotent)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS tw_people (
+      person_id  TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      email      TEXT,
+      cached_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('Migration: tw_people table ensured');
 }
