@@ -15,7 +15,7 @@ vi.mock('electron', () => ({
 import { safeStorage } from 'electron';
 import { isEncryptionAvailable, isEncryptedValue, encrypt, decrypt } from '../../../main/services/encryptionService';
 
-const mockSafeStorage = safeStorage as {
+const mockSafeStorage = safeStorage as unknown as {
   isEncryptionAvailable: ReturnType<typeof vi.fn>;
   encryptString: ReturnType<typeof vi.fn>;
   decryptString: ReturnType<typeof vi.fn>;

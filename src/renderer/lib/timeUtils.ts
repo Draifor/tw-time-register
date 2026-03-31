@@ -11,7 +11,7 @@ export function parseDuration(startTime: string, endTime: string): { hours: numb
   if (!startTime || !endTime) return { hours: 0, minutes: 0 };
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);
-  const diff = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+  const diff = Math.max(0, eh * 60 + em - (sh * 60 + sm));
   return { hours: Math.floor(diff / 60), minutes: diff % 60 };
 }
 
