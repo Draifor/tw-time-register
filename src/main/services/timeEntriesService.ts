@@ -38,6 +38,24 @@ export interface NextSlotSuggestion {
   maxHoursForDay: number;
 }
 
+export interface WorkTimeDraftEntry {
+  date: string;
+  description: string;
+  endTime: string[];
+  hours: string[];
+  startTime: string[];
+  task: { value: string; label: string } | string;
+  isBillable: boolean;
+  afterLunch: boolean;
+  manualStartTime: boolean;
+}
+
+export interface WorkTimeDraftPayload {
+  entries: WorkTimeDraftEntry[];
+}
+
+const WORKTIME_DRAFT_KEY = 'worktime-form';
+
 // Add a new time entry
 export async function addTimeEntryService(entry: TimeEntryInput): Promise<number> {
   const db = await openDb();
@@ -57,6 +75,47 @@ export async function addTimeEntries(entries: TimeEntryInput[]): Promise<number[
     ids.push(id);
   }
   return ids;
+}
+
+export async function getWorkTimeDraft(): Promise<WorkTimeDraftPayload | null> {
+  const db = await openDb();
+  const row = await db.get<{ payload: string }>('SELECT payload FROM worktime_drafts WHERE draft_key = ?', [
+    WORKTIME_DRAFT_KEY
+  ]);
+
+  if (!row?.payload) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(row.payload) as WorkTimeDraftPayload;
+    if (!Array.isArray(parsed.entries)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveWorkTimeDraft(draft: WorkTimeDraftPayload): Promise<void> {
+  const db = await openDb();
+  const payload = JSON.stringify(draft);
+
+  await db.run(
+    `
+      INSERT INTO worktime_drafts (draft_key, payload, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(draft_key)
+      DO UPDATE SET payload = excluded.payload, updated_at = CURRENT_TIMESTAMP
+    `,
+    [WORKTIME_DRAFT_KEY, payload]
+  );
+}
+
+export async function clearWorkTimeDraft(): Promise<void> {
+  const db = await openDb();
+  await db.run('DELETE FROM worktime_drafts WHERE draft_key = ?', [WORKTIME_DRAFT_KEY]);
 }
 
 // Get all time entries

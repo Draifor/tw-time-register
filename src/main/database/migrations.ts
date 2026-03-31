@@ -99,4 +99,14 @@ export async function runMigrations(): Promise<void> {
     )
   `);
   console.log('Migration: tw_people table ensured');
+
+  // Migration: create worktime_drafts table (idempotent)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS worktime_drafts (
+      draft_key  TEXT PRIMARY KEY,
+      payload    TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('Migration: worktime_drafts table ensured');
 }

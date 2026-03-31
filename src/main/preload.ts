@@ -214,6 +214,21 @@ const api = {
   getTotalMinutesForDate: (date: string) => ipcRenderer.invoke('getTotalMinutesForDate', date),
   getDailyTimeInfo: (date: string) => ipcRenderer.invoke('getDailyTimeInfo', date),
   getNextAvailableSlot: () => ipcRenderer.invoke('getNextAvailableSlot'),
+  getWorkTimeDraft: () => ipcRenderer.invoke('getWorkTimeDraft'),
+  saveWorkTimeDraft: (draft: {
+    entries: {
+      date: string;
+      description: string;
+      endTime: string[];
+      hours: string[];
+      startTime: string[];
+      task: { value: string; label: string } | string;
+      isBillable: boolean;
+      afterLunch: boolean;
+      manualStartTime: boolean;
+    }[];
+  }) => ipcRenderer.invoke('saveWorkTimeDraft', draft),
+  clearWorkTimeDraft: () => ipcRenderer.invoke('clearWorkTimeDraft'),
   updateTimeEntry: (
     entryId: number,
     entry: {

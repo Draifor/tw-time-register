@@ -20,7 +20,11 @@ import {
   getDailyTimeInfo,
   getWorkSettings,
   isWorkDay,
-  NextSlotSuggestion
+  NextSlotSuggestion,
+  WorkTimeDraftEntry,
+  getWorkTimeDraft,
+  saveWorkTimeDraft,
+  clearWorkTimeDraft
 } from '../services/timesService';
 
 type WorkTimeEntry = {
@@ -65,6 +69,23 @@ const addDaysToISO = (isoDate: string, days: number): string => {
   return getLocalISODate(d);
 };
 
+const hydrateEntryDates = (
+  entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }
+): WorkTimeEntry => ({
+  ...entry,
+  hours: entry.hours.map((d) => new Date(d)),
+  startTime: entry.startTime.map((d) => new Date(d)),
+  endTime: entry.endTime.map((d) => new Date(d)),
+  manualStartTime: entry.manualStartTime ?? false
+});
+
+const serializeEntryDates = (entry: WorkTimeEntry): WorkTimeDraftEntry => ({
+  ...entry,
+  hours: entry.hours.map((d) => d.toISOString()),
+  startTime: entry.startTime.map((d) => d.toISOString()),
+  endTime: entry.endTime.map((d) => d.toISOString())
+});
+
 export default function WorkTimeForm() {
   const { t } = useTranslation();
 
@@ -87,42 +108,20 @@ export default function WorkTimeForm() {
     };
   }, []);
 
-  const defaultValue: WorkTimeEntry = {
-    description: '',
-    hours: [new Date('1970-01-01T00:00:00')],
-    date: getLocalISODate(),
-    task: '',
-    startTime: [new Date('1970-01-01T09:00:00')],
-    endTime: [new Date('1970-01-01T09:00:00')],
-    isBillable: false,
-    afterLunch: false,
-    manualStartTime: false
-  };
-
-  // Capture synchronously whether a real draft exists at mount time.
-  // The localStorage save-on-render effect fires AFTER this line, so this
-  // correctly reflects pre-render state and avoids a race condition where
-  // the async slot fetch would always find data written by the first render.
-  const hasDraftRef = useRef(!!localStorage.getItem('workTimeFormEntries'));
-
-  const getInitialValues = () => {
-    const saved = localStorage.getItem('workTimeFormEntries');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.map((entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }) => ({
-          ...entry,
-          hours: entry.hours.map((d) => new Date(d)),
-          startTime: entry.startTime.map((d) => new Date(d)),
-          endTime: entry.endTime.map((d) => new Date(d)),
-          manualStartTime: entry.manualStartTime ?? false
-        }));
-      } catch (e) {
-        console.error('Failed to parse saved form data', e);
-      }
-    }
-    return null;
-  };
+  const defaultValue = React.useMemo<WorkTimeEntry>(
+    () => ({
+      description: '',
+      hours: [new Date('1970-01-01T00:00:00')],
+      date: getLocalISODate(),
+      task: '',
+      startTime: [new Date('1970-01-01T09:00:00')],
+      endTime: [new Date('1970-01-01T09:00:00')],
+      isBillable: false,
+      afterLunch: false,
+      manualStartTime: false
+    }),
+    []
+  );
 
   const {
     formState: { errors },
@@ -132,7 +131,7 @@ export default function WorkTimeForm() {
     setValue,
     register
   } = useForm<{ entries: WorkTimeEntry[] }>({
-    defaultValues: { entries: getInitialValues() || [defaultValue] }
+    defaultValues: { entries: [defaultValue] }
   });
   const { fields, append, remove, move } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
@@ -140,27 +139,64 @@ export default function WorkTimeForm() {
   // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
   const typedControl = control as unknown as Control<FieldValues>;
 
-  // Fetch next available slot on mount and apply it as the smart start time.
-  // Logic (handled by getNextAvailableSlot on the backend):
-  //   - Today has remaining hours → startTime = last saved entry's endTime
-  //   - Today is complete          → startTime = next working day's default start
-  //   - No entries at all today    → startTime = configured default start time
-  // Only applies when there is no pre-existing draft in localStorage.
-  useEffect(() => {
-    if (hasDraftRef.current) return; // Draft restored from localStorage — leave it as-is
+  const isHydratingDraftRef = useRef(true);
+  const saveDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const fetchNextSlot = async () => {
+  // Restore draft from SQLite at startup. If missing, migrate once from legacy
+  // localStorage and persist to SQLite. If still missing, use smart slot.
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreDraft = async () => {
       try {
+        const dbDraft = await getWorkTimeDraft();
+        if (cancelled) return;
+
+        if (dbDraft?.entries?.length) {
+          const hydratedEntries = dbDraft.entries.map((entry) =>
+            hydrateEntryDates(entry as WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] })
+          );
+          reset({ entries: hydratedEntries });
+          localStorage.removeItem('workTimeFormEntries');
+          return;
+        }
+
+        const legacyDraft = localStorage.getItem('workTimeFormEntries');
+        if (legacyDraft) {
+          const parsed = JSON.parse(legacyDraft) as (WorkTimeEntry & {
+            hours: string[];
+            startTime: string[];
+            endTime: string[];
+          })[];
+          const hydratedEntries = parsed.map((entry) => hydrateEntryDates(entry));
+          reset({ entries: hydratedEntries });
+          await saveWorkTimeDraft({ entries: hydratedEntries.map(serializeEntryDates) });
+          localStorage.removeItem('workTimeFormEntries');
+          return;
+        }
+
         const slot = await getNextAvailableSlot();
+        if (cancelled) return;
         const smartEntry = createDefaultEntry(slot);
         reset({ entries: [smartEntry] });
       } catch (error) {
-        console.error('Error fetching next slot:', error);
+        console.error('Error restoring draft:', error);
+        if (!cancelled) {
+          reset({ entries: [defaultValue] });
+        }
+      } finally {
+        if (!cancelled) {
+          isHydratingDraftRef.current = false;
+        }
       }
     };
 
-    fetchNextSlot();
-  }, [createDefaultEntry, reset]);
+    restoreDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [createDefaultEntry, defaultValue, reset]);
 
   const options = React.useMemo(() => {
     return (
@@ -356,8 +392,42 @@ export default function WorkTimeForm() {
   };
 
   useEffect(() => {
-    localStorage.setItem('workTimeFormEntries', JSON.stringify(result));
+    if (isHydratingDraftRef.current) {
+      return;
+    }
+
+    if (!result || result.length === 0) {
+      void clearWorkTimeDraft();
+      return;
+    }
+
+    const payload = { entries: result.map(serializeEntryDates) };
+
+    if (saveDraftTimeoutRef.current) {
+      clearTimeout(saveDraftTimeoutRef.current);
+    }
+
+    saveDraftTimeoutRef.current = setTimeout(() => {
+      void saveWorkTimeDraft(payload).catch((error) => {
+        console.error('Error saving WorkTime draft:', error);
+      });
+    }, 500);
+
+    return () => {
+      if (saveDraftTimeoutRef.current) {
+        clearTimeout(saveDraftTimeoutRef.current);
+      }
+    };
   }, [result]);
+
+  useEffect(
+    () => () => {
+      if (saveDraftTimeoutRef.current) {
+        clearTimeout(saveDraftTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     result.forEach((entry, index) => {
@@ -478,6 +548,7 @@ export default function WorkTimeForm() {
       toast.success(t('workTimeForm.savedTitle'), {
         description: t('workTimeForm.savedDesc', { count: data.entries.length })
       });
+      await clearWorkTimeDraft();
       localStorage.removeItem('workTimeFormEntries');
 
       // Fetch new slot suggestion after saving

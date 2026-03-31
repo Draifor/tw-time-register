@@ -29,6 +29,10 @@ import {
   getTotalMinutesForDate,
   getDailyTimeInfo,
   getNextAvailableSlot,
+  getWorkTimeDraft,
+  saveWorkTimeDraft,
+  clearWorkTimeDraft,
+  WorkTimeDraftPayload,
   updateTimeEntry,
   deleteTimeEntry,
   markEntriesAsSent,
@@ -105,6 +109,18 @@ ipcMain.handle('getDailyTimeInfo', async (_event, date: string) => {
 
 ipcMain.handle('getNextAvailableSlot', async () => {
   return getNextAvailableSlot();
+});
+
+ipcMain.handle('getWorkTimeDraft', async () => {
+  return getWorkTimeDraft();
+});
+
+ipcMain.handle('saveWorkTimeDraft', async (_event, draft: WorkTimeDraftPayload) => {
+  return saveWorkTimeDraft(draft);
+});
+
+ipcMain.handle('clearWorkTimeDraft', async () => {
+  return clearWorkTimeDraft();
 });
 
 ipcMain.handle('updateTimeEntry', async (_event, entryId: number, entry: Partial<TimeEntryInput>) => {

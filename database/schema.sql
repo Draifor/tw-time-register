@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS type_tasks (
-    type_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type_id INTEGER PRIMARY KEY,
     type_name TEXT NOT NULL
 );
 
@@ -20,7 +20,7 @@ UNION ALL
 SELECT 'Procesos Internos' WHERE NOT EXISTS (SELECT 1 FROM type_tasks);
 
 CREATE TABLE IF NOT EXISTS tasks (
-    task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER PRIMARY KEY,
     type_id INTEGER NOT NULL,
     task_name TEXT NOT NULL,
     task_link TEXT,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 CREATE TABLE IF NOT EXISTS time_entries (
-    entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER PRIMARY KEY,
     task_id INTEGER NOT NULL,
     description TEXT,
     entry_date DATE NOT NULL,
@@ -40,9 +40,15 @@ CREATE TABLE IF NOT EXISTS time_entries (
     FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS worktime_drafts (
+    draft_key TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Work schedule settings table
 CREATE TABLE IF NOT EXISTS work_settings (
-    setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    setting_id INTEGER PRIMARY KEY,
     setting_key TEXT NOT NULL UNIQUE,
     setting_value TEXT NOT NULL,
     description TEXT
@@ -83,7 +89,7 @@ WHERE NOT EXISTS (SELECT 1 FROM work_settings WHERE setting_key = 'language');
 
 -- Holidays table (Colombian holidays + custom)
 CREATE TABLE IF NOT EXISTS holidays (
-    holiday_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    holiday_id INTEGER PRIMARY KEY,
     holiday_date DATE NOT NULL UNIQUE,
     description TEXT,
     is_custom BOOLEAN DEFAULT 0
