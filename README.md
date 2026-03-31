@@ -137,6 +137,7 @@ type_tasks    (type_id, type_name)
 tasks         (task_id, type_id, task_name, task_link, description)
 time_entries  (entry_id, task_id, description, entry_date, hora_inicio, hora_fin, facturable, send)
 sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_task_id, success, error_message)
+worktime_drafts (draft_key, payload, updated_at)
 ```
 
 `sync_history` es la clave del sync bidireccional: si `tw_time_entry_id` ya existe → PUT, si no → POST.
@@ -145,7 +146,7 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 
 ## ✅ Funcionalidades
 
-- **WorkTimeForm** — campos dinámicos, cálculo encadenado inicio/fin, persistencia localStorage, **timer en vivo** (play/stop auto-calcula duración)
+- **WorkTimeForm** — campos dinámicos, cálculo encadenado inicio/fin, borrador persistente en SQLite (`worktime_drafts`), **timer en vivo** (play/stop auto-calcula duración)
 - **TimeLogsTable** — edición inline, sync individual y masivo, búsqueda + filtros, **duplicar entrada** con un click
 - **Sync bidireccional** — `smartSyncEntries()`: POST / PUT según `sync_history`, siempre con `person-id = userId`
 - **Pull desde TW** — `pullEntriesFromTW()`: importa time entries de TW en un rango de fechas (global o por tarea)
@@ -161,6 +162,23 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - **Seguridad** — credenciales TW cifradas con `safeStorage` (DPAPI en Windows)
 - **Auto-updater** — descarga en segundo plano, toasts de estado, botón "Buscar actualizaciones"
 - **108 tests** — modelos, servicios core (encryption, settings, timeEntries, api, sync, history), timeUtils
+
+---
+
+## Draft de WorkTime (Persistencia)
+
+- **Fuente de verdad**: SQLite (`worktime_drafts`), no `localStorage`.
+- **Auto-guardado**: el formulario guarda borrador en BD con debounce mientras se edita.
+- **Recuperación**: al abrir WorkTime, primero intenta restaurar desde BD.
+- **Migración legacy**: si no existe draft en BD, toma una sola vez `localStorage['workTimeFormEntries']`, lo migra a BD y elimina esa clave.
+- **Cuándo se borra el draft**: solo cuando los registros pasan a `time_entries` (guardado definitivo) o cuando el borrador queda vacío por acciones del usuario.
+- **Qué sigue en localStorage**: únicamente `wt_activeTimer` (estado efímero del timer UI).
+
+### Mantenimiento futuro recomendado
+
+- **No tocar** esta lógica salvo que cambie el flujo funcional de WorkTime.
+- **Opcional (v futura)**: eliminar por completo el fallback de migración de `workTimeFormEntries` cuando ya no existan usuarios en transición.
+- Si se elimina el fallback, conservar `wt_activeTimer` en localStorage (o migrarlo si se decide persistir también el timer en BD).
 
 ---
 

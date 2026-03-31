@@ -651,7 +651,9 @@ pnpm test:coverage  # Coverage report en /coverage
 - El proyecto usa **AppBar personalizada** (frame: false en BrowserWindow)
 - Los tiempos se manejan con **Date** y **Flatpickr**, conversión a strings para BD
 - El cálculo de hora fin (`endTime = startTime + hours`) está en `WorkTimeForm.tsx`
-- Las entradas se persisten en **localStorage** mientras se editan (antes de guardar en BD)
+- El borrador de WorkTime se persiste en **SQLite** (`worktime_drafts`) mientras se edita
+- Existe migración legacy one-time desde `localStorage['workTimeFormEntries']` hacia `worktime_drafts`
+- `localStorage` se mantiene solo para estado efímero del timer (`wt_activeTimer`)
 - **HashRouter** es obligatorio en Electron — BrowserRouter no funciona con `file://` en producción
 - **Paths en producción**: usar `app.getPath('userData')` para datos de usuario y `app.getAppPath()` para assets bundleados. `process.cwd()` NO es confiable en producción
 - **WAL mode**: `better-sqlite3` usa `PRAGMA journal_mode=WAL` — genera `.sqlite-shm` y `.sqlite-wal` temporales (excluidos en `.gitignore`)
