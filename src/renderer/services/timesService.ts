@@ -53,6 +53,22 @@ export interface Holiday {
   isCustom: boolean;
 }
 
+export interface WorkTimeDraftEntry {
+  date: string;
+  description: string;
+  endTime: string[];
+  hours: string[];
+  startTime: string[];
+  task: { value: string; label: string } | string;
+  isBillable: boolean;
+  afterLunch: boolean;
+  manualStartTime: boolean;
+}
+
+export interface WorkTimeDraftPayload {
+  entries: WorkTimeDraftEntry[];
+}
+
 // Time Entries API
 export const fetchTimeEntries = async (): Promise<TimeEntry[]> => {
   return window.Main.getTimeEntries();
@@ -107,6 +123,18 @@ export const getDailyTimeInfo = async (date: string): Promise<DailyTimeInfo> => 
 
 export const getNextAvailableSlot = async (): Promise<NextSlotSuggestion> => {
   return window.Main.getNextAvailableSlot();
+};
+
+export const getWorkTimeDraft = async (): Promise<WorkTimeDraftPayload | null> => {
+  return window.Main.getWorkTimeDraft();
+};
+
+export const saveWorkTimeDraft = async (draft: WorkTimeDraftPayload): Promise<void> => {
+  return window.Main.saveWorkTimeDraft(draft);
+};
+
+export const clearWorkTimeDraft = async (): Promise<void> => {
+  return window.Main.clearWorkTimeDraft();
 };
 
 // Work Settings API
