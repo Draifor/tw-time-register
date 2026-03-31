@@ -14,6 +14,13 @@ import { initAutoUpdater } from './updater';
 const height = 600;
 const width = 800;
 const windowStatePath = join(app.getPath('userData'), 'window-state.json');
+let mainWindow: BrowserWindow | null = null;
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 function readWindowState() {
   try {
@@ -75,7 +82,32 @@ function createWindow() {
   window.on('close', () => {
     saveWindowState(window);
   });
+
+  window.on('closed', () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+    }
+  });
+
+  mainWindow = window;
+
+  return window;
 }
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+    mainWindow.focus();
+    return;
+  }
+
+  createWindow();
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -94,6 +126,12 @@ app.whenReady().then(async () => {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    else if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
+    }
   });
 });
 
