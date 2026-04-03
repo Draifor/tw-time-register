@@ -243,22 +243,36 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 
 ### v1.3.0 — Calidad & Cobertura
 
-- [ ] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`
+- [x] Ampliar tests: `timeEntriesService`, `apiService`, `settingsService`
 - [ ] Tests de componentes React (WorkTimeForm, TimeLogsTable)
 - [ ] Documentar lógica de cálculo en ReportsPage
 
 ### v1.4.0 — UX & Productividad
 
-- [ ] **Timer en vivo** — play/stop que auto-calcula la duración al detener
-- [ ] **Duplicar entrada** — clonar fila en TimeLogsTable con un click
-- [ ] **Drag & drop** para reordenar entradas en WorkTimeForm
+- [x] **Timer en vivo** — play/stop que auto-calcula la duración al detener
+- [x] **Duplicar entrada** — clonar fila en TimeLogsTable con un click
+- [x] **Drag & drop** para reordenar entradas en WorkTimeForm
 - [ ] Exportar reporte a CSV
 
 ### v1.5.0 — Sync Avanzado
 
-- [ ] Eliminar entrada en TW desde TimeLogsTable
-- [ ] Pull desde TW — importar time entries existentes al histórico local
+- [x] Eliminar entrada en TW desde TimeLogsTable
+- [x] Pull desde TW — importar time entries existentes al histórico local
 - [ ] Indicador de "última sincronización" por entrada
+
+### v1.8.0 — Confiabilidad de Sync (Siguiente)
+
+- [ ] Detectar conflictos de sync (local vs TW) por entrada
+- [ ] Flujo de resolución de conflictos en UI (conservador por defecto)
+- [ ] Mostrar "última sincronización" por entrada en TimeLogsTable
+- [ ] Tests de componentes React: WorkTimeForm y TimeLogsTable
+- [ ] E2E smoke con Playwright: draft recovery, single-instance, sync básico
+
+### v1.9.0 — Reportes & Observabilidad
+
+- [ ] Exportar reportes a CSV/Excel
+- [ ] Timeline de eventos de sync por entrada (auditable)
+- [ ] Checklist de release para validaciones críticas post-build
 
 ### v2.0.0 — Multi-plataforma
 
