@@ -292,6 +292,8 @@ const en = {
       search: 'Search tasks...',
       tableTitle: 'TeamWork Tasks',
       typesTableTitle: 'Task Types',
+      colEstimatedTime: 'Est. Time',
+      colProgress: 'Progress',
       typeForm: {
         addTypeBtn: 'New type',
         typeNameLabel: 'Type name',
@@ -311,6 +313,9 @@ const en = {
         taskLinkPlaceholder: 'https://...teamwork.com/app/tasks/...',
         descriptionLabel: 'Description (optional)',
         descriptionPlaceholder: 'Notes about the task...',
+        estimatedTimeLabel: 'Estimated time (optional)',
+        estimatedTimePlaceholder: 'e.g. 4:00',
+        estimatedTimeHint: 'How long the task should take (HH:MM). You can change it later.',
         submitBtn: 'Add task',
         nameRequired: 'Name is required',
         typeRequired: 'Type is required',

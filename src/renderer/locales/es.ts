@@ -292,6 +292,8 @@ const es = {
       search: 'Buscar en tareas...',
       tableTitle: 'Tareas de TeamWork',
       typesTableTitle: 'Tipos de Tarea',
+      colEstimatedTime: 'Tiempo estimado',
+      colProgress: 'Progreso',
       typeForm: {
         addTypeBtn: 'Nuevo tipo',
         typeNameLabel: 'Nombre del tipo',
@@ -311,6 +313,9 @@ const es = {
         taskLinkPlaceholder: 'https://...teamwork.com/app/tasks/...',
         descriptionLabel: 'Descripción (opcional)',
         descriptionPlaceholder: 'Notas sobre la tarea...',
+        estimatedTimeLabel: 'Tiempo estimado (opcional)',
+        estimatedTimePlaceholder: 'Ej. 4:00',
+        estimatedTimeHint: 'Cuánto tiempo debería tomar la tarea (HH:MM). Puedes cambiarlo luego.',
         submitBtn: 'Agregar tarea',
         nameRequired: 'El nombre es obligatorio',
         typeRequired: 'El tipo es obligatorio',
