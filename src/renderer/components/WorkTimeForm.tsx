@@ -444,19 +444,48 @@ export default function WorkTimeForm() {
         return;
       }
 
-      // Detect afterLunch toggle: shift startTime ±1 hour and recalculate endTime
+      // Detect afterLunch toggle: apply the 60-minute lunch offset to THIS
+      // entry's startTime (so the task itself begins +60min). Recalculate its
+      // endTime accordingly and cascade the new endTime to the next entry
+      // (unless the next entry has manualStartTime true).
       if (entry.afterLunch !== prevEntry.afterLunch && entry.startTime?.[0]) {
-        const shifted = new Date(entry.startTime[0]);
-        shifted.setHours(shifted.getHours() + (entry.afterLunch ? 1 : -1));
-        const newEndTime = calculateEndTime([shifted], entry.hours);
-        setValue(`entries.${index}.startTime`, [shifted]);
+        // Prefer basing this entry's start on the previous entry's endTime.
+        // If there's no previous entry, fall back to shifting current start by +60/-60.
+        const prevEnd = result[index - 1]?.endTime?.[0];
+
+        let newStart: Date;
+        if (prevEnd) {
+          const offset = entry.afterLunch ? 60 : 0;
+          newStart = buildEpochTime(getMinutesFromDate(prevEnd) + offset);
+        } else {
+          // Fallback: adjust current start relatively
+          const currentStart = entry.startTime[0];
+          const delta = entry.afterLunch ? 60 : -60;
+          newStart = buildEpochTime(getMinutesFromDate(currentStart) + delta);
+        }
+
+        // Update this entry's startTime and endTime based on newStart
+        setValue(`entries.${index}.startTime`, [newStart]);
+        const newEndTime = calculateEndTime([newStart], entry.hours);
         setValue(`entries.${index}.endTime`, newEndTime);
+
         previousValues.current[index] = {
           ...previousValues.current[index],
-          afterLunch: entry.afterLunch,
-          startTime: [shifted],
+          afterLunch: entry.afterLunch ?? false,
           manualStartTime: entry.manualStartTime ?? false
         };
+
+        // Cascade to next entry: align its start with this new endTime (+respect afterLunch flag on next)
+        if (result[index + 1] !== undefined && !result[index + 1].manualStartTime) {
+          const nextAfterLunch = result[index + 1].afterLunch ?? false;
+          if (nextAfterLunch) {
+            const shifted = buildEpochTime(getMinutesFromDate(newEndTime[0]) + 60);
+            setValue(`entries.${index + 1}.startTime`, [shifted]);
+          } else {
+            setValue(`entries.${index + 1}.startTime`, newEndTime);
+          }
+        }
+
         return;
       }
 
@@ -480,7 +509,13 @@ export default function WorkTimeForm() {
         // so the next render detects it as a change and recalculates endTime[index+1]
         // (which in turn cascades to index+2, etc.).
         if (result[index + 1] !== undefined && !result[index + 1].manualStartTime) {
-          setValue(`entries.${index + 1}.startTime`, newEndTime);
+          const nextAfterLunch = result[index + 1].afterLunch ?? false;
+          if (nextAfterLunch) {
+            const shifted = buildEpochTime(getMinutesFromDate(newEndTime[0]) + 60);
+            setValue(`entries.${index + 1}.startTime`, [shifted]);
+          } else {
+            setValue(`entries.${index + 1}.startTime`, newEndTime);
+          }
         }
       }
     });
