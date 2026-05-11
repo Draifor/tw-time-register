@@ -164,6 +164,7 @@ const es = {
       weekEntriesCount: '{{count}} registro(s)',
       weekSentEntries: '{{count}} enviado(s) a TW',
       weekTotal: 'Total de la semana: {{total}}',
+      margin: 'Margen',
       monthlyReport: 'Reporte del Mes',
       monthlyReportDesc: 'Resumen de tiempos registrados en {{month}}',
       monthNoEntries: 'No hay registros para este mes.',
@@ -197,7 +198,11 @@ const es = {
       colTotalHours: 'Total horas',
       colBillable: 'Facturable',
       colSyncStatus: 'Estado envío',
-      colDate: 'Fecha'
+      colDate: 'Fecha',
+      colEstimated: 'Tiempo est.',
+      colProgress: 'Progreso',
+      onTime: 'En tiempo',
+      margin: 'Margen'
     },
     settings: {
       title: 'Configuración',
@@ -482,7 +487,8 @@ const es = {
         start: 'Iniciar timer',
         stop: 'Detener timer',
         otherRunning: 'Hay otro timer activo'
-      }
+      },
+      progressInfo: 'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}}'
     },
     taskComment: {
       triggerTooltip: 'Agregar comentario en TW',

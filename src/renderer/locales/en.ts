@@ -172,7 +172,8 @@ const en = {
       weekNoEntries: 'No entries for the last week.',
       weekEntriesCount: '{{count}} entries',
       weekSentEntries: '{{count}} sent to TW',
-      weekTotal: 'Week total: {{total}}'
+      weekTotal: 'Week total: {{total}}',
+      margin: 'Margin'
     },
     reports: {
       title: 'Reports',
@@ -197,7 +198,11 @@ const en = {
       colTotalHours: 'Total hours',
       colBillable: 'Billable',
       colSyncStatus: 'Sync status',
-      colDate: 'Date'
+      colDate: 'Date',
+      colEstimated: 'Est. Time',
+      colProgress: 'Progress',
+      onTime: 'On time',
+      margin: 'Margin'
     },
     settings: {
       title: 'Settings',
@@ -482,7 +487,8 @@ const en = {
         start: 'Start timer',
         stop: 'Stop timer',
         otherRunning: 'Another timer is active'
-      }
+      },
+      progressInfo: 'Progress: {{logged}} / {{estimated}} ({{pct}}%) — Margin: {{margin}}'
     },
     taskComment: {
       triggerTooltip: 'Add comment in TW',
