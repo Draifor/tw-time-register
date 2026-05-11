@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -44,11 +44,28 @@ interface EditData {
 }
 
 import { parseDuration, formatDuration } from '../lib/timeUtils';
+import { fetchTasks } from '../services/tasksService';
+import { getTaskProgressInfo } from '../lib/progressUtils';
 
 function TimeLogsTable() {
   const { data, isLoading, error } = useTimeLogs();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const [tasks, setTasks] = useState<
+    Array<{ id: number; taskName: string; estimatedTime: number | null; totalLoggedMinutes: number }>
+  >([]);
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const data = await fetchTasks();
+        setTasks(data ?? []);
+      } catch {
+        /* silent */
+      }
+    };
+    loadTasks();
+  }, []);
 
   // Track loading state per entry
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
@@ -91,6 +108,12 @@ function TimeLogsTable() {
       return true;
     });
   }, [data, search, filterTask, filterDateFrom, filterDateTo]);
+
+  const getTaskProgressByName = (taskName: string) => {
+    const task = tasks.find((t) => t.taskName === taskName);
+    if (!task || !task.estimatedTime) return null;
+    return getTaskProgressInfo(task.estimatedTime, task.totalLoggedMinutes);
+  };
 
   const hasActiveFilters = search || filterTask || filterDateFrom || filterDateTo;
 
@@ -556,18 +579,39 @@ function TimeLogsTable() {
                 >
                   <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">{entry.date}</td>
                   <td className="px-4 py-3 max-w-[160px] truncate">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-default">{entry.taskName || '—'}</span>
-                        </TooltipTrigger>
-                        {entry.taskLink && (
-                          <TooltipContent>
-                            <p className="font-mono text-xs">{entry.taskLink}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
+                    {(() => {
+                      const progress = getTaskProgressByName(entry.taskName || '');
+                      return (
+                        <div className="flex items-center gap-2">
+                          {progress && (
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{
+                                backgroundColor:
+                                  progress.status === 'overtime'
+                                    ? '#ef4444'
+                                    : progress.status === 'warning'
+                                      ? '#f59e0b'
+                                      : '#10b981'
+                              }}
+                              title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
+                            />
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default">{entry.taskName || '—'}</span>
+                              </TooltipTrigger>
+                              {entry.taskLink && (
+                                <TooltipContent>
+                                  <p className="font-mono text-xs">{entry.taskLink}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 max-w-[220px] truncate text-muted-foreground">
                     <TooltipProvider>

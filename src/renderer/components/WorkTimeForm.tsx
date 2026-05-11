@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { useForm, useFieldArray, useWatch, Control, FieldValues } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control, FieldValues, Controller } from 'react-hook-form';
 import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, TimerOff, GripVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import InputTime from './ui/input-time';
 import InputDate from './ui/input-date';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import {
@@ -207,7 +208,9 @@ export default function WorkTimeForm() {
       tasks?.map((task) => ({
         value: String(task.id),
         label: task.taskName,
-        link: task.taskLink
+        link: task.taskLink,
+        estimatedTime: task.estimatedTime ?? 0,
+        totalLoggedMinutes: task.totalLoggedMinutes ?? 0
       })) || []
     );
   }, [tasks]);
@@ -871,13 +874,65 @@ export default function WorkTimeForm() {
                 </div>
                 <div className="w-[200px] space-y-2">
                   <Label htmlFor={`entries.${index}.task`}>{t('workTimeForm.task')}</Label>
-                  <Combobox
+                  <Controller
                     name={`entries.${index}.task`}
                     control={control}
-                    options={options}
-                    placeholder={t('workTimeForm.selectTask')}
-                    searchPlaceholder={t('workTimeForm.searchTasks')}
                     rules={{ required: t('workTimeForm.taskRequired') }}
+                    render={({ field }) => {
+                      const selectedOption = (() => {
+                        const val = field.value;
+                        if (!val) return null;
+                        if (typeof val === 'object' && 'value' in val) {
+                          return (
+                            options.find((o) => String(o.value) === String((val as { value: string }).value)) ?? null
+                          );
+                        }
+                        return null;
+                      })();
+
+                      const selectedTask = selectedOption as {
+                        value: string;
+                        label: string;
+                        estimatedTime?: number;
+                        totalLoggedMinutes?: number;
+                      } | null;
+                      const taskInfo =
+                        selectedTask?.estimatedTime && selectedTask.estimatedTime > 0
+                          ? getTaskProgressInfo(selectedTask.estimatedTime, selectedTask.totalLoggedMinutes)
+                          : null;
+
+                      return (
+                        <div className="space-y-1">
+                          <Combobox
+                            options={options}
+                            placeholder={t('workTimeForm.selectTask')}
+                            searchPlaceholder={t('workTimeForm.searchTasks')}
+                            value={selectedTask}
+                            onChange={field.onChange}
+                            showProgress
+                            className="w-full"
+                          />
+                          {taskInfo && selectedTask?.estimatedTime && selectedTask.estimatedTime > 0 && (
+                            <div
+                              className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                taskInfo.status === 'overtime'
+                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  : taskInfo.status === 'warning'
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              }`}
+                            >
+                              {t('workTimeForm.progressInfo', {
+                                logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
+                                estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
+                                pct: Math.round(taskInfo.pct),
+                                margin: formatMinutesToHHMM(taskInfo.margin)
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
                   />
                   {errors?.entries?.[index]?.task && (
                     <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>

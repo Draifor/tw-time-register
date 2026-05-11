@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Clock, ListTodo, ArrowRight, CalendarDays } from 'lucide-react';
@@ -16,6 +16,8 @@ import {
   DailyTimeInfo
 } from '../services/timesService';
 import { parseDuration, formatDuration } from '../lib/timeUtils';
+import { getTaskProgressInfo, getStatusBarColor } from '../lib/progressUtils';
+import { fetchTasks } from '../services/tasksService';
 
 function HomePage() {
   const { t } = useTranslation();
@@ -28,6 +30,21 @@ function HomePage() {
   const [isMonthLoading, setIsMonthLoading] = useState(true);
   const [weekEntries, setWeekEntries] = useState<TimeEntry[]>([]);
   const [isWeekLoading, setIsWeekLoading] = useState(true);
+  const [tasks, setTasks] = useState<Array<{ id: number; estimatedTime: number | null; totalLoggedMinutes: number }>>(
+    []
+  );
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const data = await fetchTasks();
+        setTasks(data ?? []);
+      } catch {
+        /* silent */
+      }
+    };
+    loadTasks();
+  }, []);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -89,8 +106,16 @@ function HomePage() {
     return `${hours}h ${mins.toString().padStart(2, '0')}m`;
   };
 
+  const getTaskEstimatedTime = useCallback(
+    (taskId: number): number => {
+      const task = tasks.find((t) => t.id === taskId);
+      return task?.estimatedTime ?? 0;
+    },
+    [tasks]
+  );
+
   const taskSummary = useMemo(() => {
-    const map = new Map<number, { taskName: string; totalMins: number; count: number }>();
+    const map = new Map<number, { taskName: string; totalMins: number; count: number; estimated: number }>();
     for (const entry of todayEntries) {
       const key = entry.taskId;
       const name = entry.taskName ?? t('common.noTask');
@@ -101,11 +126,11 @@ function HomePage() {
         existing.totalMins += mins;
         existing.count++;
       } else {
-        map.set(key, { taskName: name, totalMins: mins, count: 1 });
+        map.set(key, { taskName: name, totalMins: mins, count: 1, estimated: getTaskEstimatedTime(key) });
       }
     }
     return Array.from(map.values()).sort((a, b) => b.totalMins - a.totalMins);
-  }, [todayEntries, t]);
+  }, [todayEntries, t, getTaskEstimatedTime]);
 
   const todayDateLabel = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
@@ -192,7 +217,7 @@ function HomePage() {
   }, [weekEntries]);
 
   const weekTaskSummary = useMemo(() => {
-    const map = new Map<number, { taskName: string; totalMins: number; count: number }>();
+    const map = new Map<number, { taskName: string; totalMins: number; count: number; estimated: number }>();
 
     for (const entry of weekEntries) {
       const key = entry.taskId;
@@ -203,14 +228,14 @@ function HomePage() {
 
       if (existing) {
         existing.totalMins += mins;
-        existing.count += 1;
+        existing.count++;
       } else {
-        map.set(key, { taskName: name, totalMins: mins, count: 1 });
+        map.set(key, { taskName: name, totalMins: mins, count: 1, estimated: getTaskEstimatedTime(key) });
       }
     }
 
     return Array.from(map.values()).sort((a, b) => b.totalMins - a.totalMins);
-  }, [weekEntries, t]);
+  }, [weekEntries, t, getTaskEstimatedTime]);
 
   return (
     <div className="space-y-8">
@@ -447,23 +472,66 @@ function HomePage() {
               </div>
 
               <div className="space-y-3">
-                {weekTaskSummary.map((task) => {
-                  const pct =
-                    weekSummary.totalMinutes > 0 ? Math.max(4, (task.totalMins / weekSummary.totalMinutes) * 100) : 0;
+                {weekTaskSummary.map((task, idx) => {
+                  const { status, margin, over } = getTaskProgressInfo(task.estimated, task.totalMins);
+                  const barColor = getStatusBarColor(status);
+                  const progressPct = task.estimated > 0 ? Math.min(100, (task.totalMins / task.estimated) * 100) : 0;
+                  const taskHours = Math.floor(task.totalMins / 60);
+                  const taskMins = task.totalMins % 60;
                   return (
-                    <div key={task.taskName} className="space-y-1">
+                    <div key={idx} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium truncate max-w-[70%]" title={task.taskName}>
-                          {task.taskName}
-                        </span>
-                        <span className="text-muted-foreground shrink-0 ml-2">
-                          {formatDuration(Math.floor(task.totalMins / 60), task.totalMins % 60)}
-                          {task.count > 1 && <span className="ml-1.5 text-xs opacity-60">({task.count})</span>}
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className={`w-2 h-2 rounded-full shrink-0`}
+                            style={{
+                              backgroundColor:
+                                status === 'overtime'
+                                  ? '#ef4444'
+                                  : status === 'warning'
+                                    ? '#f59e0b'
+                                    : status === 'on-time'
+                                      ? '#10b981'
+                                      : '#a1a1aa'
+                            }}
+                          />
+                          <span className="font-medium truncate max-w-[65%]" title={task.taskName}>
+                            {task.taskName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {task.estimated > 0 && (
+                            <span className="text-xs text-muted-foreground" title={t('tasks.colEstimatedTime')}>
+                              {formatDuration(Math.floor(task.estimated / 60), task.estimated % 60)}
+                            </span>
+                          )}
+                          <span className="text-muted-foreground">
+                            {formatDuration(taskHours, taskMins)}
+                            {task.count > 1 && <span className="ml-1.5 text-xs opacity-60">({task.count})</span>}
+                          </span>
+                        </div>
                       </div>
-                      {pct > 0 && (
+                      {progressPct > 0 && (
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div className="h-full rounded-full bg-primary/60" style={{ width: `${pct.toFixed(1)}%` }} />
+                          <div
+                            className={`h-full rounded-full transition-all ${barColor}`}
+                            style={{ width: `${Math.max(4, progressPct).toFixed(1)}%` }}
+                          />
+                        </div>
+                      )}
+                      {task.estimated > 0 && (
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span>{Math.round(progressPct)}%</span>
+                          {status === 'overtime' && over > 0 && (
+                            <span className="text-red-500 font-medium">
+                              +{formatDuration(Math.floor(over / 60), over % 60)}
+                            </span>
+                          )}
+                          {(status === 'on-time' || status === 'warning') && margin > 0 && (
+                            <span>
+                              {t('home.margin')}: {formatDuration(Math.floor(margin / 60), margin % 60)}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -528,27 +596,69 @@ function HomePage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {taskSummary.map((task) => {
+              {taskSummary.map((task, idx) => {
                 const taskHours = Math.floor(task.totalMins / 60);
                 const taskMins = task.totalMins % 60;
-                const pct =
-                  dailyInfo && dailyInfo.maxMinutes > 0
-                    ? Math.min(100, (task.totalMins / dailyInfo.maxMinutes) * 100)
-                    : 0;
+                const { status, margin, over } = getTaskProgressInfo(task.estimated, task.totalMins);
+                const barColor = getStatusBarColor(status);
+                const progressPct = task.estimated > 0 ? Math.min(100, (task.totalMins / task.estimated) * 100) : 0;
                 return (
-                  <div key={task.taskName} className="space-y-1">
+                  <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium truncate max-w-[70%]" title={task.taskName}>
-                        {task.taskName}
-                      </span>
-                      <span className="text-muted-foreground shrink-0 ml-2">
-                        {formatDuration(taskHours, taskMins)}
-                        {task.count > 1 && <span className="ml-1.5 text-xs opacity-60">({task.count})</span>}
-                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className={`w-2 h-2 rounded-full shrink-0 ${barColor.replace('bg-', 'bg-')}`}
+                          style={{
+                            backgroundColor:
+                              status === 'overtime'
+                                ? '#ef4444'
+                                : status === 'warning'
+                                  ? '#f59e0b'
+                                  : status === 'on-time'
+                                    ? '#10b981'
+                                    : '#a1a1aa'
+                          }}
+                        />
+                        <span className="font-medium truncate max-w-[65%]" title={task.taskName}>
+                          {task.taskName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {task.estimated > 0 && (
+                          <span className="text-xs text-muted-foreground" title={t('tasks.colEstimatedTime')}>
+                            {formatDuration(Math.floor(task.estimated / 60), task.estimated % 60)}
+                          </span>
+                        )}
+                        <span className="text-muted-foreground">
+                          {formatDuration(taskHours, taskMins)}
+                          {task.count > 1 && <span className="ml-1.5 text-xs opacity-60">({task.count})</span>}
+                        </span>
+                      </div>
                     </div>
-                    {pct > 0 && (
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-primary/60" style={{ width: `${pct.toFixed(1)}%` }} />
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${barColor}`}
+                        style={{ width: `${Math.max(4, progressPct).toFixed(1)}%` }}
+                      />
+                    </div>
+                    {task.estimated > 0 && (
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>{Math.round(progressPct)}%</span>
+                        {status === 'overtime' && over > 0 && (
+                          <span className="text-red-500 font-medium">
+                            +{formatDuration(Math.floor(over / 60), over % 60)}
+                          </span>
+                        )}
+                        {status === 'warning' && margin > 0 && (
+                          <span>
+                            {t('home.margin')}: {formatDuration(Math.floor(margin / 60), margin % 60)}
+                          </span>
+                        )}
+                        {status === 'on-time' && margin > 0 && (
+                          <span>
+                            {t('home.margin')}: {formatDuration(Math.floor(margin / 60), margin % 60)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

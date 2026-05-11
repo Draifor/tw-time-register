@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart2, CalendarDays, ListTodo, TrendingUp, Clock, CheckCircle2, CircleDot } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import useTimeLogs from '../hooks/useTimeLogs';
 import { Skeleton } from '../components/ui/skeleton';
+import { fetchTasks } from '../services/tasksService';
+import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -61,6 +63,31 @@ function ReportsPage() {
   const { data, isLoading } = useTimeLogs();
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'es' ? 'es-CO' : 'en-US';
+  const [tasks, setTasks] = useState<
+    Array<{ id: number; taskName: string; estimatedTime: number | null; totalLoggedMinutes: number }>
+  >([]);
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const data = await fetchTasks();
+        setTasks(data ?? []);
+      } catch {
+        /* silent */
+      }
+    };
+    loadTasks();
+  }, []);
+
+  const getTaskEstimatedTime = (taskName: string): number => {
+    const task = tasks.find((t) => t.taskName === taskName);
+    return task?.estimatedTime ?? 0;
+  };
+
+  const getTaskLoggedMinutes = (taskName: string): number => {
+    const task = tasks.find((t) => t.taskName === taskName);
+    return task?.totalLoggedMinutes ?? 0;
+  };
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -188,9 +215,7 @@ function ReportsPage() {
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            {taskSearch.trim()
-              ? t('reports.matchingTasks', { count: matchingTaskCount })
-              : t('reports.allTasks')}
+            {taskSearch.trim() ? t('reports.matchingTasks', { count: matchingTaskCount }) : t('reports.allTasks')}
           </p>
         </div>
         {(dateFrom || dateTo || taskSearch) && (
@@ -275,6 +300,12 @@ function ReportsPage() {
                       {t('reports.colTotalHours')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                      {t('reports.colEstimated')}
+                    </th>
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                      {t('reports.colProgress')}
+                    </th>
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colBillable')}
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
@@ -286,19 +317,80 @@ function ReportsPage() {
                   {byTask.map((row) => {
                     const pct = row.entries > 0 ? Math.round((row.sentEntries / row.entries) * 100) : 0;
                     const barWidth = totalMinutes > 0 ? Math.round((row.minutes / totalMinutes) * 100) : 0;
+                    const estimated = getTaskEstimatedTime(row.taskName);
+                    const logged = getTaskLoggedMinutes(row.taskName);
+                    const { status, margin, over } = getTaskProgressInfo(estimated, logged);
                     return (
                       <tr key={row.taskName} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3 max-w-[280px]">
-                          <div className="font-medium truncate" title={row.taskName}>
-                            {row.taskName}
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{
+                                backgroundColor:
+                                  status === 'overtime'
+                                    ? '#ef4444'
+                                    : status === 'warning'
+                                      ? '#f59e0b'
+                                      : status === 'on-time'
+                                        ? '#10b981'
+                                        : '#a1a1aa'
+                              }}
+                            />
+                            <div className="font-medium truncate" title={row.taskName}>
+                              {row.taskName}
+                            </div>
                           </div>
                           {/* mini progress bar */}
                           <div className="mt-1 h-1 w-full rounded-full bg-muted">
-                            <div className="h-1 rounded-full bg-primary/60" style={{ width: `${barWidth}%` }} />
+                            <div
+                              className="h-1 rounded-full"
+                              style={{
+                                width: `${barWidth}%`,
+                                backgroundColor:
+                                  status === 'overtime' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#10b981'
+                              }}
+                            />
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center text-muted-foreground">{row.entries}</td>
                         <td className="px-4 py-3 text-center font-mono font-medium">{formatDuration(row.minutes)}</td>
+                        <td className="px-4 py-3 text-center">
+                          {estimated > 0 ? (
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {formatMinutesToHHMM(estimated)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {estimated > 0 ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs font-mono">
+                                {formatMinutesToHHMM(row.minutes)} / {formatMinutesToHHMM(estimated)}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] ${
+                                  status === 'overtime'
+                                    ? 'text-red-600 border-red-300 dark:text-red-400 dark:border-red-800'
+                                    : status === 'warning'
+                                      ? 'text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700'
+                                      : 'text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-800'
+                                }`}
+                              >
+                                {status === 'overtime'
+                                  ? `+${formatMinutesToHHMM(over)}`
+                                  : status === 'warning'
+                                    ? `${t('reports.margin')} ${formatMinutesToHHMM(margin)}`
+                                    : `${t('reports.onTime')}`}
+                              </Badge>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           {row.billableMinutes > 0 ? (
                             <span className="font-mono text-emerald-600 dark:text-emerald-400">
