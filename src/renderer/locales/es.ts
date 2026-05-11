@@ -20,7 +20,8 @@ const es = {
       noData: 'Sin datos',
       done: 'Listo',
       back: 'Atrás',
-      errorOccurred: 'Ha ocurrido un error'
+      errorOccurred: 'Ha ocurrido un error',
+      backToTop: 'Volver arriba'
     },
     timeLogs: {
       deleteSuccess: 'Entrada "{{name}}" eliminada',

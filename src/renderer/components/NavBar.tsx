@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download } from 'lucide-react';
+import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download, ArrowUp } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
 import { Button } from './ui/button';
@@ -16,6 +16,14 @@ function NavBar() {
   const { t } = useTranslation();
   const { isConfigured, username, domain, isLoading } = useTWSession();
   const { status: updateStatus, version: updateVersion, installUpdate } = useAutoUpdater();
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 300);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navItems = [
     { to: '/', label: t('nav.home'), icon: Home },
@@ -26,7 +34,7 @@ function NavBar() {
   ];
 
   return (
-    <div className="border-b bg-background">
+    <div className="sticky top-14 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-6">
           <h1 className="text-lg font-semibold">TW Time Register</h1>
@@ -128,6 +136,26 @@ function NavBar() {
           )}
         </div>
       </div>
+
+      {showBackToTop && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                className="fixed bottom-2 right-6 h-10 w-10 rounded-full shadow-lg"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                aria-label={t('common.backToTop')}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t('common.backToTop')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </div>
   );
 }

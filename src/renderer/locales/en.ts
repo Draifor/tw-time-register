@@ -20,7 +20,8 @@ const en = {
       noData: 'No data',
       done: 'Done',
       back: 'Back',
-      errorOccurred: 'An error occurred'
+      errorOccurred: 'An error occurred',
+      backToTop: 'Back to top'
     },
     timeLogs: {
       deleteSuccess: 'Entry "{{name}}" deleted',
