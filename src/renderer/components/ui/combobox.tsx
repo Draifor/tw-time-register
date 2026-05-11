@@ -2,10 +2,16 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Controller, Control, RegisterOptions } from 'react-hook-form';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { formatMinutesToHHMM } from '../../lib/progressUtils';
+
+const formatMins = formatMinutesToHHMM;
 
 interface Option {
   value: string;
   label: string;
+  estimatedTime?: number;
+  totalLoggedMinutes?: number;
+  link?: string;
 }
 
 interface ComboboxProps {
@@ -19,6 +25,7 @@ interface ComboboxProps {
   rules?: RegisterOptions;
   className?: string;
   searchPlaceholder?: string;
+  showProgress?: boolean;
 }
 
 interface ComboboxInnerProps {
@@ -28,6 +35,7 @@ interface ComboboxInnerProps {
   onChange?: (option: Option | null) => void;
   className?: string;
   searchPlaceholder?: string;
+  showProgress?: boolean;
 }
 
 function ComboboxInner({
@@ -36,7 +44,8 @@ function ComboboxInner({
   value,
   onChange,
   className,
-  searchPlaceholder = 'Search...'
+  searchPlaceholder = 'Search...',
+  showProgress = false
 }: ComboboxInnerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -163,26 +172,57 @@ function ComboboxInner({
             {filtered.length === 0 ? (
               <li className="px-3 py-2 text-sm text-muted-foreground text-center">No results found.</li>
             ) : (
-              filtered.map((option, i) => (
-                <li
-                  key={option.value}
-                  role="option"
-                  aria-selected={value?.value === option.value}
-                  onMouseDown={(e) => {
-                    e.preventDefault(); // Prevent blur before select
-                    handleSelect(option);
-                  }}
-                  onMouseEnter={() => setHighlightedIndex(i)}
-                  className={cn(
-                    'flex cursor-pointer items-center justify-between px-3 py-1.5 text-sm select-none',
-                    i === highlightedIndex && 'bg-accent text-accent-foreground',
-                    value?.value === option.value && i !== highlightedIndex && 'bg-accent/40'
-                  )}
-                >
-                  <span className="whitespace-normal break-words pr-2">{option.label}</span>
-                  {value?.value === option.value && <Check className="h-3.5 w-3.5 shrink-0 ml-2 text-primary" />}
-                </li>
-              ))
+              filtered.map((option, i) => {
+                const { pct, status, margin } = (() => {
+                  if (showProgress && option.estimatedTime && option.estimatedTime > 0) {
+                    const logged = option.totalLoggedMinutes ?? 0;
+                    const estimated = option.estimatedTime ?? 0;
+                    const p = Math.min(100, (logged / estimated) * 100);
+                    const o = Math.max(0, logged - estimated);
+                    const m = Math.max(0, estimated - logged);
+                    const s = o > 0 ? 'overtime' : p >= 80 ? 'warning' : 'on-time';
+                    return { pct: p, status: s, margin: m };
+                  }
+                  return { pct: 0, status: 'none', margin: 0 };
+                })();
+
+                return (
+                  <li
+                    key={option.value}
+                    role="option"
+                    aria-selected={value?.value === option.value}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSelect(option);
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(i)}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between px-3 py-1.5 text-sm select-none',
+                      i === highlightedIndex && 'bg-accent text-accent-foreground',
+                      value?.value === option.value && i !== highlightedIndex && 'bg-accent/40'
+                    )}
+                    title={
+                      showProgress && option.estimatedTime && option.estimatedTime > 0
+                        ? `Progreso: ${formatMins(option.totalLoggedMinutes ?? 0)} / ${formatMins(option.estimatedTime)} (${Math.round(pct)}%) — Margen: ${formatMins(margin)}`
+                        : undefined
+                    }
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {showProgress && option.estimatedTime && option.estimatedTime > 0 && (
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{
+                            backgroundColor:
+                              status === 'overtime' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#10b981'
+                          }}
+                        />
+                      )}
+                      <span className="whitespace-normal break-words pr-2">{option.label}</span>
+                    </div>
+                    {value?.value === option.value && <Check className="h-3.5 w-3.5 shrink-0 ml-2 text-primary" />}
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>
@@ -200,7 +240,8 @@ function Combobox({
   className,
   searchPlaceholder,
   value,
-  onChange
+  onChange,
+  showProgress
 }: ComboboxProps) {
   if (control && name) {
     return (
@@ -216,6 +257,7 @@ function Combobox({
             onChange={field.onChange}
             className={className}
             searchPlaceholder={searchPlaceholder}
+            showProgress={showProgress}
           />
         )}
       />
@@ -230,6 +272,7 @@ function Combobox({
       onChange={onChange}
       className={className}
       searchPlaceholder={searchPlaceholder}
+      showProgress={showProgress}
     />
   );
 }
