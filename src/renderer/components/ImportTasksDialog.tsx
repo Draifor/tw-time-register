@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTWSubtasks, importTasksFromTW } from '../services/tasksService';
+import { addTask, editTask, fetchTasks, fetchTWSubtasks } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
+import type { Task } from '../../types/tasks';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,13 @@ interface PreviewTask {
   taskName: string;
   taskLink: string;
   found: boolean;
+}
+
+interface ConflictTask {
+  twTaskId: string;
+  existingTask: Task;
+  incomingTask: PreviewTask;
+  hasChanges: boolean;
 }
 
 // ─── Template definitions (mirrors backend) ────────────────────────────────
@@ -45,7 +53,16 @@ const TEMPLATE_SUFFIXES: Record<Template, { pattern: RegExp; suffix: string }[]>
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
-type Step = 'form' | 'preview' | 'done';
+type Step = 'form' | 'preview' | 'resolve' | 'done';
+type ConflictDecision = 'keep' | 'update';
+
+const normalizeLink = (value: string | null | undefined) => (value ?? '').trim();
+
+const extractTwTaskId = (taskLink: string | null | undefined): string | null => {
+  if (!taskLink) return null;
+  const match = taskLink.match(/\/tasks\/(\d+)/);
+  return match ? match[1] : null;
+};
 
 function ImportTasksDialog() {
   const [open, setOpen] = useState(false);
@@ -60,6 +77,10 @@ function ImportTasksDialog() {
   // Preview state
   const [previewTasks, setPreviewTasks] = useState<PreviewTask[]>([]);
   const [rawSubtasks, setRawSubtasks] = useState<{ id: string; content: string; link: string }[]>([]);
+  const [newTasks, setNewTasks] = useState<PreviewTask[]>([]);
+  const [conflicts, setConflicts] = useState<ConflictTask[]>([]);
+  const [alreadyLinkedCount, setAlreadyLinkedCount] = useState(0);
+  const [conflictDecisions, setConflictDecisions] = useState<Record<number, ConflictDecision>>({});
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -79,6 +100,10 @@ function ImportTasksDialog() {
     setTypeName('');
     setPreviewTasks([]);
     setRawSubtasks([]);
+    setNewTasks([]);
+    setConflicts([]);
+    setAlreadyLinkedCount(0);
+    setConflictDecisions({});
   }
 
   function handleOpenChange(isOpen: boolean) {
@@ -122,7 +147,62 @@ function ImportTasksDialog() {
         };
       });
 
+      const existingTasks: Task[] = await fetchTasks();
+      const existingByTwId = new Map<string, Task[]>();
+      existingTasks.forEach((task) => {
+        const twTaskId = extractTwTaskId(task.taskLink);
+        if (!twTaskId) return;
+        if (!existingByTwId.has(twTaskId)) existingByTwId.set(twTaskId, []);
+        existingByTwId.get(twTaskId)!.push(task);
+      });
+
+      const conflictsFound: ConflictTask[] = [];
+      const newTasksFound: PreviewTask[] = [];
+      let existingExactMatches = 0;
+      let duplicatesDetected = 0;
+
+      tasks.forEach((task) => {
+        if (!task.found) return;
+        const twTaskId = extractTwTaskId(task.taskLink);
+        if (!twTaskId) {
+          newTasksFound.push(task);
+          return;
+        }
+
+        const matches = existingByTwId.get(twTaskId);
+        if (!matches || matches.length === 0) {
+          newTasksFound.push(task);
+          return;
+        }
+
+        if (matches.length > 1) duplicatesDetected += matches.length - 1;
+        const existingTask = matches[0];
+        const hasChanges =
+          existingTask.taskName !== task.taskName ||
+          normalizeLink(existingTask.taskLink) !== normalizeLink(task.taskLink) ||
+          existingTask.typeName !== typeName;
+
+        if (hasChanges) {
+          conflictsFound.push({ twTaskId, existingTask, incomingTask: task, hasChanges });
+        } else {
+          existingExactMatches += 1;
+        }
+      });
+
+      if (duplicatesDetected > 0) {
+        toast.warning(t('tasks.importTW.duplicateLinksWarning', { count: duplicatesDetected }));
+      }
+
+      const decisions = conflictsFound.reduce<Record<number, ConflictDecision>>((acc, conflict) => {
+        if (conflict.existingTask.id !== undefined) acc[conflict.existingTask.id] = 'keep';
+        return acc;
+      }, {});
+
       setPreviewTasks(tasks);
+      setNewTasks(newTasksFound);
+      setConflicts(conflictsFound);
+      setAlreadyLinkedCount(existingExactMatches);
+      setConflictDecisions(decisions);
       setStep('preview');
     } catch (err) {
       toast.error(t('tasks.importTW.fetchError'), { description: String(err) });
@@ -134,29 +214,58 @@ function ImportTasksDialog() {
   async function handleImport() {
     setImporting(true);
     try {
-      const result = await importTasksFromTW({
-        parentTaskLink: parentLink.trim(),
-        prefix: prefix.trim(),
-        template,
-        typeName
-      });
+      let createdCount = 0;
+      let updatedCount = 0;
+      const errors: string[] = [];
 
-      if (!result.success) {
-        toast.error(t('tasks.importTW.importFailed'), { description: result.message });
-        return;
+      for (const task of newTasks) {
+        if (!task.found) continue;
+        try {
+          await addTask({ typeName, taskName: task.taskName, taskLink: task.taskLink, description: '' });
+          createdCount += 1;
+        } catch (err) {
+          errors.push(String(err));
+        }
+      }
+
+      for (const conflict of conflicts) {
+        const existingId = conflict.existingTask.id;
+        if (existingId === undefined) continue;
+        const decision = conflictDecisions[existingId] ?? 'keep';
+        if (decision !== 'update') continue;
+        try {
+          await editTask({
+            id: existingId,
+            typeName,
+            taskName: conflict.incomingTask.taskName,
+            taskLink: conflict.incomingTask.taskLink,
+            description: conflict.existingTask.description || ''
+          });
+          updatedCount += 1;
+        } catch (err) {
+          errors.push(String(err));
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
-      const importedCount = result.imported?.length ?? 0;
-      const notFoundCount = result.notFound?.length ?? 0;
+      const skippedCount = alreadyLinkedCount + (conflicts.length - updatedCount);
+      const totalChanged = createdCount + updatedCount;
 
-      if (notFoundCount > 0) {
-        toast.warning(t('tasks.importTW.importedCount', { count: importedCount }), {
-          description: t('tasks.importTW.notFoundDesc', { names: result.notFound?.join(', ') })
-        });
+      if (totalChanged === 0) {
+        toast.info(t('tasks.importTW.noChanges'));
       } else {
-        toast.success(t('tasks.importTW.importSuccessCount', { count: importedCount }));
+        toast.success(t('tasks.importTW.importApplied'), {
+          description: t('tasks.importTW.importAppliedDesc', {
+            created: createdCount,
+            updated: updatedCount,
+            skipped: skippedCount
+          })
+        });
+      }
+
+      if (errors.length > 0) {
+        toast.error(t('tasks.importTW.applyError', { count: errors.length }));
       }
 
       setStep('done');
@@ -167,7 +276,12 @@ function ImportTasksDialog() {
     }
   }
 
+  const conflictsToResolve = useMemo(() => conflicts.filter((conflict) => conflict.hasChanges), [conflicts]);
   const foundCount = previewTasks.filter((t) => t.found).length;
+  const importActionLabel = useMemo(() => {
+    if (conflictsToResolve.length > 0) return t('tasks.importTW.reviewDuplicatesBtn');
+    return t('tasks.importTW.importBtn', { count: foundCount });
+  }, [conflictsToResolve.length, foundCount, t]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -272,6 +386,18 @@ function ImportTasksDialog() {
               {t('tasks.importTW.foundOf', { found: foundCount, total: previewTasks.length })}
             </p>
 
+            {alreadyLinkedCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t('tasks.importTW.alreadyLinkedCount', { count: alreadyLinkedCount })}
+              </p>
+            )}
+
+            {conflictsToResolve.length > 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                {t('tasks.importTW.duplicatesFound', { count: conflictsToResolve.length })}
+              </div>
+            )}
+
             <ul className="divide-y divide-border rounded-md border overflow-hidden">
               {previewTasks.map((task, i) => (
                 <li key={i} className="flex items-start gap-3 px-3 py-2.5 text-sm">
@@ -327,14 +453,130 @@ function ImportTasksDialog() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 {t('tasks.importTW.backBtn')}
               </Button>
-              <Button onClick={handleImport} disabled={importing || foundCount === 0}>
+              <Button
+                onClick={() => (conflictsToResolve.length > 0 ? setStep('resolve') : handleImport())}
+                disabled={importing || foundCount === 0}
+              >
                 {importing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     {t('tasks.importTW.importingBtn')}
                   </>
                 ) : (
-                  t('tasks.importTW.importBtn', { count: foundCount })
+                  importActionLabel
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: Resolve duplicates ───────────────────── */}
+        {step === 'resolve' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium">{t('tasks.importTW.resolveTitle')}</p>
+              <p className="text-xs text-muted-foreground">{t('tasks.importTW.resolveSubtitle')}</p>
+            </div>
+
+            <ul className="space-y-3">
+              {conflictsToResolve.map((conflict) => {
+                const existing = conflict.existingTask;
+                const incoming = conflict.incomingTask;
+                const diffs = [
+                  existing.taskName !== incoming.taskName
+                    ? {
+                        label: t('tasks.importTW.fieldName'),
+                        current: existing.taskName,
+                        next: incoming.taskName
+                      }
+                    : null,
+                  normalizeLink(existing.taskLink) !== normalizeLink(incoming.taskLink)
+                    ? {
+                        label: t('tasks.importTW.fieldLink'),
+                        current: normalizeLink(existing.taskLink),
+                        next: normalizeLink(incoming.taskLink)
+                      }
+                    : null,
+                  existing.typeName !== typeName
+                    ? {
+                        label: t('tasks.importTW.fieldType'),
+                        current: existing.typeName,
+                        next: typeName
+                      }
+                    : null
+                ].filter(Boolean) as { label: string; current: string; next: string }[];
+
+                const decision = conflictDecisions[existing.id ?? -1] ?? 'keep';
+
+                return (
+                  <li key={`${existing.id}-${conflict.twTaskId}`} className="rounded-md border p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{incoming.taskName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{existing.taskName}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={decision === 'keep' ? 'default' : 'outline'}
+                          onClick={() =>
+                            existing.id !== undefined &&
+                            setConflictDecisions((prev) => ({ ...prev, [existing.id!]: 'keep' }))
+                          }
+                        >
+                          {t('tasks.importTW.keepExisting')}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={decision === 'update' ? 'default' : 'outline'}
+                          onClick={() =>
+                            existing.id !== undefined &&
+                            setConflictDecisions((prev) => ({ ...prev, [existing.id!]: 'update' }))
+                          }
+                        >
+                          {t('tasks.importTW.updateExisting')}
+                        </Button>
+                      </div>
+                    </div>
+                    {diffs.length > 0 && (
+                      <div className="mt-3 space-y-2 text-xs">
+                        {diffs.map((diff) => (
+                          <div key={diff.label} className="rounded-md bg-muted/50 px-2 py-1">
+                            <p className="font-medium text-muted-foreground">{diff.label}</p>
+                            <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                              <div>
+                                <p className="text-[11px] text-muted-foreground">{t('tasks.importTW.currentLabel')}</p>
+                                <p className="truncate">{diff.current}</p>
+                              </div>
+                              <div>
+                                <p className="text-[11px] text-muted-foreground">{t('tasks.importTW.newLabel')}</p>
+                                <p className="truncate">{diff.next}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" size="sm" onClick={() => setStep('preview')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                {t('tasks.importTW.backBtn')}
+              </Button>
+              <Button onClick={handleImport} disabled={importing}>
+                {importing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t('tasks.importTW.importingBtn')}
+                  </>
+                ) : (
+                  t('tasks.importTW.applyImportBtn')
                 )}
               </Button>
             </div>
