@@ -165,7 +165,14 @@ const en = {
       monthEntriesCount: '{{count}} entries',
       monthTotal: 'Month total: {{total}}',
       monthDailyChart: 'Hours logged per day',
-      monthNoDailyData: 'No daily data to display.'
+      monthNoDailyData: 'No daily data to display.',
+      weeklyReport: 'Weekly Report',
+      weeklyReportDesc: 'Summary of time logged in the last 7 days',
+      weekPeriod: 'Last 7 days',
+      weekNoEntries: 'No entries for the last week.',
+      weekEntriesCount: '{{count}} entries',
+      weekSentEntries: '{{count}} sent to TW',
+      weekTotal: 'Week total: {{total}}'
     },
     reports: {
       title: 'Reports',

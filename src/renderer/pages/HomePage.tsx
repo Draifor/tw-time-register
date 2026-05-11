@@ -26,12 +26,17 @@ function HomePage() {
   const [isDailyLoading, setIsDailyLoading] = useState(true);
   const [monthEntries, setMonthEntries] = useState<TimeEntry[]>([]);
   const [isMonthLoading, setIsMonthLoading] = useState(true);
+  const [weekEntries, setWeekEntries] = useState<TimeEntry[]>([]);
+  const [isWeekLoading, setIsWeekLoading] = useState(true);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - 6);
+    const weekStartKey = weekStart.toISOString().split('T')[0];
 
     const loadStats = async () => {
       try {
@@ -63,11 +68,14 @@ function HomePage() {
           const d = new Date(`${entry.date}T00:00:00`);
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
+        const currentWeekEntries = entries.filter((entry) => entry.date >= weekStartKey && entry.date <= today);
         setMonthEntries(currentMonthEntries);
+        setWeekEntries(currentWeekEntries);
       } catch {
         // silent
       } finally {
         setIsMonthLoading(false);
+        setIsWeekLoading(false);
       }
     };
 
@@ -160,6 +168,49 @@ function HomePage() {
     const maxMinutes = rows.reduce((acc, row) => Math.max(acc, row.totalMinutes), 0);
     return { rows, maxMinutes };
   }, [monthEntries]);
+
+  const weekSummary = useMemo(() => {
+    const result = {
+      totalMinutes: 0,
+      entries: 0,
+      sentMinutes: 0,
+      sentCount: 0
+    };
+
+    for (const entry of weekEntries) {
+      const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
+      const mins = hours * 60 + minutes;
+      result.totalMinutes += mins;
+      result.entries += 1;
+      if (entry.isSent) {
+        result.sentMinutes += mins;
+        result.sentCount += 1;
+      }
+    }
+
+    return result;
+  }, [weekEntries]);
+
+  const weekTaskSummary = useMemo(() => {
+    const map = new Map<number, { taskName: string; totalMins: number; count: number }>();
+
+    for (const entry of weekEntries) {
+      const key = entry.taskId;
+      const name = entry.taskName ?? t('common.noTask');
+      const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
+      const mins = hours * 60 + minutes;
+      const existing = map.get(key);
+
+      if (existing) {
+        existing.totalMins += mins;
+        existing.count += 1;
+      } else {
+        map.set(key, { taskName: name, totalMins: mins, count: 1 });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.totalMins - a.totalMins);
+  }, [weekEntries, t]);
 
   return (
     <div className="space-y-8">
@@ -344,6 +395,80 @@ function HomePage() {
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('home.weeklyReport')}</CardTitle>
+          <CardDescription>{t('home.weeklyReportDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isWeekLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ) : weekEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('home.weekNoEntries')}</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('home.weekPeriod')}</p>
+                    <p className="mt-1 text-2xl font-semibold">{formatTime(weekSummary.totalMinutes)}</p>
+                  </div>
+                  <div className="text-right text-sm text-muted-foreground">
+                    <p>{t('home.weekEntriesCount', { count: weekSummary.entries })}</p>
+                    <p>{t('home.weekSentEntries', { count: weekSummary.sentCount })}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden flex">
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{
+                      width: `${weekSummary.totalMinutes > 0 ? Math.round((weekSummary.sentMinutes / weekSummary.totalMinutes) * 100) : 0}%`
+                    }}
+                  />
+                  <div
+                    className="h-full bg-amber-500"
+                    style={{
+                      width: `${weekSummary.totalMinutes > 0 ? Math.round(((weekSummary.totalMinutes - weekSummary.sentMinutes) / weekSummary.totalMinutes) * 100) : 0}%`
+                    }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t('home.weekTotal', { total: formatTime(weekSummary.totalMinutes) })}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {weekTaskSummary.map((task) => {
+                  const pct =
+                    weekSummary.totalMinutes > 0 ? Math.max(4, (task.totalMins / weekSummary.totalMinutes) * 100) : 0;
+                  return (
+                    <div key={task.taskName} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium truncate max-w-[70%]" title={task.taskName}>
+                          {task.taskName}
+                        </span>
+                        <span className="text-muted-foreground shrink-0 ml-2">
+                          {formatDuration(Math.floor(task.totalMins / 60), task.totalMins % 60)}
+                          {task.count > 1 && <span className="ml-1.5 text-xs opacity-60">({task.count})</span>}
+                        </span>
+                      </div>
+                      {pct > 0 && (
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-primary/60" style={{ width: `${pct.toFixed(1)}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
