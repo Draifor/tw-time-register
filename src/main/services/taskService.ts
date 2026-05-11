@@ -45,8 +45,9 @@ export async function getTasks(search?: string): Promise<Task[]> {
     const term = `%${search.trim()}%`;
     query += ` WHERE (${columnsDB.TABLE_NAME}.${columnsDB.TASK_NAME} LIKE ?
       OR ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME} LIKE ?
-      OR ${columnsDB.TABLE_NAME}.${columnsDB.DESCRIPTION} LIKE ?)`;
-    params.push(term, term, term);
+      OR ${columnsDB.TABLE_NAME}.${columnsDB.DESCRIPTION} LIKE ?
+      OR ${columnsDB.TABLE_NAME}.${columnsDB.TASK_LINK} LIKE ?)`;
+    params.push(term, term, term, term);
   }
 
   query += ` ORDER BY ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME} ASC,
