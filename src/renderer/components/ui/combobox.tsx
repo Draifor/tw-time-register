@@ -59,13 +59,14 @@ function ComboboxInner({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Focus search input when opened
+  // Focus search input and align highlight to current selection when opened
   useEffect(() => {
-    if (open) {
-      setHighlightedIndex(0);
-      setTimeout(() => searchRef.current?.focus(), 0);
-    }
-  }, [open]);
+    if (!open) return;
+    setSearch('');
+    const selectedIndex = value ? options.findIndex((opt) => opt.value === value.value) : -1;
+    setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    setTimeout(() => searchRef.current?.focus(), 0);
+  }, [open, options, value]);
 
   // Scroll highlighted item into view
   useEffect(() => {
