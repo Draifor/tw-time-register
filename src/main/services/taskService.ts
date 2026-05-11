@@ -3,7 +3,7 @@ import { Task, TaskDB, columnsDB } from '../../types/tasks';
 import { columnsDB as typeTasksDBColumns } from '../../types/typeTasks';
 
 // Function to add a task
-export async function addTask({ typeName, taskName, taskLink, description }: Task): Promise<void> {
+export async function addTask({ typeName, taskName, taskLink, description, estimatedTime }: Task): Promise<void> {
   const db = await openDB();
 
   const type = await db.get(
@@ -20,9 +20,10 @@ export async function addTask({ typeName, taskName, taskLink, description }: Tas
       (${columnsDB.TYPE_ID},
        ${columnsDB.TASK_NAME},
        ${columnsDB.TASK_LINK},
-       ${columnsDB.DESCRIPTION})
-  VALUES (?, ?, ?, ?)`;
-  await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description]);
+       ${columnsDB.DESCRIPTION},
+       ${columnsDB.ESTIMATED_TIME})
+  VALUES (?, ?, ?, ?, ?)`;
+  await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description, estimatedTime ?? null]);
 }
 
 // Function to get all tasks, optionally filtered by a search term
@@ -35,11 +36,14 @@ export async function getTasks(search?: string): Promise<Task[]> {
       ${columnsDB.TABLE_NAME}.${columnsDB.TASK_NAME},
       ${columnsDB.TABLE_NAME}.${columnsDB.TASK_LINK},
       ${columnsDB.TABLE_NAME}.${columnsDB.DESCRIPTION},
-      ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME}
+      ${columnsDB.TABLE_NAME}.${columnsDB.ESTIMATED_TIME},
+      ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME},
+      COALESCE(SUM((julianday(te.hora_fin) - julianday(te.hora_inicio)) * 24 * 60), 0) AS total_logged_minutes
     FROM
       ${columnsDB.TABLE_NAME}
     LEFT JOIN
-      ${typeTasksDBColumns.TABLE_NAME} ON ${columnsDB.TABLE_NAME}.${columnsDB.TYPE_ID} = ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.ID}`;
+      ${typeTasksDBColumns.TABLE_NAME} ON ${columnsDB.TABLE_NAME}.${columnsDB.TYPE_ID} = ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.ID}
+    LEFT JOIN time_entries te ON ${columnsDB.TABLE_NAME}.${columnsDB.ID} = te.task_id`;
 
   if (search?.trim()) {
     const term = `%${search.trim()}%`;
@@ -50,17 +54,20 @@ export async function getTasks(search?: string): Promise<Task[]> {
     params.push(term, term, term, term);
   }
 
+  query += ` GROUP BY ${columnsDB.TABLE_NAME}.${columnsDB.ID}`;
   query += ` ORDER BY ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME} ASC,
       ${columnsDB.TABLE_NAME}.${columnsDB.TASK_NAME} ASC`;
 
-  const response: TaskDB[] = await db.all(query, params);
+  const response: (TaskDB & { total_logged_minutes?: number })[] = await db.all(query, params);
 
   return response.map((task) => ({
     id: task.task_id,
     typeName: task.type_name ?? '',
     taskName: task.task_name,
     taskLink: task.task_link,
-    description: task.description
+    description: task.description,
+    estimatedTime: task.estimated_time,
+    totalLoggedMinutes: task.total_logged_minutes ?? 0
   }));
 }
 
@@ -83,7 +90,14 @@ export async function getTaskById(id: number): Promise<Task> {
 }
 
 // Function to update a task
-export async function updateTask({ id, typeName, taskName, taskLink, description }: Task): Promise<void> {
+export async function updateTask({
+  id,
+  typeName,
+  taskName,
+  taskLink,
+  description,
+  estimatedTime
+}: Task): Promise<void> {
   const db = await openDB();
 
   const type = await db.get<Record<string, unknown>>(
@@ -98,10 +112,11 @@ export async function updateTask({ id, typeName, taskName, taskLink, description
     ${columnsDB.TYPE_ID} = ?,
     ${columnsDB.TASK_NAME} = ?,
     ${columnsDB.TASK_LINK} = ?,
-    ${columnsDB.DESCRIPTION} = ?
+    ${columnsDB.DESCRIPTION} = ?,
+    ${columnsDB.ESTIMATED_TIME} = ?
   WHERE
     ${columnsDB.ID} = ?`;
-  await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description, id]);
+  await db.run(query, [type[typeTasksDBColumns.ID], taskName, taskLink, description, estimatedTime ?? null, id]);
 }
 
 // Function to delete a task
@@ -238,8 +253,8 @@ export async function importTasksFromCSV(rows: CSVTaskRow[]): Promise<ImportCSVR
 
     try {
       await db.run(
-        `INSERT INTO ${columnsDB.TABLE_NAME} (${columnsDB.TYPE_ID}, ${columnsDB.TASK_NAME}, ${columnsDB.TASK_LINK}, ${columnsDB.DESCRIPTION}) VALUES (?, ?, ?, ?)`,
-        [typeId, taskName, taskLink, '']
+        `INSERT INTO ${columnsDB.TABLE_NAME} (${columnsDB.TYPE_ID}, ${columnsDB.TASK_NAME}, ${columnsDB.TASK_LINK}, ${columnsDB.DESCRIPTION}, ${columnsDB.ESTIMATED_TIME}) VALUES (?, ?, ?, ?, ?)`,
+        [typeId, taskName, taskLink, '', null]
       );
       result.created++;
     } catch (err) {
