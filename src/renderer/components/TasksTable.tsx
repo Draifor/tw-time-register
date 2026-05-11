@@ -36,6 +36,7 @@ function TasksTable() {
   const [typeName, setTypeName] = useState('');
   const [taskLink, setTaskLink] = useState('');
   const [description, setDescription] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState('');
   const [nameError, setNameError] = useState(false);
   const [typeError, setTypeError] = useState(false);
 
@@ -49,6 +50,7 @@ function TasksTable() {
     setTypeName('');
     setTaskLink('');
     setDescription('');
+    setEstimatedTime('');
     setNameError(false);
     setTypeError(false);
   }
@@ -77,7 +79,13 @@ function TasksTable() {
       taskName: taskName.trim(),
       typeName,
       taskLink: taskLink.trim(),
-      description: description.trim()
+      description: description.trim(),
+      estimatedTime: estimatedTime.trim()
+        ? (() => {
+            const [h, m] = estimatedTime.trim().split(':').map(Number);
+            return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+          })()
+        : null
     });
   }
 
@@ -136,7 +144,7 @@ function TasksTable() {
       {open && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4 pb-4" onKeyDown={handleKeyDown}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {/* Task name */}
               <div className="space-y-1">
                 <Label htmlFor="new-task-name" className="text-xs">
@@ -191,6 +199,20 @@ function TasksTable() {
                   value={taskLink}
                   onChange={(e) => setTaskLink(e.target.value)}
                 />
+              </div>
+
+              {/* Estimated time */}
+              <div className="space-y-1">
+                <Label htmlFor="new-task-estimated" className="text-xs">
+                  {t('tasks.form.estimatedTimeLabel')}
+                </Label>
+                <Input
+                  id="new-task-estimated"
+                  placeholder={t('tasks.form.estimatedTimePlaceholder')}
+                  value={estimatedTime}
+                  onChange={(e) => setEstimatedTime(e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">{t('tasks.form.estimatedTimeHint')}</p>
               </div>
 
               {/* Description */}
