@@ -69,6 +69,10 @@ const addDaysToISO = (isoDate: string, days: number): string => {
   return getLocalISODate(d);
 };
 
+const isSameWorkDay = (leftDate?: string, rightDate?: string): boolean => {
+  return Boolean(leftDate && rightDate && leftDate === rightDate);
+};
+
 const hydrateEntryDates = (
   entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }
 ): WorkTimeEntry => ({
@@ -451,7 +455,8 @@ export default function WorkTimeForm() {
       if (entry.afterLunch !== prevEntry.afterLunch && entry.startTime?.[0]) {
         // Prefer basing this entry's start on the previous entry's endTime.
         // If there's no previous entry, fall back to shifting current start by +60/-60.
-        const prevEnd = result[index - 1]?.endTime?.[0];
+        const prevEntrySameDay = isSameWorkDay(result[index - 1]?.date, entry.date);
+        const prevEnd = prevEntrySameDay ? result[index - 1]?.endTime?.[0] : undefined;
 
         let newStart: Date;
         if (prevEnd) {
@@ -476,7 +481,11 @@ export default function WorkTimeForm() {
         };
 
         // Cascade to next entry: align its start with this new endTime (+respect afterLunch flag on next)
-        if (result[index + 1] !== undefined && !result[index + 1].manualStartTime) {
+        if (
+          result[index + 1] !== undefined &&
+          isSameWorkDay(entry.date, result[index + 1].date) &&
+          !result[index + 1].manualStartTime
+        ) {
           const nextAfterLunch = result[index + 1].afterLunch ?? false;
           if (nextAfterLunch) {
             const shifted = buildEpochTime(getMinutesFromDate(newEndTime[0]) + 60);
@@ -508,7 +517,11 @@ export default function WorkTimeForm() {
         // We intentionally do NOT update previousValues[index+1].startTime here,
         // so the next render detects it as a change and recalculates endTime[index+1]
         // (which in turn cascades to index+2, etc.).
-        if (result[index + 1] !== undefined && !result[index + 1].manualStartTime) {
+        if (
+          result[index + 1] !== undefined &&
+          isSameWorkDay(entry.date, result[index + 1].date) &&
+          !result[index + 1].manualStartTime
+        ) {
           const nextAfterLunch = result[index + 1].afterLunch ?? false;
           if (nextAfterLunch) {
             const shifted = buildEpochTime(getMinutesFromDate(newEndTime[0]) + 60);
