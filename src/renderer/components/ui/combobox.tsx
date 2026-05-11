@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Controller, Control, RegisterOptions } from 'react-hook-form';
 import { ChevronDown, Check, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 interface Option {
   value: string;
