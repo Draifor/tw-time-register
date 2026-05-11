@@ -64,15 +64,33 @@ function ReportsPage() {
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [taskSearch, setTaskSearch] = useState('');
 
-  // Apply date range filter
+  const taskOptions = useMemo(() => {
+    const uniqueNames = new Set<string>();
+    for (const entry of data) {
+      uniqueNames.add(entry.taskName || t('common.noTask'));
+    }
+    return [...uniqueNames].sort((a, b) => a.localeCompare(b));
+  }, [data, t]);
+
+  const matchingTaskCount = useMemo(() => {
+    const query = taskSearch.trim().toLowerCase();
+    if (!query) return taskOptions.length;
+    return taskOptions.filter((taskName) => taskName.toLowerCase().includes(query)).length;
+  }, [taskOptions, taskSearch]);
+
+  // Apply date range and task filters
   const filtered = useMemo(() => {
+    const taskQuery = taskSearch.trim().toLowerCase();
     return data.filter((e) => {
       if (dateFrom && e.date < dateFrom) return false;
       if (dateTo && e.date > dateTo) return false;
+      const taskName = e.taskName || t('common.noTask');
+      if (taskQuery && !taskName.toLowerCase().includes(taskQuery)) return false;
       return true;
     });
-  }, [data, dateFrom, dateTo]);
+  }, [data, dateFrom, dateTo, taskSearch, t]);
 
   // ── aggregations ──────────────────────────────────────────────────────────
 
@@ -158,11 +176,29 @@ function ReportsPage() {
             className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
-        {(dateFrom || dateTo) && (
+        <div className="space-y-1 min-w-[240px] flex-1">
+          <label className="text-xs font-medium text-muted-foreground">{t('reports.tasks')}</label>
+          <div className="relative">
+            <input
+              type="text"
+              value={taskSearch}
+              onChange={(e) => setTaskSearch(e.target.value)}
+              placeholder={t('reports.taskSearchPlaceholder')}
+              className="h-8 w-full rounded-md border border-input bg-background text-foreground px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {taskSearch.trim()
+              ? t('reports.matchingTasks', { count: matchingTaskCount })
+              : t('reports.allTasks')}
+          </p>
+        </div>
+        {(dateFrom || dateTo || taskSearch) && (
           <button
             onClick={() => {
               setDateFrom('');
               setDateTo('');
+              setTaskSearch('');
             }}
             className="h-8 px-3 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
