@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     task_name TEXT NOT NULL,
     task_link TEXT,
     description TEXT,
+    estimated_time INTEGER,
     FOREIGN KEY (type_id) REFERENCES type_tasks(type_id) ON DELETE CASCADE
 );
 

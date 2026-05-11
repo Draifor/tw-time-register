@@ -80,6 +80,13 @@ async function openDb(): Promise<DatabaseWrapper> {
     const schemaPath = path.join(app.getAppPath(), 'database', 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     await db.exec(schema);
+
+    // ─── Migrations ──────────────────────────────────────────────────
+    try {
+      await db.exec('ALTER TABLE tasks ADD COLUMN estimated_time INTEGER;');
+    } catch {
+      // Column already exists — ignore
+    }
   }
   return db;
 }
