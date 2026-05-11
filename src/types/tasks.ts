@@ -8,6 +8,7 @@ export interface TaskDB {
   task_name: string;
   task_link: string;
   description: string;
+  estimated_time: number | null;
 }
 
 export interface Task {
@@ -16,6 +17,8 @@ export interface Task {
   taskName: string;
   taskLink: string;
   description: string;
+  estimatedTime?: number | null;
+  totalLoggedMinutes?: number;
 }
 
 export const columnsDB = {
@@ -25,7 +28,8 @@ export const columnsDB = {
   TASK_LINK: 'task_link',
   TASK_NAME: 'task_name',
   TYPE_ID: 'type_id',
-  TYPE_NAME: typeTasksDBColumns.TYPE_NAME
+  TYPE_NAME: typeTasksDBColumns.TYPE_NAME,
+  ESTIMATED_TIME: 'estimated_time'
 };
 
 export const columns: Column[] = [
