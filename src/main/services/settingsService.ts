@@ -33,11 +33,11 @@ export async function getWorkSettings(): Promise<WorkSettings> {
 
   return {
     defaultStartTime: settings['default_start_time'] || '09:00',
-    maxHoursMonday: parseInt(settings['max_hours_monday'] || '9', 10),
-    maxHoursTuesday: parseInt(settings['max_hours_tuesday'] || '9', 10),
-    maxHoursWednesday: parseInt(settings['max_hours_wednesday'] || '9', 10),
-    maxHoursThursday: parseInt(settings['max_hours_thursday'] || '9', 10),
-    maxHoursFriday: parseInt(settings['max_hours_friday'] || '8', 10),
+    maxHoursMonday: parseFloat(settings['max_hours_monday'] || '9'),
+    maxHoursTuesday: parseFloat(settings['max_hours_tuesday'] || '9'),
+    maxHoursWednesday: parseFloat(settings['max_hours_wednesday'] || '9'),
+    maxHoursThursday: parseFloat(settings['max_hours_thursday'] || '9'),
+    maxHoursFriday: parseFloat(settings['max_hours_friday'] || '8'),
     workDays: (settings['work_days'] || '1,2,3,4,5').split(',').map((d) => parseInt(d, 10))
   };
 }

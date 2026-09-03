@@ -579,6 +579,7 @@ export default function SettingsPage() {
                             id={fieldName}
                             min={0}
                             max={24}
+                            step={0.1}
                             value={typeof field.value === 'number' ? field.value : 0}
                             onChange={(e) => field.onChange(Number(e.target.value))}
                             onBlur={field.onBlur}
