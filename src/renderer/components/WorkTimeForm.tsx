@@ -257,6 +257,59 @@ export default function WorkTimeForm() {
   // ── Drag & drop state ─────────────────────────────────────────────────────
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const autoScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dragClientYRef = useRef<number>(0);
+
+  const startAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+
+    const EDGE_THRESHOLD = 80;
+    const MAX_SCROLL_SPEED = 8;
+
+    const getScrollSpeed = (distance: number): number => {
+      const ratio = 1 - distance / EDGE_THRESHOLD;
+      return Math.ceil(ratio * MAX_SCROLL_SPEED);
+    };
+
+    const tick = () => {
+      const viewportHeight = window.innerHeight;
+      const clientY = dragClientYRef.current;
+      const distanceToTop = clientY;
+      const distanceToBottom = viewportHeight - clientY;
+
+      if (distanceToTop < EDGE_THRESHOLD && distanceToTop >= 0) {
+        window.scrollBy({ top: -getScrollSpeed(distanceToTop), behavior: 'auto' });
+      } else if (distanceToBottom < EDGE_THRESHOLD && distanceToBottom >= 0) {
+        window.scrollBy({ top: getScrollSpeed(distanceToBottom), behavior: 'auto' });
+      }
+    };
+
+    autoScrollIntervalRef.current = setInterval(tick, 16);
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+  }, []);
+
+  // Global dragover listener to track mouse position even when not over a Card
+  useEffect(() => {
+    if (draggedIndex === null) return;
+
+    const onDragOver = (e: DragEvent) => {
+      dragClientYRef.current = e.clientY;
+    };
+
+    document.addEventListener('dragover', onDragOver);
+    return () => {
+      document.removeEventListener('dragover', onDragOver);
+    };
+  }, [draggedIndex]);
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -265,7 +318,9 @@ export default function WorkTimeForm() {
     const ghost = new Image();
     ghost.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     e.dataTransfer.setDragImage(ghost, 0, 0);
+    dragClientYRef.current = e.clientY;
     setDraggedIndex(index);
+    startAutoScroll();
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
@@ -278,6 +333,7 @@ export default function WorkTimeForm() {
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
+    stopAutoScroll();
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
       setDragOverIndex(null);
@@ -314,6 +370,7 @@ export default function WorkTimeForm() {
   };
 
   const handleDragEnd = () => {
+    stopAutoScroll();
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
