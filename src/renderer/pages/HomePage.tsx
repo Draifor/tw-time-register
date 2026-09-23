@@ -343,8 +343,8 @@ function HomePage() {
           ) : (
             <div className="space-y-4">
               <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
-                <div className="h-full bg-emerald-500" style={{ width: `${sentPct.toFixed(1)}%` }} />
-                <div className="h-full bg-amber-500" style={{ width: `${localPct.toFixed(1)}%` }} />
+                <div className="h-full bg-emerald-500" style={{ width: `${Math.round(sentPct)}%` }} />
+                <div className="h-full bg-amber-500" style={{ width: `${Math.round(localPct)}%` }} />
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
@@ -407,9 +407,12 @@ function HomePage() {
                             {dayLabel} · {weekDayLabel}
                           </span>
                           <div className="h-2 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full flex" style={{ width: `${totalPct.toFixed(1)}%` }}>
-                              <div className="h-full bg-emerald-500" style={{ width: `${sentPctInBar.toFixed(1)}%` }} />
-                              <div className="h-full bg-amber-500" style={{ width: `${localPctInBar.toFixed(1)}%` }} />
+                            <div className="h-full flex" style={{ width: `${Math.round(totalPct)}%` }}>
+                              <div
+                                className="h-full bg-emerald-500"
+                                style={{ width: `${Math.round(sentPctInBar)}%` }}
+                              />
+                              <div className="h-full bg-amber-500" style={{ width: `${Math.round(localPctInBar)}%` }} />
                             </div>
                           </div>
                           <span className="text-xs text-muted-foreground tabular-nums">
@@ -515,7 +518,7 @@ function HomePage() {
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${barColor}`}
-                            style={{ width: `${Math.max(4, progressPct).toFixed(1)}%` }}
+                            style={{ width: `${Math.round(Math.max(4, progressPct))}%` }}
                           />
                         </div>
                       )}
@@ -570,7 +573,7 @@ function HomePage() {
                   dailyInfo.totalMinutes >= dailyInfo.maxMinutes ? 'bg-yellow-500' : 'bg-primary'
                 }`}
                 style={{
-                  width: `${Math.min(100, (dailyInfo.totalMinutes / dailyInfo.maxMinutes) * 100).toFixed(1)}%`
+                  width: `${Math.round(Math.min(100, (dailyInfo.totalMinutes / dailyInfo.maxMinutes) * 100))}%`
                 }}
               />
             </div>
@@ -638,7 +641,7 @@ function HomePage() {
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${barColor}`}
-                        style={{ width: `${Math.max(4, progressPct).toFixed(1)}%` }}
+                        style={{ width: `${Math.round(Math.max(4, progressPct))}%` }}
                       />
                     </div>
                     {task.estimated > 0 && (

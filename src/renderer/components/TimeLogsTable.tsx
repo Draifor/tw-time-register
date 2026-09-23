@@ -13,7 +13,8 @@ import {
   Trash2,
   Copy,
   Search,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -396,7 +397,7 @@ function TimeLogsTable() {
 
       {/* Table */}
       <div className="rounded-md border overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[960px] text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
@@ -438,8 +439,10 @@ function TimeLogsTable() {
                       />
                     </td>
                     {/* Task — read-only */}
-                    <td className="px-4 py-2 max-w-[160px] truncate text-muted-foreground text-xs">
-                      {entry.taskName || '—'}
+                    <td className="px-4 py-2 align-top text-muted-foreground text-xs">
+                      <span className="block max-w-[240px] whitespace-normal break-words leading-snug">
+                        {entry.taskName || '—'}
+                      </span>
                     </td>
                     {/* Description */}
                     <td className="px-2 py-2">
@@ -578,14 +581,15 @@ function TimeLogsTable() {
                   } hover:bg-accent/30`}
                 >
                   <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">{entry.date}</td>
-                  <td className="px-4 py-3 max-w-[160px] truncate">
+                  <td className="px-4 py-3 align-top">
                     {(() => {
                       const progress = getTaskProgressByName(entry.taskName || '');
+                      const taskName = entry.taskName || '—';
                       return (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2 max-w-[260px]">
                           {progress && (
                             <div
-                              className="w-2 h-2 rounded-full shrink-0"
+                              className="mt-1.5 w-2 h-2 rounded-full shrink-0"
                               style={{
                                 backgroundColor:
                                   progress.status === 'overtime'
@@ -600,28 +604,46 @@ function TimeLogsTable() {
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="cursor-default">{entry.taskName || '—'}</span>
+                                {entry.taskLink ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => window.Main.openExternal(entry.taskLink!)}
+                                    className="group/task inline-flex items-start gap-1 text-left font-medium leading-snug hover:text-primary transition-colors"
+                                  >
+                                    <span className="whitespace-normal break-words">{taskName}</span>
+                                    <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-0 group-hover/task:opacity-100 transition-opacity" />
+                                  </button>
+                                ) : (
+                                  <span className="cursor-default font-medium leading-snug whitespace-normal break-words">
+                                    {taskName}
+                                  </span>
+                                )}
                               </TooltipTrigger>
-                              {entry.taskLink && (
-                                <TooltipContent>
-                                  <p className="font-mono text-xs">{entry.taskLink}</p>
-                                </TooltipContent>
-                              )}
+                              <TooltipContent className="max-w-xs">
+                                <p className="font-medium whitespace-normal break-words">{taskName}</p>
+                                {entry.taskLink && (
+                                  <p className="mt-1 font-mono text-[10px] text-muted-foreground break-all">
+                                    {entry.taskLink}
+                                  </p>
+                                )}
+                              </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
                       );
                     })()}
                   </td>
-                  <td className="px-4 py-3 max-w-[220px] truncate text-muted-foreground">
+                  <td className="px-4 py-3 align-top text-muted-foreground">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="cursor-default">{entry.description || '—'}</span>
+                          <span className="block max-w-[320px] cursor-default leading-snug whitespace-normal break-words">
+                            {entry.description || '—'}
+                          </span>
                         </TooltipTrigger>
                         {entry.description && (
-                          <TooltipContent className="max-w-xs">
-                            <p>{entry.description}</p>
+                          <TooltipContent className="max-w-sm">
+                            <p className="whitespace-pre-wrap break-words">{entry.description}</p>
                           </TooltipContent>
                         )}
                       </Tooltip>

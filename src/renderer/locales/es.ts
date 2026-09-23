@@ -463,6 +463,7 @@ const es = {
       afterLunch: 'Post-almuerzo',
       addEntry: 'Agregar Entrada',
       addEntryTooltip: 'Agregar nueva entrada',
+      insertEntry: 'Insertar entrada aquí',
       register: 'Guardar en base de datos local',
       saveTooltip: 'Guardar entradas localmente (aun no se envían a TeamWork)',
       escHint: 'Presiona Esc para eliminar la última entrada',
@@ -488,7 +489,9 @@ const es = {
         stop: 'Detener timer',
         otherRunning: 'Hay otro timer activo'
       },
-      progressInfo: 'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}}'
+      progressInfo: 'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}}',
+      progressInfoProjected:
+        'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}} · incluye +{{draft}} sin guardar'
     },
     taskComment: {
       triggerTooltip: 'Agregar comentario en TW',

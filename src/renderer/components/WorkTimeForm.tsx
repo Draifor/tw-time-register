@@ -74,6 +74,38 @@ const isSameWorkDay = (leftDate?: string, rightDate?: string): boolean => {
   return Boolean(leftDate && rightDate && leftDate === rightDate);
 };
 
+const getEntryTaskId = (entry?: WorkTimeEntry): string => {
+  const raw = entry?.task;
+  if (!raw) return '';
+  if (typeof raw === 'object' && 'value' in raw) return String((raw as { value: string }).value);
+  return String(raw);
+};
+
+const getEntryMinutes = (entry?: WorkTimeEntry): number => {
+  const duration = entry?.hours?.[0];
+  return duration ? duration.getHours() * 60 + duration.getMinutes() : 0;
+};
+
+// Hoverable divider between entries that lets the user insert a row at any
+// position without having to drag one up from the bottom.
+function InsertDivider({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <div className="group/insert flex h-5 items-center gap-3">
+      <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
+      <button
+        type="button"
+        onClick={onClick}
+        title={label}
+        className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-all hover:border-primary hover:text-primary group-hover/insert:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <Plus className="h-3 w-3" />
+        {label}
+      </button>
+      <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
+    </div>
+  );
+}
+
 const hydrateEntryDates = (
   entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }
 ): WorkTimeEntry => ({
@@ -138,7 +170,7 @@ export default function WorkTimeForm() {
   } = useForm<{ entries: WorkTimeEntry[] }>({
     defaultValues: { entries: [defaultValue] }
   });
-  const { fields, append, remove, move } = useFieldArray({ control, name: 'entries' });
+  const { fields, append, insert, remove, move } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
   const { data: tasks } = useTasks();
   // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
@@ -254,9 +286,95 @@ export default function WorkTimeForm() {
     activeTimerRef.current = activeTimer;
   }, [activeTimer]);
 
+  // ── Draft progress per task ────────────────────────────────────────────────
+  // Minutes currently sitting in the form (not yet saved) grouped by task id.
+  // This lets the task progress badge/dropdown show the projected consumption
+  // as if the draft entries were already saved.
+  const draftMinutesByTask = React.useMemo(() => {
+    const map = new Map<string, number>();
+
+    (result ?? []).forEach((entry) => {
+      const taskId = getEntryTaskId(entry);
+      if (!taskId) return;
+      map.set(taskId, (map.get(taskId) ?? 0) + getEntryMinutes(entry));
+    });
+
+    // A running timer has no committed `hours` yet, so add its elapsed minutes.
+    if (activeTimer) {
+      const timerTaskId = getEntryTaskId(result?.[activeTimer.index]);
+      if (timerTaskId) {
+        map.set(timerTaskId, (map.get(timerTaskId) ?? 0) + Math.floor(elapsedSeconds / 60));
+      }
+    }
+
+    return map;
+  }, [result, activeTimer, elapsedSeconds]);
+
+  const optionsWithDraft = React.useMemo(
+    () =>
+      options.map((option) => ({
+        ...option,
+        totalLoggedMinutes: (option.totalLoggedMinutes ?? 0) + (draftMinutesByTask.get(String(option.value)) ?? 0)
+      })),
+    [options, draftMinutesByTask]
+  );
+
   // ── Drag & drop state ─────────────────────────────────────────────────────
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const autoScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dragClientYRef = useRef<number>(0);
+
+  const startAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+
+    const EDGE_THRESHOLD = 80;
+    const MAX_SCROLL_SPEED = 8;
+
+    const getScrollSpeed = (distance: number): number => {
+      const ratio = 1 - distance / EDGE_THRESHOLD;
+      return Math.ceil(ratio * MAX_SCROLL_SPEED);
+    };
+
+    const tick = () => {
+      const viewportHeight = window.innerHeight;
+      const clientY = dragClientYRef.current;
+      const distanceToTop = clientY;
+      const distanceToBottom = viewportHeight - clientY;
+
+      if (distanceToTop < EDGE_THRESHOLD && distanceToTop >= 0) {
+        window.scrollBy({ top: -getScrollSpeed(distanceToTop), behavior: 'auto' });
+      } else if (distanceToBottom < EDGE_THRESHOLD && distanceToBottom >= 0) {
+        window.scrollBy({ top: getScrollSpeed(distanceToBottom), behavior: 'auto' });
+      }
+    };
+
+    autoScrollIntervalRef.current = setInterval(tick, 16);
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+  }, []);
+
+  // Global dragover listener to track mouse position even when not over a Card
+  useEffect(() => {
+    if (draggedIndex === null) return;
+
+    const onDragOver = (e: DragEvent) => {
+      dragClientYRef.current = e.clientY;
+    };
+
+    document.addEventListener('dragover', onDragOver);
+    return () => {
+      document.removeEventListener('dragover', onDragOver);
+    };
+  }, [draggedIndex]);
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -265,7 +383,9 @@ export default function WorkTimeForm() {
     const ghost = new Image();
     ghost.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     e.dataTransfer.setDragImage(ghost, 0, 0);
+    dragClientYRef.current = e.clientY;
     setDraggedIndex(index);
+    startAutoScroll();
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
@@ -278,6 +398,7 @@ export default function WorkTimeForm() {
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
+    stopAutoScroll();
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
       setDragOverIndex(null);
@@ -314,6 +435,7 @@ export default function WorkTimeForm() {
   };
 
   const handleDragEnd = () => {
+    stopAutoScroll();
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
@@ -723,6 +845,55 @@ export default function WorkTimeForm() {
     }
   };
 
+  // Insert a new entry at an arbitrary position, basing its start time on the
+  // previous entry (or the next one when inserting at the very top). The
+  // chaining effect then shifts the following entries automatically.
+  const handleInsertEntry = (atIndex: number) => {
+    const prevEntry = atIndex > 0 ? result[atIndex - 1] : undefined;
+    const nextEntry = result[atIndex];
+
+    const date = prevEntry?.date ?? nextEntry?.date ?? getLocalISODate();
+    const startTime = prevEntry?.endTime?.[0]
+      ? prevEntry.endTime
+      : nextEntry?.startTime?.[0]
+        ? nextEntry.startTime
+        : [buildEpochTime(parseTimeToMinutes('09:00'))];
+
+    const duration = [new Date('1970-01-01T01:00:00')];
+    const newEntry: WorkTimeEntry = {
+      ...defaultValue,
+      date,
+      startTime,
+      endTime: calculateEndTime(startTime, duration),
+      hours: duration,
+      manualStartTime: false
+    };
+
+    // Keep the cascade-tracking array aligned with the shifted entries and force
+    // the effect to detect a change on the inserted entry (its placeholder start
+    // differs by one minute) so the following rows shift correctly.
+    const newPrev = [...previousValues.current];
+    newPrev.splice(atIndex, 0, {
+      startTime: [buildEpochTime(getMinutesFromDate(startTime[0]) - 1)],
+      hours: duration,
+      afterLunch: false,
+      manualStartTime: false
+    });
+    previousValues.current = newPrev;
+
+    // Keep the running timer pointing at the right entry after the shift.
+    if (activeTimerRef.current && atIndex <= activeTimerRef.current.index) {
+      const newIdx = activeTimerRef.current.index + 1;
+      setActiveTimer({ ...activeTimerRef.current, index: newIdx });
+      localStorage.setItem(
+        'wt_activeTimer',
+        JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+      );
+    }
+
+    insert(atIndex, newEntry);
+  };
+
   const formRef = useRef<HTMLFormElement>(null);
 
   // Keyboard shortcuts
@@ -772,8 +943,13 @@ export default function WorkTimeForm() {
         <TotalTimeDay control={control} />
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {fields.map((field, index) => (
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-1">
+        {fields.flatMap((field, index) => [
+          <InsertDivider
+            key={`insert-${index}`}
+            onClick={() => handleInsertEntry(index)}
+            label={t('workTimeForm.insertEntry')}
+          />,
           <Card
             key={field.id}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -884,7 +1060,9 @@ export default function WorkTimeForm() {
                         if (!val) return null;
                         if (typeof val === 'object' && 'value' in val) {
                           return (
-                            options.find((o) => String(o.value) === String((val as { value: string }).value)) ?? null
+                            optionsWithDraft.find(
+                              (o) => String(o.value) === String((val as { value: string }).value)
+                            ) ?? null
                           );
                         }
                         return null;
@@ -896,6 +1074,7 @@ export default function WorkTimeForm() {
                         estimatedTime?: number;
                         totalLoggedMinutes?: number;
                       } | null;
+                      const draftMinutes = selectedTask ? (draftMinutesByTask.get(String(selectedTask.value)) ?? 0) : 0;
                       const taskInfo =
                         selectedTask?.estimatedTime && selectedTask.estimatedTime > 0
                           ? getTaskProgressInfo(selectedTask.estimatedTime, selectedTask.totalLoggedMinutes)
@@ -904,7 +1083,7 @@ export default function WorkTimeForm() {
                       return (
                         <div className="space-y-1">
                           <Combobox
-                            options={options}
+                            options={optionsWithDraft}
                             placeholder={t('workTimeForm.selectTask')}
                             searchPlaceholder={t('workTimeForm.searchTasks')}
                             value={selectedTask}
@@ -922,12 +1101,16 @@ export default function WorkTimeForm() {
                                     : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                               }`}
                             >
-                              {t('workTimeForm.progressInfo', {
-                                logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
-                                estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
-                                pct: Math.round(taskInfo.pct),
-                                margin: formatMinutesToHHMM(taskInfo.margin)
-                              })}
+                              {t(
+                                draftMinutes > 0 ? 'workTimeForm.progressInfoProjected' : 'workTimeForm.progressInfo',
+                                {
+                                  logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
+                                  estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
+                                  pct: Math.round(taskInfo.pct),
+                                  margin: formatMinutesToHHMM(taskInfo.margin),
+                                  draft: formatMinutesToHHMM(draftMinutes)
+                                }
+                              )}
                             </div>
                           )}
                         </div>
@@ -1048,7 +1231,13 @@ export default function WorkTimeForm() {
               </div>
             </CardContent>
           </Card>
-        ))}
+        ])}
+
+        <InsertDivider
+          key="insert-end"
+          onClick={() => handleInsertEntry(fields.length)}
+          label={t('workTimeForm.insertEntry')}
+        />
 
         <div className="flex items-center gap-4">
           <TooltipProvider>

@@ -38,7 +38,7 @@ export async function getTasks(search?: string): Promise<Task[]> {
       ${columnsDB.TABLE_NAME}.${columnsDB.DESCRIPTION},
       ${columnsDB.TABLE_NAME}.${columnsDB.ESTIMATED_TIME},
       ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME},
-      COALESCE(SUM((julianday(te.hora_fin) - julianday(te.hora_inicio)) * 24 * 60), 0) AS total_logged_minutes
+      ROUND(COALESCE(SUM((julianday(te.hora_fin) - julianday(te.hora_inicio)) * 24 * 60), 0)) AS total_logged_minutes
     FROM
       ${columnsDB.TABLE_NAME}
     LEFT JOIN

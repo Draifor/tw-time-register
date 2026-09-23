@@ -21,10 +21,13 @@ export function parseDuration(startTime: string, endTime: string): { hours: numb
  * @example formatDuration(0, 0)  → "—"
  */
 export function formatDuration(hours: number, minutes: number): string {
-  if (hours === 0 && minutes === 0) return '—';
-  if (hours === 0) return `${minutes}m`;
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  const total = Math.round(hours * 60 + minutes);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0 && m === 0) return '—';
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m.toString().padStart(2, '0')}m`;
 }
 
 /** Convert a "HH:MM" string to total minutes. Returns 0 if invalid. */
@@ -39,7 +42,8 @@ export function parseHHMMToMinutes(value: string): number {
 /** Convert total minutes to a "HH:MM" string. Returns "00:00" for 0. */
 export function formatMinutesToHHMM(totalMinutes: number): string {
   if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return '00:00';
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
+  const total = Math.round(totalMinutes);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }

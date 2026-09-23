@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDuration, formatDuration } from '../../renderer/lib/timeUtils';
+import { parseDuration, formatDuration, formatMinutesToHHMM } from '../../renderer/lib/timeUtils';
 
 describe('parseDuration', () => {
   it('calculates a full-hour span', () => {
@@ -54,5 +54,23 @@ describe('formatDuration', () => {
 
   it('zero-pads single-digit minutes', () => {
     expect(formatDuration(1, 5)).toBe('1h 05m');
+  });
+
+  it('rounds fractional minutes from floating-point SQL sums', () => {
+    expect(formatDuration(0, 30.666666666666668)).toBe('31m');
+    expect(formatDuration(1, 30.4)).toBe('1h 30m');
+    expect(formatDuration(1, 30.6)).toBe('1h 31m');
+  });
+});
+
+describe('formatMinutesToHHMM', () => {
+  it('formats whole minutes', () => {
+    expect(formatMinutesToHHMM(90)).toBe('01:30');
+    expect(formatMinutesToHHMM(0)).toBe('00:00');
+  });
+
+  it('rounds fractional minutes instead of showing decimals', () => {
+    expect(formatMinutesToHHMM(90.66666666666667)).toBe('01:31');
+    expect(formatMinutesToHHMM(45.4)).toBe('00:45');
   });
 });
