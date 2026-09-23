@@ -170,7 +170,7 @@ function ProgressCell({ task }: { task: Task }) {
         <span className="text-muted-foreground">{Math.round(pct)}%</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, pct)}%` }} />
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round(Math.min(100, pct))}%` }} />
       </div>
       {isOver && <span className="text-[10px] text-red-500">Over time</span>}
       {!isOver && estimated - logged > 0 && (
