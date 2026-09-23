@@ -226,15 +226,19 @@ export const extractTWTaskId = async (taskLink: string): Promise<string | null> 
 
 // Helper to convert minutes to hours:minutes format
 export const minutesToHoursMinutes = (minutes: number): { hours: number; minutes: number } => {
+  const total = Math.round(minutes);
   return {
-    hours: Math.floor(minutes / 60),
-    minutes: minutes % 60
+    hours: Math.floor(total / 60),
+    minutes: total % 60
   };
 };
 
 // Helper to format time display
 export const formatTimeDisplay = (hours: number, minutes: number): string => {
-  return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  const total = Math.round(hours * 60 + minutes);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${h}h ${m.toString().padStart(2, '0')}m`;
 };
 
 // Legacy - for backward compatibility

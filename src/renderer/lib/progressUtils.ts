@@ -75,14 +75,16 @@ export function getStatusBarColor(status: ProgressStatus): string {
 export function formatProgressBadgeLabel(over: number, margin: number, status: ProgressStatus): string {
   if (status === 'no-estimate') return '';
   if (status === 'overtime') {
-    const h = Math.floor(over / 60);
-    const m = over % 60;
+    const total = Math.round(over);
+    const h = Math.floor(total / 60);
+    const m = total % 60;
     if (h > 0) return `+${h}h ${m.toString().padStart(2, '0')}m`;
     return `+${m}m`;
   }
   if (margin >= 30) {
-    const h = Math.floor(margin / 60);
-    const m = margin % 60;
+    const total = Math.round(margin);
+    const h = Math.floor(total / 60);
+    const m = total % 60;
     if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`;
     return `${m}m`;
   }
