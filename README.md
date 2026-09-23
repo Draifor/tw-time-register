@@ -283,6 +283,10 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] Timeline de eventos de sync por entrada (auditable)
 - [ ] Checklist de release para validaciones críticas post-build
 
+### v1.11.0 — Distribución & Actualizaciones
+
+- [ ] **Actualizaciones silenciosas estilo VS Code**: instalar sin el asistente NSIS (`/S`) al pulsar "Actualizar" o al cerrar la app, con relanzado automático
+
 ### v2.0.0 — Multi-plataforma
 
 - [ ] Soporte macOS (Apple Silicon + Intel)
