@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-09-23
+
+### Added
+
+- **Insertar entradas en cualquier posición (WorkTimeForm)**: divisores con hover entre entradas (y al inicio/final) para insertar una fila en cualquier punto sin arrastrar desde abajo; las entradas siguientes reajustan sus horas automáticamente
+- **Progreso proyectado en WorkTimeForm**: el badge y el dropdown de tareas ahora incluyen los minutos del borrador sin guardar (y el timer activo), mostrando si se excederá la estimación antes de guardar
+- **Horas máximas fraccionarias en Ajustes**: se permite configurar el máximo de horas por día con decimales
+- **Auto-scroll al arrastrar entradas**: las entradas hacen scroll automático al acercar el cursor a los bordes del viewport durante el drag & drop
+- **Roadmap de Rendimiento** (`docs/PERFORMANCE-ROADMAP.md`): auditoría completa de rendimiento y plan de optimización por fases
+
+### Changed
+
+- **TimeLogsTable**: los nombres de tarea y las descripciones ahora envuelven el texto para mostrarse completos; el nombre de la tarea es un enlace que abre la tarea en TW y su tooltip muestra el nombre completo y la URL
+
+### Fixed
+
+- **Decimales en el progreso**: se redondean los minutos fraccionarios en el agregado SQL, `formatDuration`, `formatMinutesToHHMM` y las etiquetas de progreso; los anchos de las barras de progreso usan enteros
+- **Tests**: cobertura del redondeo de minutos fraccionarios en los formateadores
+
 ## [1.8.0] - 2026-05-11
 
 ### Added

@@ -51,7 +51,7 @@ Herramienta personal para registrar el tiempo de trabajo diario de forma eficien
 ### Calidad
 
 - **ESLint** v9 (flat config) + **Prettier** v3 + **typescript-eslint** v8
-- **Vitest** v4 — 108 tests unitarios, 0 fallos
+- **Vitest** v4 — 111 tests unitarios, 0 fallos
 
 ### Distribución
 
@@ -113,7 +113,7 @@ src/
 │   │   └── SettingsPage.tsx
 │   └── services/
 │       └── timesService.ts      # Wrappers window.Main.* + SmartSyncResult
-└── tests/                       # Vitest — 108 tests, 8 suites, 0 fallos
+└── tests/                       # Vitest — 111 tests, 8 suites, 0 fallos
     ├── setup.ts
     ├── main/
     │   ├── models/TaskLinks.test.ts
@@ -268,7 +268,16 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] Tests de componentes React: WorkTimeForm y TimeLogsTable
 - [ ] E2E smoke con Playwright: draft recovery, single-instance, sync básico
 
-### v1.9.0 — Reportes & Observabilidad
+### ✅ v1.9.0 — UX & Rendimiento (PUBLICADA - Sep 2026)
+
+- [x] Insertar entradas en cualquier posición del WorkTime (divisores con hover)
+- [x] Progreso proyectado en WorkTime (incluye borrador sin guardar + timer activo)
+- [x] Horas máximas fraccionarias en Ajustes
+- [x] Auto-scroll al arrastrar entradas cerca de los bordes del viewport
+- [x] TimeLogs: texto completo de tarea/descripción + link a TW
+- [x] Fix: redondeo de decimales en el progreso
+
+### v1.10.0 — Reportes & Observabilidad
 
 - [ ] Exportar reportes a CSV/Excel
 - [ ] Timeline de eventos de sync por entrada (auditable)
@@ -285,6 +294,8 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 ## 📝 Desarrollo con IA
 
 Ver [`.github/copilot-instructions.md`](.github/copilot-instructions.md) para contexto completo, patrones, convenciones y estado actual del proyecto.
+
+Ver también el [🗺️ Roadmap de Rendimiento](docs/PERFORMANCE-ROADMAP.md): auditoría completa de rendimiento y plan de optimización por fases (bugs, SQLite, re-renders, sync y bundle).
 
 ---
 
