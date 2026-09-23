@@ -488,7 +488,9 @@ const en = {
         stop: 'Stop timer',
         otherRunning: 'Another timer is active'
       },
-      progressInfo: 'Progress: {{logged}} / {{estimated}} ({{pct}}%) — Margin: {{margin}}'
+      progressInfo: 'Progress: {{logged}} / {{estimated}} ({{pct}}%) — Margin: {{margin}}',
+      progressInfoProjected:
+        'Progress: {{logged}} / {{estimated}} ({{pct}}%) — Margin: {{margin}} · includes +{{draft}} unsaved'
     },
     taskComment: {
       triggerTooltip: 'Add comment in TW',

@@ -488,7 +488,9 @@ const es = {
         stop: 'Detener timer',
         otherRunning: 'Hay otro timer activo'
       },
-      progressInfo: 'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}}'
+      progressInfo: 'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}}',
+      progressInfoProjected:
+        'Progreso: {{logged}} / {{estimated}} ({{pct}}%) — Margen: {{margin}} · incluye +{{draft}} sin guardar'
     },
     taskComment: {
       triggerTooltip: 'Agregar comentario en TW',

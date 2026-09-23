@@ -74,6 +74,18 @@ const isSameWorkDay = (leftDate?: string, rightDate?: string): boolean => {
   return Boolean(leftDate && rightDate && leftDate === rightDate);
 };
 
+const getEntryTaskId = (entry?: WorkTimeEntry): string => {
+  const raw = entry?.task;
+  if (!raw) return '';
+  if (typeof raw === 'object' && 'value' in raw) return String((raw as { value: string }).value);
+  return String(raw);
+};
+
+const getEntryMinutes = (entry?: WorkTimeEntry): number => {
+  const duration = entry?.hours?.[0];
+  return duration ? duration.getHours() * 60 + duration.getMinutes() : 0;
+};
+
 const hydrateEntryDates = (
   entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }
 ): WorkTimeEntry => ({
@@ -253,6 +265,39 @@ export default function WorkTimeForm() {
   useEffect(() => {
     activeTimerRef.current = activeTimer;
   }, [activeTimer]);
+
+  // ── Draft progress per task ────────────────────────────────────────────────
+  // Minutes currently sitting in the form (not yet saved) grouped by task id.
+  // This lets the task progress badge/dropdown show the projected consumption
+  // as if the draft entries were already saved.
+  const draftMinutesByTask = React.useMemo(() => {
+    const map = new Map<string, number>();
+
+    (result ?? []).forEach((entry) => {
+      const taskId = getEntryTaskId(entry);
+      if (!taskId) return;
+      map.set(taskId, (map.get(taskId) ?? 0) + getEntryMinutes(entry));
+    });
+
+    // A running timer has no committed `hours` yet, so add its elapsed minutes.
+    if (activeTimer) {
+      const timerTaskId = getEntryTaskId(result?.[activeTimer.index]);
+      if (timerTaskId) {
+        map.set(timerTaskId, (map.get(timerTaskId) ?? 0) + Math.floor(elapsedSeconds / 60));
+      }
+    }
+
+    return map;
+  }, [result, activeTimer, elapsedSeconds]);
+
+  const optionsWithDraft = React.useMemo(
+    () =>
+      options.map((option) => ({
+        ...option,
+        totalLoggedMinutes: (option.totalLoggedMinutes ?? 0) + (draftMinutesByTask.get(String(option.value)) ?? 0)
+      })),
+    [options, draftMinutesByTask]
+  );
 
   // ── Drag & drop state ─────────────────────────────────────────────────────
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -941,7 +986,9 @@ export default function WorkTimeForm() {
                         if (!val) return null;
                         if (typeof val === 'object' && 'value' in val) {
                           return (
-                            options.find((o) => String(o.value) === String((val as { value: string }).value)) ?? null
+                            optionsWithDraft.find(
+                              (o) => String(o.value) === String((val as { value: string }).value)
+                            ) ?? null
                           );
                         }
                         return null;
@@ -953,6 +1000,7 @@ export default function WorkTimeForm() {
                         estimatedTime?: number;
                         totalLoggedMinutes?: number;
                       } | null;
+                      const draftMinutes = selectedTask ? (draftMinutesByTask.get(String(selectedTask.value)) ?? 0) : 0;
                       const taskInfo =
                         selectedTask?.estimatedTime && selectedTask.estimatedTime > 0
                           ? getTaskProgressInfo(selectedTask.estimatedTime, selectedTask.totalLoggedMinutes)
@@ -961,7 +1009,7 @@ export default function WorkTimeForm() {
                       return (
                         <div className="space-y-1">
                           <Combobox
-                            options={options}
+                            options={optionsWithDraft}
                             placeholder={t('workTimeForm.selectTask')}
                             searchPlaceholder={t('workTimeForm.searchTasks')}
                             value={selectedTask}
@@ -979,12 +1027,16 @@ export default function WorkTimeForm() {
                                     : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                               }`}
                             >
-                              {t('workTimeForm.progressInfo', {
-                                logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
-                                estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
-                                pct: Math.round(taskInfo.pct),
-                                margin: formatMinutesToHHMM(taskInfo.margin)
-                              })}
+                              {t(
+                                draftMinutes > 0 ? 'workTimeForm.progressInfoProjected' : 'workTimeForm.progressInfo',
+                                {
+                                  logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
+                                  estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
+                                  pct: Math.round(taskInfo.pct),
+                                  margin: formatMinutesToHHMM(taskInfo.margin),
+                                  draft: formatMinutesToHHMM(draftMinutes)
+                                }
+                              )}
                             </div>
                           )}
                         </div>
