@@ -463,6 +463,7 @@ const en = {
       afterLunch: 'Post-lunch',
       addEntry: 'Add Entry',
       addEntryTooltip: 'Add new entry',
+      insertEntry: 'Insert entry here',
       register: 'Save to local database',
       saveTooltip: 'Save entries locally (not sent to TeamWork yet)',
       escHint: 'Press Esc to remove last entry',

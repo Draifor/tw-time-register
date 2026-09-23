@@ -86,6 +86,26 @@ const getEntryMinutes = (entry?: WorkTimeEntry): number => {
   return duration ? duration.getHours() * 60 + duration.getMinutes() : 0;
 };
 
+// Hoverable divider between entries that lets the user insert a row at any
+// position without having to drag one up from the bottom.
+function InsertDivider({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <div className="group/insert flex h-5 items-center gap-3">
+      <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
+      <button
+        type="button"
+        onClick={onClick}
+        title={label}
+        className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-all hover:border-primary hover:text-primary group-hover/insert:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <Plus className="h-3 w-3" />
+        {label}
+      </button>
+      <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
+    </div>
+  );
+}
+
 const hydrateEntryDates = (
   entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }
 ): WorkTimeEntry => ({
@@ -150,7 +170,7 @@ export default function WorkTimeForm() {
   } = useForm<{ entries: WorkTimeEntry[] }>({
     defaultValues: { entries: [defaultValue] }
   });
-  const { fields, append, remove, move } = useFieldArray({ control, name: 'entries' });
+  const { fields, append, insert, remove, move } = useFieldArray({ control, name: 'entries' });
   const result = useWatch({ control, name: 'entries' });
   const { data: tasks } = useTasks();
   // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
@@ -825,6 +845,55 @@ export default function WorkTimeForm() {
     }
   };
 
+  // Insert a new entry at an arbitrary position, basing its start time on the
+  // previous entry (or the next one when inserting at the very top). The
+  // chaining effect then shifts the following entries automatically.
+  const handleInsertEntry = (atIndex: number) => {
+    const prevEntry = atIndex > 0 ? result[atIndex - 1] : undefined;
+    const nextEntry = result[atIndex];
+
+    const date = prevEntry?.date ?? nextEntry?.date ?? getLocalISODate();
+    const startTime = prevEntry?.endTime?.[0]
+      ? prevEntry.endTime
+      : nextEntry?.startTime?.[0]
+        ? nextEntry.startTime
+        : [buildEpochTime(parseTimeToMinutes('09:00'))];
+
+    const duration = [new Date('1970-01-01T01:00:00')];
+    const newEntry: WorkTimeEntry = {
+      ...defaultValue,
+      date,
+      startTime,
+      endTime: calculateEndTime(startTime, duration),
+      hours: duration,
+      manualStartTime: false
+    };
+
+    // Keep the cascade-tracking array aligned with the shifted entries and force
+    // the effect to detect a change on the inserted entry (its placeholder start
+    // differs by one minute) so the following rows shift correctly.
+    const newPrev = [...previousValues.current];
+    newPrev.splice(atIndex, 0, {
+      startTime: [buildEpochTime(getMinutesFromDate(startTime[0]) - 1)],
+      hours: duration,
+      afterLunch: false,
+      manualStartTime: false
+    });
+    previousValues.current = newPrev;
+
+    // Keep the running timer pointing at the right entry after the shift.
+    if (activeTimerRef.current && atIndex <= activeTimerRef.current.index) {
+      const newIdx = activeTimerRef.current.index + 1;
+      setActiveTimer({ ...activeTimerRef.current, index: newIdx });
+      localStorage.setItem(
+        'wt_activeTimer',
+        JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+      );
+    }
+
+    insert(atIndex, newEntry);
+  };
+
   const formRef = useRef<HTMLFormElement>(null);
 
   // Keyboard shortcuts
@@ -874,8 +943,13 @@ export default function WorkTimeForm() {
         <TotalTimeDay control={control} />
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {fields.map((field, index) => (
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-1">
+        {fields.flatMap((field, index) => [
+          <InsertDivider
+            key={`insert-${index}`}
+            onClick={() => handleInsertEntry(index)}
+            label={t('workTimeForm.insertEntry')}
+          />,
           <Card
             key={field.id}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -1157,7 +1231,13 @@ export default function WorkTimeForm() {
               </div>
             </CardContent>
           </Card>
-        ))}
+        ])}
+
+        <InsertDivider
+          key="insert-end"
+          onClick={() => handleInsertEntry(fields.length)}
+          label={t('workTimeForm.insertEntry')}
+        />
 
         <div className="flex items-center gap-4">
           <TooltipProvider>
