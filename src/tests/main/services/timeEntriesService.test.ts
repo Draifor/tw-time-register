@@ -215,7 +215,14 @@ describe('getNextAvailableSlot', () => {
 
     const slot = await getNextAvailableSlot();
 
-    const today = new Date().toISOString().split('T')[0];
+    // The service resolves "today" as the LOCAL date (it pins local noon before
+    // formatting). Comparing against the UTC date of the current instant is flaky:
+    // for negative UTC offsets the UTC date rolls over during the evening.
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(
+      2,
+      '0'
+    )}`;
     expect(slot.date).toBe(today);
     expect(slot.startTime).toBe('09:00');
   });
