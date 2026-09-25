@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import i18n from '../plugins/i18n';
 
@@ -12,18 +12,19 @@ interface UpdateState {
 export function useAutoUpdater(): UpdateState & { installUpdate: () => void; checkForUpdates: () => void } {
   const [state, setState] = useState<UpdateState>({ status: 'idle', version: null });
 
-  const installUpdate = () => {
+  // Stable identities so consumers can safely use these in dependency arrays.
+  const installUpdate = useCallback(() => {
     window.Main.installUpdate?.();
-  };
+  }, []);
 
-  const checkForUpdates = () => {
+  const checkForUpdates = useCallback(() => {
     setState((s) => ({ ...s, status: 'checking' }));
     sessionStorage.setItem('manualUpdateCheck', '1');
     window.Main.checkForUpdates?.().catch?.(() => {
       setState((s) => ({ ...s, status: 'idle' }));
       sessionStorage.removeItem('manualUpdateCheck');
     });
-  };
+  }, []);
 
   useEffect(() => {
     const handleAvailable = (data: unknown) => {
@@ -76,6 +77,13 @@ export function useAutoUpdater(): UpdateState & { installUpdate: () => void; che
     window.Main.on('update-not-available', handleNotAvailable);
     window.Main.on('update-downloaded', handleDownloaded);
     window.Main.on('update-error', handleError);
+
+    return () => {
+      window.Main.off('update-available', handleAvailable);
+      window.Main.off('update-not-available', handleNotAvailable);
+      window.Main.off('update-downloaded', handleDownloaded);
+      window.Main.off('update-error', handleError);
+    };
   }, []);
 
   return { ...state, installUpdate, checkForUpdates };

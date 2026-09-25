@@ -2,10 +2,27 @@ import { autoUpdater, UpdateInfo } from 'electron-updater';
 import { BrowserWindow, ipcMain } from 'electron';
 import isDev from 'electron-is-dev';
 
-export function initAutoUpdater(window: BrowserWindow): void {
-  // Tracks whether the current check was triggered manually by the user.
-  // Manual checks always surface errors; background checks filter "no assets" noise.
-  let manualCheck = false;
+// Tracks whether the current check was triggered manually by the user.
+// Manual checks always surface errors; background checks filter "no assets" noise.
+let manualCheck = false;
+
+// The window that currently receives updater events. Re-assigned on every
+// createWindow() so events still reach the live window after macOS "activate"
+// or "second-instance" re-creates it, instead of a destroyed one.
+let targetWindow: BrowserWindow | null = null;
+
+// App-lifetime guards. Electron throws when ipcMain.handle is called twice for
+// the same channel, and duplicate autoUpdater listeners would double-send.
+let ipcHandlersRegistered = false;
+let updaterEventsWired = false;
+
+function sendToRenderer(channel: string, payload: unknown): void {
+  targetWindow?.webContents.send(channel, payload);
+}
+
+function registerUpdaterIpcHandlers(): void {
+  if (ipcHandlersRegistered) return;
+  ipcHandlersRegistered = true;
 
   // Always register IPC handlers so they exist in both dev and production.
   // In dev the auto-updater is disabled, but the renderer can still call these
@@ -18,7 +35,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
   ipcMain.handle('check-for-updates', async () => {
     if (isDev) {
       // In dev there is no published release to check against — just notify renderer
-      window.webContents.send('update-not-available', { version: 'dev' });
+      sendToRenderer('update-not-available', { version: 'dev' });
       return;
     }
     manualCheck = true;
@@ -32,26 +49,28 @@ export function initAutoUpdater(window: BrowserWindow): void {
       manualCheck = false;
     }
   });
+}
 
-  // Skip the rest of the setup in development
-  if (isDev) return;
+function wireUpdaterEvents(): void {
+  if (updaterEventsWired) return;
+  updaterEventsWired = true;
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
   // Notify renderer: a new version is available (download started automatically)
   autoUpdater.on('update-available', (info: UpdateInfo) => {
-    window.webContents.send('update-available', { version: info.version });
+    sendToRenderer('update-available', { version: info.version });
   });
 
   // Notify renderer: already on latest version
   autoUpdater.on('update-not-available', (info: UpdateInfo) => {
-    window.webContents.send('update-not-available', { version: info.version });
+    sendToRenderer('update-not-available', { version: info.version });
   });
 
   // Notify renderer: update downloaded and ready to install
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
-    window.webContents.send('update-downloaded', { version: info.version });
+    sendToRenderer('update-downloaded', { version: info.version });
   });
 
   // Forward errors to renderer.
@@ -61,7 +80,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
   autoUpdater.on('error', (err: Error) => {
     if (manualCheck) {
       // User-triggered: always show the error so they know something is wrong
-      window.webContents.send('update-error', { message: err.message });
+      sendToRenderer('update-error', { message: err.message });
       return;
     }
 
@@ -83,7 +102,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
       msg.includes('net::ERR_');
 
     if (!isSuppressable) {
-      window.webContents.send('update-error', { message: err.message });
+      sendToRenderer('update-error', { message: err.message });
     }
   });
 
@@ -100,4 +119,21 @@ export function initAutoUpdater(window: BrowserWindow): void {
     },
     4 * 60 * 60 * 1000
   );
+}
+
+export function initAutoUpdater(window: BrowserWindow): void {
+  // Point updater events at the newest window first so a re-created window
+  // keeps receiving events.
+  targetWindow = window;
+
+  // Register the IPC handlers exactly once for the app lifetime. Doing this
+  // outside createWindow()'s per-window work avoids the "Attempted to register
+  // a second handler" error on second-instance / macOS activate.
+  registerUpdaterIpcHandlers();
+
+  // Skip the rest of the setup in development
+  if (isDev) return;
+
+  // Wire autoUpdater listeners and background timers exactly once as well.
+  wireUpdaterEvents();
 }
