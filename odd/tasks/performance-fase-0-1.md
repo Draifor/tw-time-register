@@ -32,7 +32,7 @@ upgrade decision.
 ## Scope
 
 **In scope (this feature):** roadmap Fase 0 (PERF-001..005) + Fase 1 (PERF-101..107)
-+ the casing blocker N1 required to make the verification gate meaningful.
++ the casing blocker and the two verification-gate defects found on the way.
 
 **Out of scope:** Fase 2..6, all dependency upgrades (Electron 44, React 19 +
 Compiler, Tailwind 4, Vite 8, TS 7). Each gets its own feature document.
@@ -52,26 +52,29 @@ Compiler, Tailwind 4, Vite 8, TS 7). Each gets its own feature document.
 - **TDD:** not configured for this project (no config declares strict TDD and
   `sdd-init` has not run). Resolved mode: **ordinary functional verification** —
   behavioural changes add or update tests; the full suite runs to green.
-- **Runner:** `npm test` → `vitest run` (111 tests baseline).
+- **Runner:** `npm test` → `vitest run`.
 - **Other gates:** `npm run type-check`, `npm run lint`, `npm run build`.
 - **Delivery heuristic:** ~400 authored changed lines is advisory only, not a cap
   and not a split trigger.
 
 ## Authorized scope
 
-Modify `src/renderer/**`, `src/main/**`, `database/schema.sql`, `src/tests/**`.
-No dependency version changes in this feature. No push, no PR, no merge.
+Modify `src/renderer/**`, `src/main/**`, `database/schema.sql`, `src/tests/**`,
+`eslint.config.mjs`. No dependency version changes in this feature. No push, no PR,
+no merge.
 
 ## Tasks
 
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
-| P0-00 | Fix casing: `ui/Button.tsx`→`button.tsx`, `ui/Label.tsx`→`label.tsx` (unblocks `tsc`) | `src/renderer/components/ui/` | inline (mechanical) | [ ] |
-| P0-01 | PERF-001 QueryClient defaults (`staleTime` 30s, `gcTime` 5m, no refetch on focus, retry 1) | `src/renderer/App.tsx` | delegated writer | [ ] |
-| P0-02 | PERF-004 centralize query keys + fix optimistic key (BUG-03) and dead `['timeLogs']` invalidations (BUG-04) | `lib/queryKeys.ts` (new), `hooks/useTasks.tsx`, `hooks/useTimeLogs.tsx`, `PullFromTWDialog.tsx`, `PullTaskDialog.tsx` | delegated writer | [ ] |
-| P0-03 | PERF-002 remove cache-bypassing `fetchTasks()`/`fetchTypeTasks()` in 5 call sites | `TimeLogsTable.tsx`, `HomePage.tsx`, `ReportsPage.tsx`, `PullFromTWDialog.tsx`, `ImportTasksDialog.tsx` | delegated writer | [ ] |
-| P0-04 | PERF-005 + BUG-05: batch WorkTime save via `addTimeEntries`, then invalidate `['workTimes']` + `['tasks']` | `components/WorkTimeForm.tsx` | delegated writer | [ ] |
+| P0-00 | Fix casing: `ui/Button.tsx`→`button.tsx`, `ui/Label.tsx`→`label.tsx` (unblocks `tsc`) | `src/renderer/components/ui/` | inline (mechanical) | [x] `5cec756` |
+| P0-01 | PERF-001 QueryClient defaults (`staleTime` 30s, `gcTime` 5m, no refetch on focus, retry 1) | `src/renderer/App.tsx` | delegated writer | [x] `026f841` |
+| P0-02 | PERF-004 centralize query keys + fix optimistic key (BUG-03) and dead `['timeLogs']` invalidations (BUG-04) | `lib/queryKeys.ts` (new), `hooks/useTasks.tsx`, `hooks/useTypeTasks.tsx`, `hooks/useTimeLogs.tsx`, `PullFromTWDialog.tsx`, `PullTaskDialog.tsx` | delegated writer | [x] `026f841` |
+| P0-03 | PERF-002 remove cache-bypassing `fetchTasks()`/`fetchTypeTasks()` in 5 call sites | `TimeLogsTable.tsx`, `HomePage.tsx`, `ReportsPage.tsx`, `PullFromTWDialog.tsx`, `ImportTasksDialog.tsx` | delegated writer | [x] `026f841` |
+| P0-04 | PERF-005 + BUG-05: batch WorkTime save via `addTimeEntries`, then invalidate `['workTimes']` + `['tasks']` | `components/WorkTimeForm.tsx` | delegated writer | [x] `026f841` |
 | P0-05 | PERF-003 + BUG-01/02: stop exposing `ipcRenderer`, real `Map`-based `on`/`off`, cleanup + memoize updater hook | `src/main/preload.ts`, `hooks/useAutoUpdater.ts`, `src/types/**` | delegated writer | [ ] |
+| P0-06 | Fix flaky `getNextAvailableSlot` test: it asserted the UTC date of the current instant while the service resolves the LOCAL date | `src/tests/main/services/timeEntriesService.test.ts` | inline (mechanical) | [x] `218512e` |
+| P0-07 | eslint scope: ignore `release/`, `coverage/`, `.opencode/`, `.agents/` so `npm run lint` terminates and reports only app code | `eslint.config.mjs` | inline (mechanical) | [x] `9cba147` |
 | P1-01 | PERF-101 indexes migration (idempotent) + remove dead `estimated_time` ALTER | `database/schema.sql`, `src/main/database/migrations.ts`, `src/main/database/database.ts` | delegated writer | [ ] |
 | P1-02 | PERF-102 PRAGMAs (WAL, synchronous NORMAL, `foreign_keys=ON`, `busy_timeout`) | `src/main/database/database.ts` | delegated writer | [ ] |
 | P1-03 | PERF-104 prepared-statement cache in the DB wrapper | `src/main/database/database.ts` | delegated writer | [ ] |
@@ -94,14 +97,26 @@ No dependency version changes in this feature. No push, no PR, no merge.
 - Sync/import loops do not recompile the same statement and run in one transaction
   (P1-03, P1-04).
 - `getNextAvailableSlot` uses a constant number of queries (P1-06).
-- `npm test` 111+ green, `npm run type-check` clean, `npm run lint` clean, `npm run build` OK.
+- `npm test` green, `npm run type-check` clean, `npm run lint` clean, `npm run build` OK.
+
+## Findings during implementation (not in the roadmap)
+
+| ID | Finding | Evidence | Disposition |
+|---|---|---|---|
+| F1 | `getNextAvailableSlot` test was **flaky**, not deterministic: it asserted `new Date().toISOString()` (UTC date of the *current instant*) while the service resolves the **local** date (it pins local noon before formatting). It fails every evening for negative UTC offsets. My first baseline run passed only because it ran before the UTC rollover. | `src/tests/.../timeEntriesService.test.ts:218` | Fixed in P0-06 |
+| F2 | `npm run lint` **never completed** (>15 min): `eslint.config.mjs` ignored `dist*` but not `release/` (~364 MB, 12k files) and `.opencode/`; vendored `.agents/skills` templates added 44 prettier errors. The roadmap's §7 verification gate was therefore unusable as written. | `eslint.config.mjs:16` | Fixed in P0-07 |
+| F3 | **The roadmap's §2 baseline table is stale.** Measured freshly at `81d6d30` (last pre-work commit): renderer **857.40 kB**, CSS **68.38 kB**, main **498.70 kB**. The document claims 701.9 / 55.7 / 916.8 kB. Our Fase 0 change adds **+0.46 kB** (857.86 kB), i.e. negligible. | `npm run build` at `81d6d30` vs `HEAD` | Correct roadmap §2; code splitting (PERF-501) is worth **more** than stated |
+| F4 | `getNextAvailableSlot` date formatting (`setHours(12)` + `toISOString()`) is only correct for UTC offsets within ±12 h; it returns the previous day for e.g. UTC+13. Latent, not currently hit. | `src/main/services/timeEntriesService.ts:238-241` | Deferred to P1-06 |
+| F5 | `src/main/database/database.ts` exports legacy unused helpers (`addTimeEntry`, `getTimeEntries`, `addWorkTime`, `getWorkTimes`, `addCredential`, `getActiveCredential`, `getCredential`, `verifyCredential`) that reference `work_times` / `credentials` tables which do not exist in `schema.sql`. | `database.ts:94-156` | Dead code; remove in P1-01 |
+| F6 | The roadmap's §7 says `npm run test`; the runner is `npm test` (`vitest run`). Also `pnpm-lock.yaml` + pnpm 10.28 are the real package manager while `.npmrc` is pnpm syntax that npm misparses (the `Unknown project config` warnings). | `package.json`, `.npmrc`, `pnpm-lock.yaml` | Doc fix; package-manager decision is user-facing |
+| F7 | `.codegraph/` and `.atl/` are untracked and not gitignored. | `git status` | Add to `.gitignore`, or commit deliberately |
 
 ## Route log
 
 | Task group | Route | Trigger evidence |
 |---|---|---|
-| P0-00 | direct inline | mechanical rename, 0 design decisions |
-| P0-01..P0-04 | delegated direct (one writer) | writer trigger: 2+ non-trivial files, renderer data layer |
+| P0-00, P0-06, P0-07 | direct inline | mechanical, 0 design decisions |
+| P0-01..P0-04 | delegated direct (one writer) | writer trigger: 11 non-trivial files, renderer data layer |
 | P0-05 | delegated direct (one writer) | writer trigger: preload + hook + types, security-sensitive |
 | P1-01..P1-04 | delegated direct (one writer) | writer trigger: DB layer + migrations |
 | P1-05..P1-07 | delegated direct (one writer) | writer trigger: services, query semantics |
@@ -109,5 +124,16 @@ No dependency version changes in this feature. No push, no PR, no merge.
 
 ## Progress
 
-- 2026-09-24 — Feature document created. Baseline captured: 111 tests green,
-  `tsc` reports 2 pre-existing casing errors (P0-00).
+- 2026-09-24 — Feature document created. Baseline: 111 tests green at 18:42;
+  `tsc` reported 2 pre-existing casing errors.
+- 2026-09-24 — **Fase 0 core done** (P0-00..P0-04, commit `026f841` + `5cec756`).
+  QueryClient defaults, centralized query keys, prefix-based optimistic update
+  (BUG-03), real `['workTimes']` invalidations (BUG-04), 5 cache-bypassing fetch
+  sites removed, batched WorkTime save with invalidation (BUG-05). 3 tests added.
+- 2026-09-24 — **Verification gate repaired** (P0-06, P0-07): flaky date test
+  fixed, eslint scope fixed. All four gates green: tests 114/114, type-check clean,
+  lint clean, build OK.
+- 2026-09-24 — **Delegated verification**: confirmed the writer's test failure was
+  pre-existing (F1) rather than a regression, by reproducing it and reading the
+  assertion against the service contract.
+- Next: P0-05 (preload/IPC security), then Fase 1.
