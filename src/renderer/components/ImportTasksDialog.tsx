@@ -10,6 +10,7 @@ import { Input } from './ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { addTask, editTask, fetchTasks, fetchTWSubtasks } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
+import { queryKeys } from '../lib/queryKeys';
 import type { Task } from '../../types/tasks';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ function ImportTasksDialog() {
   const { t } = useTranslation();
 
   const { data: typeTasksList = [] } = useQuery({
-    queryKey: ['typeTasks'],
+    queryKey: queryKeys.typeTasks.all,
     queryFn: fetchTypeTasks
   });
 
@@ -147,7 +148,10 @@ function ImportTasksDialog() {
         };
       });
 
-      const existingTasks: Task[] = await fetchTasks();
+      const existingTasks: Task[] = await queryClient.fetchQuery({
+        queryKey: queryKeys.tasks.list(''),
+        queryFn: () => fetchTasks()
+      });
       const existingByTwId = new Map<string, Task[]>();
       existingTasks.forEach((task) => {
         const twTaskId = extractTwTaskId(task.taskLink);
@@ -247,7 +251,7 @@ function ImportTasksDialog() {
         }
       }
 
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
 
       const skippedCount = alreadyLinkedCount + (conflicts.length - updatedCount);
       const totalChanged = createdCount + updatedCount;

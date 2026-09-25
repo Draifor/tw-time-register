@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import fetchTypeTasks, { addTypeTask, updateTypeTask, deleteTypeTask } from '../services/typeTasksService';
 import { TypeTasks } from '../../types/typeTasks';
 import DeleteButton from '../components/DeleteButton';
+import { queryKeys } from '../lib/queryKeys';
 
 function useTypeTasks() {
   const {
@@ -12,7 +13,7 @@ function useTypeTasks() {
     isPending: isLoading,
     error
   } = useQuery({
-    queryKey: ['typeTasks'],
+    queryKey: queryKeys.typeTasks.all,
     queryFn: fetchTypeTasks
   });
   const queryClient = useQueryClient();
@@ -20,7 +21,7 @@ function useTypeTasks() {
   const { mutate: onAdd } = useMutation({
     mutationFn: (typeName: string) => addTypeTask(typeName),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['typeTasks'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
       toast.success('Type added successfully');
     },
     onError: (err: Error) => toast.error('Failed to add type', { description: err.message })
@@ -29,7 +30,7 @@ function useTypeTasks() {
   const { mutate: onEdit } = useMutation({
     mutationFn: ({ id, typeName }: { id: number; typeName: string }) => updateTypeTask(id, typeName),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['typeTasks'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
       toast.success('Type updated successfully');
     },
     onError: (err: Error) => toast.error('Failed to update type', { description: err.message })
@@ -38,7 +39,7 @@ function useTypeTasks() {
   const { mutate: onDelete } = useMutation({
     mutationFn: (id: number) => deleteTypeTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['typeTasks'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
       toast.success('Type deleted successfully');
     },
     onError: (err: Error) => toast.error('Failed to delete type', { description: err.message })

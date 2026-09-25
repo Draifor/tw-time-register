@@ -29,6 +29,7 @@ import {
 } from '../services/timesService';
 import { addTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
+import { queryKeys } from '../lib/queryKeys';
 
 type PeriodMode = 'lastMonth' | 'lastWeek' | 'custom' | 'all';
 type Step = 'config' | 'result' | 'addTasks';
@@ -108,7 +109,7 @@ export default function PullFromTWDialog() {
       setResult(res);
       setStep('result');
       if (res.imported > 0) {
-        queryClient.invalidateQueries({ queryKey: ['timeLogs'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.workTimes.all });
         toast.success(t('timeLogs.pull.successToast', { count: res.imported }));
       } else if (res.skippedNoTask === 0) {
         toast.info(t('timeLogs.pull.noneImported'));
@@ -125,7 +126,10 @@ export default function PullFromTWDialog() {
     setLoadingTasks(true);
     setStep('addTasks');
     try {
-      const [detailRes, types] = await Promise.all([fetchTWTaskDetails(result.missingTwTaskIds), fetchTypeTasks()]);
+      const [detailRes, types] = await Promise.all([
+        fetchTWTaskDetails(result.missingTwTaskIds),
+        queryClient.fetchQuery({ queryKey: queryKeys.typeTasks.all, queryFn: fetchTypeTasks })
+      ]);
       const typeNames = types.map((t) => t.typeName);
       setTypeList(typeNames);
       setMissingRows(
@@ -164,8 +168,8 @@ export default function PullFromTWDialog() {
       }
     }
     setSavingTasks(false);
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    queryClient.invalidateQueries({ queryKey: ['typeTasks'] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
     if (failed > 0) {
       toast.error(t('timeLogs.pull.taskSaveError'), { description: `${failed} ${t('timeLogs.pull.taskSaveFailed')}` });
     } else {
@@ -183,7 +187,7 @@ export default function PullFromTWDialog() {
       setResult(res);
       setMissingRows([]);
       if (res.imported > 0) {
-        queryClient.invalidateQueries({ queryKey: ['timeLogs'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.workTimes.all });
         toast.success(t('timeLogs.pull.successToast', { count: res.imported }));
       } else {
         toast.info(t('timeLogs.pull.noneImported'));

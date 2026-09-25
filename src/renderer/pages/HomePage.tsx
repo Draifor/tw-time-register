@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { Clock, ListTodo, ArrowRight, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -18,6 +19,8 @@ import {
 import { parseDuration, formatDuration } from '../lib/timeUtils';
 import { getTaskProgressInfo, getStatusBarColor } from '../lib/progressUtils';
 import { fetchTasks } from '../services/tasksService';
+import { queryKeys } from '../lib/queryKeys';
+import { Task } from '../../types/tasks';
 
 function HomePage() {
   const { t } = useTranslation();
@@ -30,21 +33,12 @@ function HomePage() {
   const [isMonthLoading, setIsMonthLoading] = useState(true);
   const [weekEntries, setWeekEntries] = useState<TimeEntry[]>([]);
   const [isWeekLoading, setIsWeekLoading] = useState(true);
-  const [tasks, setTasks] = useState<Array<{ id: number; estimatedTime: number | null; totalLoggedMinutes: number }>>(
-    []
-  );
-
-  useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        const data = await fetchTasks();
-        setTasks(data ?? []);
-      } catch {
-        /* silent */
-      }
-    };
-    loadTasks();
-  }, []);
+  // Reuse the cached task list (same key as useTasks) instead of bypassing the cache.
+  const { data: tasksData } = useQuery<Task[]>({
+    queryKey: queryKeys.tasks.list(''),
+    queryFn: () => fetchTasks()
+  });
+  const tasks = useMemo(() => tasksData ?? [], [tasksData]);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];

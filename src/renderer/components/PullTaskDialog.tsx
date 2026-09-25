@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { pullEntriesFromTW, PullFromTWResult } from '../services/timesService';
 import { Task } from '../../types/tasks';
+import { queryKeys } from '../lib/queryKeys';
 
 type PeriodMode = 'lastMonth' | 'lastWeek' | 'custom' | 'all';
 
@@ -72,7 +73,7 @@ export default function PullTaskDialog({ task }: Props) {
       const res = await pullEntriesFromTW({ ...datePart, twTaskId });
       setResult(res);
       if (res.imported > 0) {
-        queryClient.invalidateQueries({ queryKey: ['timeLogs'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.workTimes.all });
         toast.success(t('timeLogs.pull.successToast', { count: res.imported }));
       } else {
         toast.info(t('timeLogs.pull.noneImported'));

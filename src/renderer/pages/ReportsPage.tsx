@@ -1,12 +1,15 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { BarChart2, CalendarDays, ListTodo, TrendingUp, Clock, CheckCircle2, CircleDot } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import useTimeLogs from '../hooks/useTimeLogs';
 import { Skeleton } from '../components/ui/skeleton';
 import { fetchTasks } from '../services/tasksService';
+import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
+import { Task } from '../../types/tasks';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -64,21 +67,12 @@ function ReportsPage() {
   const { data, isLoading } = useTimeLogs();
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'es' ? 'es-CO' : 'en-US';
-  const [tasks, setTasks] = useState<
-    Array<{ id: number; taskName: string; estimatedTime: number | null; totalLoggedMinutes: number }>
-  >([]);
-
-  useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        const data = await fetchTasks();
-        setTasks(data ?? []);
-      } catch {
-        /* silent */
-      }
-    };
-    loadTasks();
-  }, []);
+  // Reuse the cached task list (same key as useTasks) instead of bypassing the cache.
+  const { data: tasksData } = useQuery<Task[]>({
+    queryKey: queryKeys.tasks.list(''),
+    queryFn: () => fetchTasks()
+  });
+  const tasks = tasksData ?? [];
 
   const getTaskEstimatedTime = (taskName: string): number => {
     const task = tasks.find((t) => t.taskName === taskName);
