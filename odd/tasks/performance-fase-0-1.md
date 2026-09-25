@@ -72,7 +72,7 @@ no merge.
 | P0-02 | PERF-004 centralize query keys + fix optimistic key (BUG-03) and dead `['timeLogs']` invalidations (BUG-04) | `lib/queryKeys.ts` (new), `hooks/useTasks.tsx`, `hooks/useTypeTasks.tsx`, `hooks/useTimeLogs.tsx`, `PullFromTWDialog.tsx`, `PullTaskDialog.tsx` | delegated writer | [x] `026f841` |
 | P0-03 | PERF-002 remove cache-bypassing `fetchTasks()`/`fetchTypeTasks()` in 5 call sites | `TimeLogsTable.tsx`, `HomePage.tsx`, `ReportsPage.tsx`, `PullFromTWDialog.tsx`, `ImportTasksDialog.tsx` | delegated writer | [x] `026f841` |
 | P0-04 | PERF-005 + BUG-05: batch WorkTime save via `addTimeEntries`, then invalidate `['workTimes']` + `['tasks']` | `components/WorkTimeForm.tsx` | delegated writer | [x] `026f841` |
-| P0-05 | PERF-003 + BUG-01/02: stop exposing `ipcRenderer`, real `Map`-based `on`/`off`, cleanup + memoize updater hook | `src/main/preload.ts`, `hooks/useAutoUpdater.ts`, `src/types/**` | delegated writer | [ ] |
+| P0-05 | PERF-003 + BUG-01/02 + BUG-06: stop exposing `ipcRenderer`, real `Map`-based `on`/`off`, updater-hook cleanup + memoized callbacks, one-time `ipcMain.handle` registration | `src/main/preload.ts`, `src/main/ipcEventBridge.ts` (new), `src/main/updater.ts`, `hooks/useAutoUpdater.ts` | delegated writer | [x] `a464f33` |
 | P0-06 | Fix flaky `getNextAvailableSlot` test: it asserted the UTC date of the current instant while the service resolves the LOCAL date | `src/tests/main/services/timeEntriesService.test.ts` | inline (mechanical) | [x] `218512e` |
 | P0-07 | eslint scope: ignore `release/`, `coverage/`, `.opencode/`, `.agents/` so `npm run lint` terminates and reports only app code | `eslint.config.mjs` | inline (mechanical) | [x] `9cba147` |
 | P1-01 | PERF-101 indexes migration (idempotent) + remove dead `estimated_time` ALTER | `database/schema.sql`, `src/main/database/migrations.ts`, `src/main/database/database.ts` | delegated writer | [ ] |
@@ -136,4 +136,22 @@ no merge.
 - 2026-09-24 — **Delegated verification**: confirmed the writer's test failure was
   pre-existing (F1) rather than a regression, by reproducing it and reading the
   assertion against the service contract.
-- Next: P0-05 (preload/IPC security), then Fase 1.
+- 2026-09-24 — **Fase 0 complete** (P0-05, commit `a464f33`): `ipcRenderer` is no
+  longer exposed to the renderer; `on`/`off` go through a `Map`-backed bridge
+  (`src/main/ipcEventBridge.ts`) that removes the exact registered wrapper and drops
+  empty channels; `useAutoUpdater` returns a real cleanup and exposes memoized
+  callbacks; the updater `ipcMain.handle` registration is idempotent (BUG-06).
+  Verified by the orchestrator: tests 123/123, type-check clean, lint clean, and no
+  `ipcRenderer` reference remains under `src/renderer`.
+- 2026-09-24 — **Native review attempted and blocked.** The RDD preflight ran
+  (assess → `medium`, `slice_budget_reached`; consent granted by the user), but the
+  `review-reliability` lens capture returned `opencode_task_output_empty` on five
+  consecutive attempts. The typed unavailable result is preserved: **no PASS, no
+  acknowledgement, no receipt was produced**, and the transaction stays bound in
+  `reviewing`. Classified as a client-runtime defect (empty sub-agent result), not a
+  Gentle AI defect, so no defect report was filed. Not retried further.
+- 2026-09-24 — Note on evidence quality: the P0-05 writer's report was lost to a
+  transport error (`Cannot connect to API`) *after* it had already committed, so the
+  orchestrator re-verified every claim directly against the diff instead of trusting
+  a missing report.
+- Next: Fase 1 (P1-01..P1-07).
