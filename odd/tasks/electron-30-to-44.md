@@ -92,8 +92,9 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 
 - Every slice is one commit on `staging`; `git revert <sha>` for S1/S2/S4/S5.
 - S3: restore the previous versions in `package.json`, check out the pre-bump
-  `pnpm-lock.yaml`, and re-run `install-app-deps`. Keep the last known-good installer
-  from `release/` for a rollback install.
+  `pnpm-lock.yaml`, and re-run `install-app-deps`. For a rollback *install*, use the
+  published `v1.9.0` release asset (`TW-Time-Register-Setup-1.9.0.exe`, 2026-09-23) —
+  `release/` is overwritten by the next build, so it is not a rollback store.
 - The schema is unchanged by this upgrade, so a downgrade does not corrupt data.
 
 ## Known risks
@@ -127,6 +128,13 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
   `pnpm run lint` clean. Route: direct inline (one production file + its test,
   design fully resolved after reading the service, migrations and existing test
   conventions).
+- 2026-09-25 — **S3 preparation corrected against live evidence.** Three claims
+  were checked and one of them was wrong: (a) Electron 44.4.5 is still the current
+  stable major, so the plan has not drifted; (b) the rollback artifact is the
+  published `v1.9.0` installer — `release/` holds no installer at all and is
+  overwritten by the next build; (c) the earlier note claiming the test harness is
+  pinned to the Electron 30 ABI was **incorrect** — the harness resolves
+  `require('electron')`, so it follows the installed version and needs no change.
 - Next: S3 (the version bump) — high risk, needs its own run and a packaged-app
   smoke test. See the checklist above.
 
@@ -136,22 +144,29 @@ Prerequisites verified on this checkout:
 
 - Branch `staging` is clean; S1 (`ed07d9d`) and S2 (`de2af27`) are the last two
   functional commits, so a failed S3 reverts to a known-good pair.
-- `release/` is git-ignored and is **not** in the review candidate; keep the last
-  known-good installer there before bumping, per the rollback section.
-- Lockfile is `pnpm-lock.yaml` with pnpm 10 authoritative. Regenerate with
-  `pnpm install`, never npm (`.npmrc` is pnpm syntax that npm misparses).
+- `release/` is a **build output directory**, not a store: it currently holds only
+  `win-unpacked` plus builder metadata, and electron-builder reuses the same output
+  path, so the next build overwrites it in place.
+- Lockfile is `pnpm-lock.yaml` with pnpm 10 (10.28.2 here) authoritative.
+  Regenerate with `pnpm install`, never npm (`.npmrc` is pnpm syntax that npm
+  misparses).
 - Native rebuild is driven by `electron-builder install-app-deps`
   (`release.yml:77`, `build-local.ps1:29`); `better-sqlite3` is `asarUnpack`ed,
   so the rebuild must target the new Electron ABI, not Node's.
-- The Electron-as-Node test harness (`src/tests/fixtures/*-harness.cjs`) is
-  pinned to the Electron 30 ABI today. After the bump, the integration suites
-  must be re-run against Electron 44's ABI or they will fail with
-  `ERR_DLOPEN_FAILED` — that is a harness update, not an app regression.
+- The Electron-as-Node integration harness needs **no change** for this bump.
+  Both integration tests resolve the runner with `require('electron')`, which
+  returns the binary of whichever version is installed, and `install-app-deps`
+  rebuilds the native module for that same version — harness and native module
+  move together. The ABI mismatch that originally motivated the harness cannot
+  reappear across the bump.
+- Resolved targets against the registry on 2026-09-25 — Electron 44 is still the
+  current stable major, so the plan has not drifted: `electron` **44.4.5**,
+  `better-sqlite3` **13.0.3**, `electron-builder` **26.15.3**,
+  `electron-updater` **6.8.9**.
 
 Execution order for S3 (one commit, revertable):
 
-1. Edit `package.json`: `electron` 44.x, `better-sqlite3` 13.x,
-   `electron-builder` 26.x, `electron-updater` 6.8.9.
+1. Edit `package.json` with those exact versions.
 2. `pnpm install` to regenerate the lockfile, then `electron-builder install-app-deps`.
 3. `pnpm exec vitest run`, `pnpm run type-check`, `pnpm run lint`, `pnpm run build`.
 4. `pnpm run dist:win` → NSIS installer, then the 7-point smoke test above against
