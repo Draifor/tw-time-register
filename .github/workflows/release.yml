@@ -65,22 +65,34 @@ jobs:
             ${{ runner.os }}-electron-builder-
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build (Vite + Electron)
         run: pnpm build
 
+      # Packaging and publishing are deliberately separate steps: the probe must
+      # fail the job BEFORE anything reaches installed clients. So this step always
+      # builds with --publish never, the probe verifies the packaged native module,
+      # and only then does the (tag-only) Publish step push to installed clients.
+      - name: Package (no publish)
+        run: pnpm exec electron-builder --win --publish never
+
+      - name: Probe packaged native module
+        shell: pwsh
+        run: |
+          $env:ELECTRON_RUN_AS_NODE = '1'
+          # The Electron binary is GUI-subsystem, so a bare `&` call returns before
+          # the process exits and $LASTEXITCODE is unreliable. Start-Process -Wait
+          # blocks and exposes a real ExitCode, which is what gates the job.
+          $probe = Start-Process -FilePath "release\win-unpacked\TW Time Register.exe" -ArgumentList "scripts\probe-packaged-native.cjs" -NoNewWindow -Wait -PassThru
+          exit $probe.ExitCode
+
       # A tag push publishes to installed clients.
-      - name: Package and publish
+      - name: Publish
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm exec electron-builder --win --publish always
-
-      # A manual dispatch only proves the pipeline: build, upload an artifact, never publish.
-      - name: Package without publishing
-        if: github.event_name == 'workflow_dispatch'
-        run: pnpm exec electron-builder --win --publish never
 
       - name: Upload installer artifact
         if: github.event_name == 'workflow_dispatch'
