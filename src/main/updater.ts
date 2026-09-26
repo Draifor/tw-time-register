@@ -1,6 +1,8 @@
 import { autoUpdater, UpdateInfo } from 'electron-updater';
-import { BrowserWindow, ipcMain } from 'electron';
-import isDev from 'electron-is-dev';
+import { BrowserWindow, app, ipcMain } from 'electron';
+
+// Equivalent to the deprecated `electron-is-dev` package, without the dependency.
+const isDev = !app.isPackaged;
 
 // Tracks whether the current check was triggered manually by the user.
 // Manual checks always surface errors; background checks filter "no assets" noise.

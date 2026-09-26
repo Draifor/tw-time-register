@@ -12,14 +12,14 @@ const { handleMock, autoUpdaterMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('electron', () => ({
+  // `isPackaged: false` reproduces the previous `electron-is-dev` mock of `true`.
+  app: { isPackaged: false },
   ipcMain: { handle: handleMock }
 }));
 
 vi.mock('electron-updater', () => ({
   autoUpdater: autoUpdaterMock
 }));
-
-vi.mock('electron-is-dev', () => ({ default: true }));
 
 import { initAutoUpdater } from '../../main/updater';
 
