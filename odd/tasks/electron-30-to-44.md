@@ -72,7 +72,7 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 | **S1 ✅ `ed07d9d`** | Replace `electron-is-dev` with `app.isPackaged` in `index.ts` + `updater.ts`; update the updater test mock. Behaviour-identical. | none |
 | **S2 ✅ `de2af27`** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
 | **S3** | The version bump: electron 44.4.5, better-sqlite3 13.0.3, electron-builder 26.15.3, electron-updater 6.8.9. Two unplanned config changes were required (`npmRebuild: false`, `better-sqlite3` → `ignoredBuiltDependencies`). Code complete and installer built; **the packaged smoke test still needs a human**. | **high** |
-| **S4** | Packaging/CI for the E42 lazy binary download; verify `release.yml` + `build-local.ps1` still produce a working installer on a clean checkout. | medium |
+| **S4 ✅ `c94f3da`+`649728a`** | Packaging/CI for the E42 lazy binary download; verified `release.yml` + `build-local.ps1` produce a working installer on a clean checkout with **no MSVC**. | medium |
 | **S5** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
 | **S6** | Evaluate `vite-plugin-electron` 1.x as its own slice with its own rollback. | medium |
 
@@ -90,7 +90,8 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 
 ## Rollback
 
-- Every slice is one commit on `staging`; `git revert <sha>` for S1/S2/S4/S5.
+- Every slice is one commit on `staging`; `git revert <sha>` for S1/S2/S5. S4 is two
+  commits (`c94f3da` pipeline, `649728a` the references it made false); revert both.
 - S3: restore the previous versions in `package.json`, check out the pre-bump
   `pnpm-lock.yaml`, and re-run `install-app-deps`. For a rollback *install*, use the
   published `v1.9.0` release asset (`TW-Time-Register-Setup-1.9.0.exe`, 2026-09-23) —
@@ -151,8 +152,15 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 - Next: the packaged smoke test (points 1 and 4-7 above), then the review preflight,
   then **S4** (packaging/CI: the `install-app-deps` call sites and the redundant
   `@electron/rebuild` dev dependency).
+- 2026-09-26 — **S4 executed.** Six work-order items landed in `c94f3da`; the
+  references S4 made false were corrected in `649728a`. The clean-checkout proof ran on
+  this machine, which has **no MSVC**, and passed end to end: installer 128.96 MB, zero
+  native compilation, no publish. Full evidence and follow-ups in the S4 section below.
+- Next: the review preflight over the S3+S4 candidate. S3's human smoke-test points 1
+  and 4-7 were confirmed (see above); the auto-update and clean-machine paths (points
+  6-7) still need a real publish, which stays blocked until the version bump. Then S5.
 
-## S3 — executed (code complete; packaged smoke test pending a human)
+## S3 — executed (automated gates green; human smoke test confirmed)
 
 Landed versions, resolved against the registry on 2026-09-25:
 
@@ -235,7 +243,7 @@ The review preflight is deliberately **not** run yet. A smoke-test finding would
 change the candidate bytes, and freezing a review transaction on bytes that may
 still move would waste it.
 
-## S4 — ready to execute (packaging/CI)
+## S4 — executed (packaging/CI)
 
 **Objective:** make the release pipeline match the new dependency reality and prove
 it on a clean checkout, **without publishing to installed clients**.
@@ -292,3 +300,63 @@ separate decisions taken after S4 lands.
   `@vitejs/plugin-react` live in `dependencies` though they are build-time tools.
   That is why electron-builder reports missing platform-specific `@esbuild/*` and
   `@rollup/rollup-*` binaries during packaging → S5.
+
+## S4 — results (2026-09-26)
+
+Commits: `c94f3da` (the pipeline), `649728a` (the references S4 made false).
+
+| Work-order item | Result |
+|---|---|
+| 1. Remove the obsolete native rebuild | `install-app-deps` deleted from `release.yml` and `build-local.ps1`. The clean-checkout log confirms the intended path: `skipped dependencies rebuild reason=npmRebuild is set to false`. |
+| 2. Stop rewriting `.npmrc` | Rewrite deleted from both call sites. Measured on pnpm 10.28.2, not assumed: pnpm reads `node-linker` from `.npmrc` **and** from `npm_config_node_linker`, but reads `onlyBuiltDependencies` **only** from `pnpm-workspace.yaml` — a valid-INI `onlyBuiltDependencies=…` in `.npmrc` resolves to `undefined`. So the CI block was inert for build deps and only achieved `node-linker`; that now travels as `npm_config_node_linker=hoisted`, which preserves the isolated-dev / hoisted-packaging split. `.npmrc` is comment-only: its old YAML-style block was parsed as junk keys (`better-sqlite3=true`, `onlyBuiltDependencies:=true`), which is what emitted the "Unknown project config" warnings. |
+| 3. Split publish from build | `workflow_dispatch` now runs `electron-builder --win --publish never` and uploads via `actions/upload-artifact`; only a `push` on `v*` runs `--publish always`. `GH_TOKEN` is scoped to the tag step alone. |
+| 4. Drop `@electron/rebuild` | Removed with `pnpm remove`; the lockfile diff is exactly 3 lines inside `importers`. It remains in the graph as a transitive dependency of `electron-builder`. |
+| 5. Confirm E42 lazy-download tolerance | Neither script assumes `node_modules/electron/dist` exists. Confirmed live on the clean checkout: `dist` and `path.txt` are **absent** after `pnpm install`, and packaging still succeeds because electron-builder downloads electron itself. `ELECTRON_GET_MAX_RETRIES` moved from the install step to job-level `env:` — with a lazy first-use download it was previously set at a moment when nothing downloads. |
+| 6. Prove it end to end on a clean checkout | Done on this machine, which has **no MSVC** (`cl.exe` not found, no `vswhere`). |
+
+### Clean-checkout proof
+
+Clone of `649728a` at `C:\Users\…\Temp\opencode\s4-clean`, left in place as evidence.
+Before the build the clone was clean: `git status` empty, no `node_modules`, no `release/`.
+
+| Check | Result |
+|---|---|
+| `build-local.ps1` | exit **0**: `fnm use 22.17.0` → hoisted install → `pnpm build` → `--dir --publish never` |
+| Native compilation | **none** — no `node-gyp` / `gyp info` / `gyp ERR!` / `MSBuild` / `Visual Studio` lines. Only `esbuild`'s prebuilt-binary postinstall ran. |
+| `better-sqlite3` prebuild | present at `node_modules/better-sqlite3/prebuilds/win32-x64.node`; Node round-trip returned `{"a":42}` |
+| Hoisted layout | `.modules.yaml` → `nodeLinker: hoisted`; packages resolve as real directories, not symlinks |
+| Installer | `release/TW Time Register Setup 1.9.0.exe`, **128.96 MB** (+ `.blockmap`, `latest.yml`), exit 0, **no GitHub contact**, no publish attempt |
+| Packaged native module | `resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node` present, i.e. outside asar |
+
+**Correction to this slice's own acceptance criterion:** "`node_modules/.pnpm` must not
+exist" is wrong for pnpm 10 — it always writes `.pnpm/lock.yaml` even under
+`nodeLinker: hoisted`. The correct signal is the `.modules.yaml` linker value plus real
+(non-symlink) package directories. Recorded so a future run does not chase a false failure.
+
+**Not covered here:** the workflow itself was only YAML-validated and hand-reviewed. No
+GitHub Actions run was executed, so `workflow_dispatch` behaviour (artifact upload,
+`GH_TOKEN` scoping) stays unproven until the first real dispatch. No publish was
+performed, and the app version bump remains out of scope.
+
+**Security note found while proving this — not caused by this repo.** This machine has
+`NODE_TLS_REJECT_UNAUTHORIZED=0` set as a persistent **User** environment variable, so
+every local npm/pnpm/electron download ran with TLS certificate verification disabled.
+CI is unaffected (fresh runner; the variable is User-scoped only) and package integrity
+is still enforced by the lockfile's `sha512` hashes, but it should be removed from this
+machine.
+
+### Follow-ups found during S4
+
+- `src/tests/main/services/timeEntriesService.test.ts:339` is date-dependent and
+  **pre-existing**: it asserts "today", but `getNextAvailableSlot` skips days outside
+  `settings.workDays` (`[1,2,3,4,5]`), so it fails on every Saturday/Sunday run. Every
+  sibling test in that file advances past non-work days with a `while`; this one does
+  not. It is a latent weekend CI flake, unrelated to S4. Fix: freeze the clock
+  (`vi.setSystemTime` on a weekday) or assert the "next work day" contract.
+- `electron` no longer declares a `postinstall` (nothing ran for it during the clean
+  install), so its entry in `pnpm-workspace.yaml:onlyBuiltDependencies` is now inert —
+  the same reason `better-sqlite3` moved to `ignoredBuiltDependencies` → S5.
+- `.github/copilot-instructions.md` still carries drift that S3/S4 did not own:
+  it says `asar: false` while `package.json` sets `asar: true`, says
+  `better-sqlite3 11.x`, and says Node 24 has no N-API prebuilds (Node 24 is what
+  Electron 44 ships). → S5.
