@@ -75,13 +75,13 @@ no merge.
 | P0-05 | PERF-003 + BUG-01/02 + BUG-06: stop exposing `ipcRenderer`, real `Map`-based `on`/`off`, updater-hook cleanup + memoized callbacks, one-time `ipcMain.handle` registration | `src/main/preload.ts`, `src/main/ipcEventBridge.ts` (new), `src/main/updater.ts`, `hooks/useAutoUpdater.ts` | delegated writer | [x] `a464f33` |
 | P0-06 | Fix flaky `getNextAvailableSlot` test: it asserted the UTC date of the current instant while the service resolves the LOCAL date | `src/tests/main/services/timeEntriesService.test.ts` | inline (mechanical) | [x] `218512e` |
 | P0-07 | eslint scope: ignore `release/`, `coverage/`, `.opencode/`, `.agents/` so `npm run lint` terminates and reports only app code | `eslint.config.mjs` | inline (mechanical) | [x] `9cba147` |
-| P1-01 | PERF-101 indexes migration (idempotent) + remove dead `estimated_time` ALTER | `database/schema.sql`, `src/main/database/migrations.ts`, `src/main/database/database.ts` | delegated writer | [ ] |
-| P1-02 | PERF-102 PRAGMAs (WAL, synchronous NORMAL, `foreign_keys=ON`, `busy_timeout`) | `src/main/database/database.ts` | delegated writer | [ ] |
-| P1-03 | PERF-104 prepared-statement cache in the DB wrapper | `src/main/database/database.ts` | delegated writer | [ ] |
-| P1-04 | PERF-105 expose `transaction()` and wrap batch writes | `database.ts`, `timeEntriesService.ts`, `taskService.ts`, `settingsService.ts` | delegated writer | [ ] |
-| P1-05 | PERF-103 optimize `getTasks` aggregate (index-backed, integer arithmetic) | `src/main/services/taskService.ts` | delegated writer | [ ] |
-| P1-06 | PERF-106 `getNextAvailableSlot`/`getDailyTimeInfo`: constant queries, single settings load | `src/main/services/timeEntriesService.ts` | delegated writer | [ ] |
-| P1-07 | PERF-107 bound unbounded reads (`getAllTimeEntries`, `getSyncHistory`) | `timeEntriesService.ts`, `historyService.ts` | delegated writer | [ ] |
+| P1-01 | PERF-101 indexes migration (idempotent) + remove dead `estimated_time` ALTER + remove the 3 genuinely-unused legacy helpers | `database/schema.sql`, `src/main/database/migrations.ts`, `src/main/database/database.ts` | delegated writer | [x] `8eb0de9` |
+| P1-02 | PERF-102 PRAGMAs (WAL, synchronous NORMAL, `foreign_keys=ON`, `busy_timeout`) | `src/main/database/database.ts` | delegated writer | [x] `8eb0de9` |
+| P1-03 | PERF-104 prepared-statement cache in the DB wrapper | `src/main/database/database.ts` | delegated writer | [x] `8eb0de9` |
+| P1-04 | PERF-105 expose `transaction()` and wrap batch writes (async-safe helper with depth guard) | `database.ts`, `services/transactionHelper.ts` (new), `timeEntriesService.ts`, `taskService.ts`, `settingsService.ts` | delegated writer | [x] `8eb0de9` + `99b0ceb` |
+| P1-05 | PERF-103 optimize `getTasks` aggregate (index-backed, integer arithmetic proven equal to `julianday`) | `src/main/services/taskService.ts` | delegated writer | [x] `99b0ceb` |
+| P1-06 | PERF-106 `getNextAvailableSlot`/`getDailyTimeInfo`: constant 4 reads, single settings+holidays load, local-date fix (F4) | `src/main/services/timeEntriesService.ts` | delegated writer | [x] `99b0ceb` |
+| P1-07 | PERF-107 add optional bounding to the unbounded reads — **without** a default cap; pagination call sites reported for a product decision | `timeEntriesService.ts`, `historyService.ts` | delegated writer | [x] `99b0ceb` |
 
 ## Acceptance criteria
 
@@ -107,7 +107,9 @@ no merge.
 | F2 | `npm run lint` **never completed** (>15 min): `eslint.config.mjs` ignored `dist*` but not `release/` (~364 MB, 12k files) and `.opencode/`; vendored `.agents/skills` templates added 44 prettier errors. The roadmap's §7 verification gate was therefore unusable as written. | `eslint.config.mjs:16` | Fixed in P0-07 |
 | F3 | **The roadmap's §2 baseline table is stale.** Measured freshly at `81d6d30` (last pre-work commit): renderer **857.40 kB**, CSS **68.38 kB**, main **498.70 kB**. The document claims 701.9 / 55.7 / 916.8 kB. Our Fase 0 change adds **+0.46 kB** (857.86 kB), i.e. negligible. | `npm run build` at `81d6d30` vs `HEAD` | Correct roadmap §2; code splitting (PERF-501) is worth **more** than stated |
 | F4 | `getNextAvailableSlot` date formatting (`setHours(12)` + `toISOString()`) is only correct for UTC offsets within ±12 h; it returns the previous day for e.g. UTC+13. Latent, not currently hit. | `src/main/services/timeEntriesService.ts:238-241` | Deferred to P1-06 |
-| F5 | `src/main/database/database.ts` exports legacy unused helpers (`addTimeEntry`, `getTimeEntries`, `addWorkTime`, `getWorkTimes`, `addCredential`, `getActiveCredential`, `getCredential`, `verifyCredential`) that reference `work_times` / `credentials` tables which do not exist in `schema.sql`. | `database.ts:94-156` | Dead code; remove in P1-01 |
+| F5 | **PARTIALLY WRONG.** I claimed all 8 legacy helpers in `database.ts` were unused dead code. Re-verified during P1-01: only `addTimeEntry`, `getTimeEntries` and `getActiveCredential` were unused. `addWorkTime`/`getWorkTimes` are imported by `src/main/ipc/databaseIpc.ts`, and `addCredential`/`verifyCredential` by `src/main/services/credentialService.ts` (with `getCredential` kept because `verifyCredential` calls it). Only the 3 unused ones were removed. | `database.ts`, `databaseIpc.ts`, `credentialService.ts` | Corrected: 3 removed, 5 kept |
+| F8 | **BUG-08 in the roadmap is a FALSE finding.** The roadmap (and my own first-pass verification) asserted `foreign_keys` was OFF because SQLite defaults it off. Measured instead of assumed: `better-sqlite3` compiles SQLite with `SQLITE_DEFAULT_FOREIGN_KEYS=1`, so FK enforcement and the `ON DELETE CASCADE` were **already active**. | `node_modules/better-sqlite3/deps/defines.gypi:14`; real-DB test asserts `PRAGMA foreign_keys` = 1 and cascade 1→0 | BUG-08 closed as invalid; `foreign_keys = ON` kept as an explicit, defensive declaration |
+| F9 | My own first-pass verification reasoning was the root cause of F8: the explore pass reasoned from the **SQLite** default rather than the **driver's compile flags**. Same class of error as trusting a doc over the code. | `defines.gypi:14` | Lesson: verify driver defaults empirically, not from upstream documentation |
 | F6 | The roadmap's §7 says `npm run test`; the runner is `npm test` (`vitest run`). Also `pnpm-lock.yaml` + pnpm 10.28 are the real package manager while `.npmrc` is pnpm syntax that npm misparses (the `Unknown project config` warnings). | `package.json`, `.npmrc`, `pnpm-lock.yaml` | Doc fix; package-manager decision is user-facing |
 | F7 | `.codegraph/` and `.atl/` are untracked and not gitignored. | `git status` | Add to `.gitignore`, or commit deliberately |
 
@@ -154,4 +156,26 @@ no merge.
   transport error (`Cannot connect to API`) *after* it had already committed, so the
   orchestrator re-verified every claim directly against the diff instead of trusting
   a missing report.
-- Next: Fase 1 (P1-01..P1-07).
+- 2026-09-24 — **Fase 1 DB foundation done** (`8eb0de9`): 12 idempotent indexes
+  placed beside their tables, the 4 PRAGMAs, a prepared-statement cache, a
+  `transaction<T>` primitive, and the dead `estimated_time` ALTER removed. Proven by
+  a **real-SQLite** integration test (Electron-spawned harness, because the native
+  driver is built for Electron's ABI while Vitest runs plain Node): FK = 1,
+  synchronous = 1, busy_timeout = 5000, cascade 1→0, every index present,
+  `USING INDEX` with no `SCAN time_entries`, statement reuse, transaction
+  commit/rollback. Tests 132/132.
+- 2026-09-24 — **Fase 1 services done** (`99b0ceb`): `withTransaction` (async-safe,
+  depth-guarded) now wraps the `addTimeEntries`, `importTasksFromCSV` and
+  `syncHolidaysFromApi` batches; `getTasks` uses integer arithmetic **proven equal**
+  to the old `julianday` totals side by side on a real DB; `getNextAvailableSlot`
+  goes from ~125-155 queries to a **constant 4 reads**; the local-date bug (F4) is
+  fixed and covered. P1-07 deliberately does **not** add a default cap — a silent
+  `LIMIT` on `getAllTimeEntries` would truncate the user's own history, so the
+  capability is opt-in and the 5 call sites that would need a product decision are
+  listed in the commit report. Tests 170/170, type-check clean, lint clean.
+- 2026-09-24 — **Roadmap correction (F8): BUG-08 is invalid.** `better-sqlite3`
+  compiles SQLite with `SQLITE_DEFAULT_FOREIGN_KEYS=1`; FK enforcement was already
+  active, so there was no orphan-row bug. My own first-pass verification made the
+  same error (reasoned from the SQLite default, not the driver's flags).
+- **Fase 0 + Fase 1 are complete.** Out of scope by design: Fase 2..6 and all
+  dependency upgrades.
