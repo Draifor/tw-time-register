@@ -217,7 +217,7 @@ pnpm test:coverage    # Coverage en /coverage
 pnpm dist:win    # Instalador NSIS para Windows x64
 ```
 
-> Tras cambiar versión de Node, ejecutar `electron-builder install-app-deps` para recompilar `better-sqlite3` contra el ABI de Electron.
+> `better-sqlite3` 13 es Node-API y trae prebuilds propios: no requiere recompilación contra el ABI de Electron. No ejecutar `electron-builder install-app-deps` (ignora `npmRebuild: false` y falla sin MSVC).
 
 ---
 

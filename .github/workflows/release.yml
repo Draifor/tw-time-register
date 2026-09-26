@@ -12,6 +12,14 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-2022
+    env:
+      # Electron 42+ no longer downloads its binary from postinstall; it downloads
+      # on the first use of the `electron` bin. The retry budget must therefore be
+      # available for the whole job, not only for the install step.
+      ELECTRON_GET_MAX_RETRIES: '5'
+      # electron-builder requires a flat (hoisted) node_modules. pnpm reads
+      # node-linker from the environment, so .npmrc is never rewritten.
+      npm_config_node_linker: hoisted
 
     steps:
       - name: Checkout
@@ -56,27 +64,31 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-electron-builder-
 
-      - name: Configure pnpm for hoisted node_modules
-        shell: pwsh
-        run: |
-          @"
-          node-linker=hoisted
-
-          onlyBuiltDependencies:
-            - better-sqlite3
-            - electron
-            - esbuild
-          "@ | Set-Content .npmrc
-
       - name: Install dependencies
-        env:
-          ELECTRON_GET_MAX_RETRIES: '5'
         run: pnpm install --no-frozen-lockfile
 
-      - name: Rebuild native modules for Electron
-        run: pnpm exec electron-builder install-app-deps
+      - name: Build (Vite + Electron)
+        run: pnpm build
 
-      - name: Build and publish
+      # A tag push publishes to installed clients.
+      - name: Package and publish
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm build && pnpm exec electron-builder --win --publish always
+        run: pnpm exec electron-builder --win --publish always
+
+      # A manual dispatch only proves the pipeline: build, upload an artifact, never publish.
+      - name: Package without publishing
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm exec electron-builder --win --publish never
+
+      - name: Upload installer artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tw-time-register-windows
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
+          if-no-files-found: error
