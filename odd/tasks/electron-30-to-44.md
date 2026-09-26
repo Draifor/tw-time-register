@@ -156,9 +156,15 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
   references S4 made false were corrected in `649728a`. The clean-checkout proof ran on
   this machine, which has **no MSVC**, and passed end to end: installer 128.96 MB, zero
   native compilation, no publish. Full evidence and follow-ups in the S4 section below.
-- Next: the review preflight over the S3+S4 candidate. S3's human smoke-test points 1
-  and 4-7 were confirmed (see above); the auto-update and clean-machine paths (points
-  6-7) still need a real publish, which stays blocked until the version bump. Then S5.
+- Next (2026-09-26, after the review): the S4 slice is approved and its authority burned,
+  but **the workflow has never been executed**. Order of work for the next session:
+  1. run a `workflow_dispatch` dry run (no publish) to exercise the artifact upload and
+     the mutually exclusive `if` guards;
+  2. the carry-forward items 1-4 in the review section below;
+  3. decide what to do about the **S1/S2/S3 review gap** — each slice needs its own
+     transaction because the full branch exceeds the lens context budget;
+  4. then S5, then S6.
+  The version bump and the publish itself remain separate decisions.
 
 ## S3 — executed (automated gates green; human smoke test confirmed)
 
