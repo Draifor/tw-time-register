@@ -1,9 +1,15 @@
 ignoredBuiltDependencies:
   - esbuild
   - sqlite3
+  # better-sqlite3 13.x ships Node-API prebuilds (prebuilds/<platform>-<arch>.node)
+  # and loads them directly in lib/binding.js. It declares no `install` script, but
+  # pnpm still marks it as requiring a build because binding.gyp exists, and
+  # `node-gyp rebuild` aborts at configure time when no MSVC toolchain is present —
+  # before binding.gyp's prebuild detection can run. Skipping the build uses the
+  # shipped prebuild, which is ABI-stable across Node and Electron versions.
+  - better-sqlite3
 
 onlyBuiltDependencies:
-  - better-sqlite3
   - electron
   - esbuild
   - lzma-native
