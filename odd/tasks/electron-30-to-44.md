@@ -156,15 +156,24 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
   references S4 made false were corrected in `649728a`. The clean-checkout proof ran on
   this machine, which has **no MSVC**, and passed end to end: installer 128.96 MB, zero
   native compilation, no publish. Full evidence and follow-ups in the S4 section below.
-- Next (2026-09-26, after the review): the S4 slice is approved and its authority burned,
-  but **the workflow has never been executed**. Order of work for the next session:
-  1. run a `workflow_dispatch` dry run (no publish) to exercise the artifact upload and
-     the mutually exclusive `if` guards;
-  2. the carry-forward items 1-4 in the review section below;
-  3. decide what to do about the **S1/S2/S3 review gap** — each slice needs its own
-     transaction because the full branch exceeds the lens context budget;
+- 2026-09-26 — **The dry run executed and passed** (`workflow_dispatch`, run `36263921639`,
+  conclusion success, nothing published). Full evidence in the dry-run section at the end.
+  This closes R3-dispatch-branch-unverified and completes carry-forward item 4.
+- Next (2026-09-26, after the dry run): the S4 slice is approved and its authority burned.
+  Order of work for the next session:
+  1. ~~run a `workflow_dispatch` dry run (no publish)~~ — **done** (run `36263921639`:
+     `Package and publish` skipped, `Package without publishing` + artifact upload ran,
+     no new release);
+  2. the carry-forward items 1-3 in the review section below (item 4 was the dry run, now done);
+  3. the **S1/S2/S3 review gap** — **decided**: one transaction over `fd7cfcc..63c9666`
+     covering all three slices (2075 lines / 9 files, medium, `slice_budget_reached`),
+     not three transactions. Evidence in the dry-run section;
   4. then S5, then S6.
   The version bump and the publish itself remain separate decisions.
+
+  **Ordering hazard:** carry-forward items 1-3 edit `release.yml` and `build-local.ps1`, so
+  the dry run above proves the **S4** pipeline only. Once they land the pipeline changes and
+  must be dry-run again before any publish.
 
 ## S3 — executed (automated gates green; human smoke test confirmed)
 
@@ -416,3 +425,50 @@ a reason to re-run the review on this candidate.
 
 The reviewed candidate is `195236d`; this review record is a documentation-only follow-up,
 so the receipt for the S4 code stands unchanged.
+
+## Dry run — `workflow_dispatch`, executed 2026-09-26
+
+Run `36263921639` — https://github.com/Draifor/tw-time-register/actions/runs/36263921639
+Event `workflow_dispatch`, ref `staging` @ `e7b407b`, conclusion **success** (~4 min).
+
+**Precondition that was not obvious:** the local branch was **25 commits ahead of
+`origin/staging`**, and the remote `release.yml` was still the pre-S4 single-step
+"Build and publish" with `--publish always`. A dispatch *before* the push would have run the
+**old** workflow and published to installed clients — the exact outcome this dry run exists
+to avoid. `staging` was fast-forwarded (`81d6d30..e7b407b`) and the remote file was verified
+to contain `--publish never` + `upload-artifact` before dispatching.
+
+| Step | Result |
+|---|---|
+| `Package and publish` (`if: push`) | **skipped** — the mutually exclusive guard holds |
+| `Package without publishing` (`if: workflow_dispatch`) | success |
+| `Upload installer artifact` | success |
+| Artifact | `tw-time-register-windows`, 135 377 654 bytes (129,1 MB) |
+| Releases after the run | unchanged — newest is still `v1.9.0` (2026-09-23) |
+
+**Nothing was published.** This closes R3-dispatch-branch-unverified and completes
+carry-forward item 4. It does **not** address R4-1: the publish branch (`--publish always`)
+still shares only the build steps with the rehearsal, so its first real run remains a release
+with no retained artifact — carry-forward item 5 is the fix for that.
+
+### S1/S2/S3 gap — decision and evidence
+
+`review assess` (read-only, one worktree per slice, RDD `on` / global):
+
+| Candidate | Base-ref | Risk | Lines / files | `review_due` |
+|---|---|---|---|---|
+| S1 `ed07d9d` | `fd7cfcc` | medium | 14 / 3 | false (`under_budget`) |
+| S2 `de2af27` | `02e984c` | medium | 158 / 2 | false (`under_budget`) |
+| S3 `63c9666` | `0007fc6` | medium | 1730 / 3 | true (`slice_budget_reached`) |
+| **S1+S2+S3** | `fd7cfcc` | medium | **2075 / 9** | true (`slice_budget_reached`) |
+
+Two corrections to the earlier record: S3's tier is **medium** (`configuration_change` on
+`package.json`), not high; and the `lens_context_budget_exceeded` refusal was against the
+**whole branch** (55 files / 5240 lines), not the unreviewed prefix — that prefix is 2075
+lines and fits comfortably.
+
+**Decision:** one transaction over `fd7cfcc..63c9666` covering S1+S2+S3 together. It is a
+distinct transaction with its own base and target, closes all three slices with real lenses,
+and avoids three separate consent envelopes. The value is concentrated in S3: its 19
+non-lockfile lines carry `npmRebuild: false`, which disables the automatic native rebuild for
+*every* module — the least obvious and highest-consequence decision in the migration.
