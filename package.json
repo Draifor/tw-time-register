@@ -109,6 +109,7 @@
     "productName": "TW Time Register",
     "asar": true,
     "npmRebuild": false,
+    "afterPack": "scripts/probe-after-pack.cjs",
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"
     ],

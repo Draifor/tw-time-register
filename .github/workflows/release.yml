@@ -70,29 +70,24 @@ jobs:
       - name: Build (Vite + Electron)
         run: pnpm build
 
-      # Packaging and publishing are deliberately separate steps: the probe must
-      # fail the job BEFORE anything reaches installed clients. So this step always
-      # builds with --publish never, the probe verifies the packaged native module,
-      # and only then does the (tag-only) Publish step push to installed clients.
-      - name: Package (no publish)
-        run: pnpm exec electron-builder --win --publish never
-
-      - name: Probe packaged native module
-        shell: pwsh
-        run: |
-          $env:ELECTRON_RUN_AS_NODE = '1'
-          # The Electron binary is GUI-subsystem, so a bare `&` call returns before
-          # the process exits and $LASTEXITCODE is unreliable. Start-Process -Wait
-          # blocks and exposes a real ExitCode, which is what gates the job.
-          $probe = Start-Process -FilePath "release\win-unpacked\TW Time Register.exe" -ArgumentList "scripts\probe-packaged-native.cjs" -NoNewWindow -Wait -PassThru
-          exit $probe.ExitCode
-
-      # A tag push publishes to installed clients.
-      - name: Publish
+      # The gate is the `afterPack` hook registered in package.json: it runs the
+      # packaged-native-module probe inside the build that produces the artifact.
+      # A probe failure throws and aborts the build during the pack phase, before
+      # any installer artifact exists, so nothing reaches installed clients. On a
+      # tag push the published artifact is therefore the exact build the probe
+      # inspected — there is no second, uninspected build.
+      #
+      # The two steps below are mutually exclusive by trigger: a tag push builds
+      # and publishes in one pass; a manual dispatch builds without publishing.
+      - name: Package and publish (tag push)
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm exec electron-builder --win --publish always
+
+      - name: Package (manual dispatch, no publish)
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm exec electron-builder --win --publish never
 
       - name: Upload installer artifact
         if: github.event_name == 'workflow_dispatch'
