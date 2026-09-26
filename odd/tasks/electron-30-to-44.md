@@ -72,7 +72,7 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 | **S1 ✅ `ed07d9d`** | Replace `electron-is-dev` with `app.isPackaged` in `index.ts` + `updater.ts`; update the updater test mock. Behaviour-identical. | none |
 | **S2 ✅ `de2af27`** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
 | **S3** | The version bump: electron 44.4.5, better-sqlite3 13.0.3, electron-builder 26.15.3, electron-updater 6.8.9. Two unplanned config changes were required (`npmRebuild: false`, `better-sqlite3` → `ignoredBuiltDependencies`). Code complete and installer built; **the packaged smoke test still needs a human**. | **high** |
-| **S4 ✅ `c94f3da`+`649728a`** | Packaging/CI for the E42 lazy binary download; verified `release.yml` + `build-local.ps1` produce a working installer on a clean checkout with **no MSVC**. | medium |
+| **S4 ✅ `c94f3da`+`649728a`** | Packaging/CI for the E42 lazy binary download; `build-local.ps1` plus the CI-equivalent packaging commands produce a working installer on a clean checkout with **no MSVC**. The workflow itself has **never been executed** — a `workflow_dispatch` dry run is still owed before any publish. | medium |
 | **S5** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
 | **S6** | Evaluate `vite-plugin-electron` 1.x as its own slice with its own rollback. | medium |
 
@@ -360,3 +360,53 @@ machine.
   it says `asar: false` while `package.json` sets `asar: true`, says
   `better-sqlite3 11.x`, and says Node 24 has no N-API prebuilds (Node 24 is what
   Electron 44 ships). → S5.
+
+## Review (receipt-driven development) — approved 2026-09-26
+
+Transaction: lineage `review-ffea261f36319637`, base-ref `e146a32`, committed-only,
+projection workspace, tier **high**. Scope was **the S4 slice only** — 8 files, 188
+lines. Four lenses (risk, resilience, readability, reliability) were admitted; the final
+admitted capture closed the review as **approved** with no correction opened, and the
+acknowledgement burned authority (`gentle-ai.review-acknowledged/v1`,
+`authority: burned`).
+
+**The whole-branch candidate was refused first.** `review start` on the full unreviewed
+range (55 files / 5240 lines since `aeb77d5`, 24 commits) returned
+`lens_context_budget_exceeded` with `mutation_outcome: not_started` — no review authority
+was created, so there was nothing to abandon or repair, and retrying that exact candidate
+cannot succeed. The documented remedy is to reduce scope, which is why only S4 is
+covered. Consequence: **S1, S2 and S3 remain unreviewed.** S3 alone is ~2100 lines
+(lockfile-dominated) and may also exceed the budget; each slice needs its own transaction.
+
+### Advisory findings (non-blocking)
+
+None of these opened a correction and none reopens this review. They are later work, never
+a reason to re-run the review on this candidate.
+
+| ID | Lens | Location | Severity | Note |
+|---|---|---|---|---|
+| R1-001 | risk | `.github/workflows/release.yml:68` | WARNING | The release job installs with `--no-frozen-lockfile`, so a published installer can be assembled from versions resolved at build time rather than the committed lockfile. **Pre-existing** — the line is unchanged by this candidate. |
+| R3-no-frozen-lockfile | reliability | `.github/workflows/release.yml:68` | WARNING | The same finding, reached independently. Pre-existing. |
+| R4-5 | resilience | `.github/workflows/release.yml:68` | SUGGESTION | Consequence for rollback: reverting the lockfile restores source intent, not the dependency bytes that produced a published installer. Pre-existing. |
+| R3-dispatch-branch-unverified | reliability | `.github/workflows/release.yml:80-94` | WARNING | The branch this slice adds (artifact globs, `if-no-files-found: error`, `--publish never`, no `GH_TOKEN`) has no executable verification. |
+| R4-1 | resilience | `.github/workflows/release.yml:75` | WARNING | The rehearsal shares nothing with the publish branch at its point of failure, so the first run of `--publish always` is a real release with no retained artifact to fix forward from. |
+| R4-2 | resilience | `.github/workflows/release.yml:70-71` | WARNING | Deleting the rebuild step removed the only build-time touch of the native module. Nothing now fails the build if the `win32-x64` prebuild is missing or ABI-incompatible; the first symptom would be a crash at database init on an installed machine. |
+| R4-4 / R3-build-local-env-cleanup | resilience / reliability | `build-local.ps1:30` | SUGGESTION | The `finally` deletes `npm_config_node_linker` unconditionally instead of restoring a prior value, so a caller that had it set loses it silently. |
+| R3-npmrc-approvals-relocated | reliability | `.npmrc:4-5` | SUGGESTION | Scope gap: the comment asserts the build-script approvals live in `pnpm-workspace.yaml`, a file outside this candidate, so the review could not see them. |
+| R4-3 | resilience | `odd/tasks/electron-30-to-44.md:75` | SUGGESTION | The S4 row read as "verified" for a pipeline that was never executed, which would remove the prompt for a dispatch dry run. Wording corrected in the slices table above. |
+
+### Carried forward (concrete, cheap) → S5 or its own slice
+
+1. `--no-frozen-lockfile` → `--frozen-lockfile` in the release job; decide the same for
+   `build-local.ps1`.
+2. Capture and restore the previous `npm_config_node_linker` value in `build-local.ps1`.
+3. Add a post-packaging native-module probe to CI (launch the packaged app, or round-trip
+   `better-sqlite3` under `ELECTRON_RUN_AS_NODE`) so a broken prebuild fails the build
+   instead of shipping — this restores what R4-2 correctly observes was lost.
+4. Run a `workflow_dispatch` dry run **before** the version bump: it exercises the
+   artifact-upload path and the mutually exclusive `if` guards without publishing.
+5. Optional: let the rehearsal share more of the publish path (R4-1), and upload the
+   installer artifact on the tag path too so a failed release can be fixed forward.
+
+The reviewed candidate is `195236d`; this review record is a documentation-only follow-up,
+so the receipt for the S4 code stands unchanged.
