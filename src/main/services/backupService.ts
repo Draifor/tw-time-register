@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { DB_PATH, closeDb } from '../database/database';
@@ -10,15 +10,28 @@ export interface BackupResult {
   message?: string;
 }
 
+// Electron 43 stopped restoring the last directory used by the OS, so a dialog
+// opened without `defaultPath` would land in Downloads. We remember the folder
+// chosen in each dialog and pass it back explicitly. Session-scoped on purpose:
+// it restores the pre-43 convenience without inventing persistence the app
+// never had.
+let lastExportDir: string | null = null;
+let lastImportDir: string | null = null;
+
+function resolveDefaultDir(lastUsed: string | null): string {
+  return lastUsed ?? app.getPath('documents');
+}
+
 /**
  * Opens a save-file dialog and copies the current SQLite DB to the chosen path.
  */
 export async function exportDatabase(): Promise<BackupResult> {
   const win = BrowserWindow.getFocusedWindow();
+  const fileName = `worktime-backup-${new Date().toISOString().slice(0, 10)}.sqlite`;
 
   const { canceled, filePath } = await dialog.showSaveDialog(win!, {
     title: 'Export database',
-    defaultPath: `worktime-backup-${new Date().toISOString().slice(0, 10)}.sqlite`,
+    defaultPath: path.join(resolveDefaultDir(lastExportDir), fileName),
     filters: [{ name: 'SQLite database', extensions: ['sqlite', 'db'] }]
   });
 
@@ -28,6 +41,7 @@ export async function exportDatabase(): Promise<BackupResult> {
 
   try {
     fs.copyFileSync(DB_PATH, filePath);
+    lastExportDir = path.dirname(filePath);
     return { success: true, filePath };
   } catch (err) {
     return { success: false, message: String(err) };
@@ -43,6 +57,7 @@ export async function importDatabase(): Promise<BackupResult> {
 
   const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
     title: 'Import database',
+    defaultPath: resolveDefaultDir(lastImportDir),
     filters: [{ name: 'SQLite database', extensions: ['sqlite', 'db'] }],
     properties: ['openFile']
   });
@@ -52,6 +67,7 @@ export async function importDatabase(): Promise<BackupResult> {
   }
 
   const sourcePath = filePaths[0];
+  lastImportDir = path.dirname(sourcePath);
 
   try {
     // Close the active connection so the file is not locked on Windows
