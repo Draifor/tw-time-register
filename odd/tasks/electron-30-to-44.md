@@ -72,7 +72,7 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 | **S1 ✅ `ed07d9d`** | Replace `electron-is-dev` with `app.isPackaged` in `index.ts` + `updater.ts`; update the updater test mock. Behaviour-identical. | none |
 | **S2 ✅ `de2af27`** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
 | **S3** | The version bump: electron 44.4.5, better-sqlite3 13.0.3, electron-builder 26.15.3, electron-updater 6.8.9. Two unplanned config changes were required (`npmRebuild: false`, `better-sqlite3` → `ignoredBuiltDependencies`). Code complete and installer built; **the packaged smoke test still needs a human**. | **high** |
-| **S4 ✅ `c94f3da`+`649728a`** | Packaging/CI for the E42 lazy binary download; `build-local.ps1` plus the CI-equivalent packaging commands produce a working installer on a clean checkout with **no MSVC**. The workflow itself has **never been executed** — a `workflow_dispatch` dry run is still owed before any publish. | medium |
+| **S4 ✅ `c94f3da`+`649728a`** | Packaging/CI for the E42 lazy binary download; `build-local.ps1` plus the CI-equivalent packaging commands produce a working installer on a clean checkout with **no MSVC**. The workflow has since been executed once (`workflow_dispatch`, run `36263921639`, exit success, nothing published) — see the dry-run section. | medium |
 | **S5** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
 | **S6** | Evaluate `vite-plugin-electron` 1.x as its own slice with its own rollback. | medium |
 
@@ -756,3 +756,115 @@ slice's scope and stays in `dependencies` for later work.
 what ships, so S5-02/S5-03 changed only what electron-builder *walks*: the bundles are produced
 by Vite before packaging and are unaffected, the packaged native payload is unchanged, and the
 probe re-confirmed it. What was re-proven end to end is the packaging *path*.
+
+## Probe-gate coverage — the published artifact (execution)
+
+Task list created 2026-09-26 **before the first source write**, per the ODD tracking rule.
+
+**Problem.** The probe added by carry-forwards 1-3 certifies the `--publish never` build, but a
+tag push re-ran `electron-builder --publish always` as a **second build** and published *that*
+uninspected build. Three lenses reached this independently (R3-publish-build-not-probed, R4-1,
+R2-004). So the gate certified an artifact that a tag push discards.
+
+**Chosen approach — the probe runs *inside* the build (user decision, 2026-09-26).** The
+electron-builder lifecycle was verified against its documentation rather than assumed: Phase 1
+pack → Phase 2 sign → Phase 3 artifacts → **`afterPack` / `afterAllArtifactBuild`** → **Phase 4
+Publish**, and a `throw` inside a hook **fails the build**. Registering an `afterPack` hook
+therefore makes the probe run in the **same build whose bytes are published**, on the packaged
+app directory (`context.appOutDir`), and a probe failure aborts the build **before the installer
+artifact is even created** — hence before any upload.
+
+Consequences accepted:
+
+- **One build instead of two.** The tag path stops rebuilding; the published artifact is the one
+  the probe inspected, by construction rather than by assumption.
+- **The publisher and the release flow are untouched** — no `releaseType` change, no `gh release`
+  step, no draft to clean up.
+- **`dist:win` and `build-local.ps1` become gated too**, so the redundant explicit probe blocks go
+  away and the same byte-level check runs on every packaging path.
+- **R4-1 improves substantially:** the rehearsal (dispatch) and the publish branch now share the
+  build steps *and* their point of failure; only `--publish never` / `--publish always` differs.
+
+Rejected alternatives, recorded: **(a)** draft release + post-upload probe + `gh release edit
+--draft=false` — it uploads bytes before validating them and leaves a stranded draft on failure;
+**(b)** a single `--publish never` build published with `gh release` — it replaces the
+highest-consequence mechanism (auto-update), which was already rejected once for that reason.
+
+| ID | Task | Files | Status |
+|---|---|---|---|
+| PG-01 | `afterPack` hook that runs the packaged native probe inside the build: win32-only with an explicit skip log elsewhere; preflight the exe, the probe script and the package dir; pass an **absolute** package path; set `ELECTRON_RUN_AS_NODE=1` for the child only; throw on non-zero exit | `scripts/probe-after-pack.cjs` (new) | done |
+| PG-02 | Register the hook as `build.afterPack` and keep the `.cjs` ESLint-clean with in-file directives (same precedent as the probe) | `package.json` | done |
+| PG-03 | Restructure `release.yml`: tag = one gated `--publish always` build with `GH_TOKEN` scoped to it; dispatch = `--publish never` + artifact upload; drop the now-redundant explicit probe step | `.github/workflows/release.yml` | done |
+| PG-04 | Simplify `build-local.ps1`: drop the explicit probe block and its `ELECTRON_RUN_AS_NODE` juggling **if** the hook demonstrably covers `--dir`; otherwise keep it and record why (this closes R2-002 / R4-3 either way) | `build-local.ps1` | done |
+| PG-05 | Local proof: the hook fires on `--dir` and on an installer build; a deliberately broken package **fails the build and writes no installer**; `vitest` / `type-check` / `lint`; `build-local.ps1` end to end | — | done |
+| PG-06 | Record the slice, its evidence and its residual in the feature doc | this file | done |
+
+**Acceptance criteria.** A probe failure makes `electron-builder` exit non-zero and leaves **no
+installer artifact** in `release/`, so nothing can reach installed clients; the published artifact
+on a tag push comes from the same build the probe inspected; `build-local.ps1` and `pnpm run
+dist:win` are gated without a second copy of the probe logic; `vitest` (known Saturday flake
+excepted), `type-check` and `lint` are clean.
+
+**Checks.** `pnpm exec vitest run`, `pnpm run type-check`, `pnpm run lint`, `./build-local.ps1`,
+and `pnpm exec electron-builder --win --publish never` with a good and a deliberately broken
+package.
+
+**Route.** Delegated direct — one bounded writer (4 non-trivial files).
+
+**Residual risk, stated up front.** The `--publish always` ordering (hook throws ⇒ no upload)
+rests on the documented Phase-4 lifecycle and is provable locally only as far as "no installer is
+created". The tag branch itself cannot be executed without a real release, so after this lands a
+fresh `workflow_dispatch` dry run is owed for the dispatch branch, and the tag branch stays
+unexecuted until the first real tag — the same honesty R4-2 demanded of the previous gate.
+
+### PG results (2026-09-26)
+
+Commit `deef356` — `build(ci): gate the published build with an afterPack probe hook`
+(4 files, +97/−34). Route: delegated direct, one bounded writer.
+
+**What landed.** A new `scripts/probe-after-pack.cjs`, registered as `build.afterPack`, runs the
+existing probe by spawning the packaged binary — never `require`ing it in-process, which would
+have tested the dev binary instead of the packaged one. `release.yml` collapsed to two mutually
+exclusive steps (tag → one `--publish always` build with step-scoped `GH_TOKEN`; dispatch →
+`--publish never` + the artifact upload). `build-local.ps1` lost its explicit probe block and its
+`ELECTRON_RUN_AS_NODE` try/finally, because the hook was observed to cover `--dir` too.
+
+**The gate turned out stronger than designed.** The expected result was "the hook fails the build
+before the upload". The observed result is that it fails the build before the **installer exists**:
+with the packaged prebuild deliberately renamed, `electron-builder --win --publish never` exited
+**1** and `release/` held **no `*.exe` and no `latest.yml`**. There is nothing for a publish to
+send, on any trigger.
+
+| Check | Result |
+|---|---|
+| `pnpm run lint` | exit 0 — the new `.cjs` is ESLint-clean through in-file directives; `eslint.config.mjs` untouched |
+| `pnpm run type-check` | exit 0 |
+| `pnpm exec vitest run` | 173 passed / 1 failed — the known pre-existing Saturday flake (`timeEntriesService.test.ts:339`) |
+| `./build-local.ps1` | exit 0; the hook fired for `--dir` (`[afterPack] Probing packaged better-sqlite3 via …\release\win-unpacked\TW Time Register.exe`) and the probe printed `{"ok":true,"roundtrip":42,…}` exactly **once** |
+| Gate proof — broken package | `electron-builder` exit **1**, `release\*.exe` count **0**; probe error `Cannot find module '…\app.asar.unpacked\node_modules\better-sqlite3\build\Release\better_sqlite3.node'` |
+| Clean rebuild after restore | exit 0, `TW Time Register Setup 1.9.0.exe`, 127 240 681 bytes |
+| Parent spot check | `eslint .` re-run independently by the orchestrator: exit 0; the on-disk diff and the hook file match the writer's report |
+
+**Correction to the design record, found live.** `afterPack` does **not** run after the artifacts
+phase as the phase diagram implies; in electron-builder 26.15.3 it runs right after packing and
+**before signing** (observed log order: `updating asar integrity executable resource` →
+`[afterPack]` probe → `signing with signtool.exe`). This makes the gate stricter, not weaker — the
+failure lands before the installer is ever created. It also means the probe inspects the unpacked
+app **before** its executable is signed. Signing does not touch the native module bytes, which are
+the thing the probe exists to check, so the assurance holds; the nuance is recorded, not glossed.
+
+**Findings this closes.** `R3-publish-build-not-probed` and `R4-1` — the published artifact is now
+the probed build by construction, and the rehearsal and the publish branch share their build steps
+*and* their point of failure. `R3-probe-launch-preflight` — the hook preflights the executable, the
+probe script and the package directory before launching anything, so a missing script fails fast
+instead of hanging to the Actions timeout. `R2-002` / `R4-3` — the unconditional
+`ELECTRON_RUN_AS_NODE` teardown left with the block that needed it. `R2-004` — the workflow comment
+now states the gate's relationship to the published artifact. `R2-001` — the S4 row's "never been
+executed" contradiction, corrected in this record.
+
+**Still open, honestly.** The tag branch (`--publish always`) remains **unexecuted**. "The hook
+aborts before upload" is the documented Phase-4 lifecycle plus a local proof that it aborts before
+any artifact exists — not an executed release. A fresh `workflow_dispatch` dry run is owed before
+any publish, and it proves the dispatch branch only. `R2-003` (the probe's hardcoded `42` sentinel)
+is untouched. `R4-2`'s concern is now concentrated rather than closed: the gate lives in exactly
+one place (`build.afterPack`), and that place has still never run in CI.
