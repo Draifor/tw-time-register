@@ -71,7 +71,7 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 |---|---|---|
 | **S1 ✅ `ed07d9d`** | Replace `electron-is-dev` with `app.isPackaged` in `index.ts` + `updater.ts`; update the updater test mock. Behaviour-identical. | none |
 | **S2 ✅ `de2af27`** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
-| **S3** | The version bump: electron 44, better-sqlite3 13, electron-builder 26, electron-updater 6.8.9. Regenerate the lockfile with pnpm, run `install-app-deps`, produce an NSIS installer, smoke-test the **packaged** app. | **high** |
+| **S3** | The version bump: electron 44.4.5, better-sqlite3 13.0.3, electron-builder 26.15.3, electron-updater 6.8.9. Two unplanned config changes were required (`npmRebuild: false`, `better-sqlite3` → `ignoredBuiltDependencies`). Code complete and installer built; **the packaged smoke test still needs a human**. | **high** |
 | **S4** | Packaging/CI for the E42 lazy binary download; verify `release.yml` + `build-local.ps1` still produce a working installer on a clean checkout. | medium |
 | **S5** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
 | **S6** | Evaluate `vite-plugin-electron` 1.x as its own slice with its own rollback. | medium |
@@ -135,39 +135,109 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
   overwritten by the next build; (c) the earlier note claiming the test harness is
   pinned to the Electron 30 ABI was **incorrect** — the harness resolves
   `require('electron')`, so it follows the installed version and needs no change.
-- Next: S3 (the version bump) — high risk, needs its own run and a packaged-app
-  smoke test. See the checklist above.
+- 2026-09-25 — **S3 executed.** Versions bumped, installer built, all automated gates
+  green on Electron 44; two config changes the plan did not anticipate were required
+  (see the S3 section below). Blocked on the human packaged smoke test before it can
+  be called done, and the review preflight is deliberately deferred until the
+  candidate bytes are final.
+- Next: the packaged smoke test (points 1 and 4-7 above), then the review preflight,
+  then **S4** (packaging/CI: the `install-app-deps` call sites and the redundant
+  `@electron/rebuild` dev dependency).
 
-## S3 preparation (ready to execute)
+## S3 — executed (code complete; packaged smoke test pending a human)
 
-Prerequisites verified on this checkout:
+Landed versions, resolved against the registry on 2026-09-25:
 
-- Branch `staging` is clean; S1 (`ed07d9d`) and S2 (`de2af27`) are the last two
-  functional commits, so a failed S3 reverts to a known-good pair.
-- `release/` is a **build output directory**, not a store: it currently holds only
-  `win-unpacked` plus builder metadata, and electron-builder reuses the same output
-  path, so the next build overwrites it in place.
-- Lockfile is `pnpm-lock.yaml` with pnpm 10 (10.28.2 here) authoritative.
-  Regenerate with `pnpm install`, never npm (`.npmrc` is pnpm syntax that npm
-  misparses).
-- Native rebuild is driven by `electron-builder install-app-deps`
-  (`release.yml:77`, `build-local.ps1:29`); `better-sqlite3` is `asarUnpack`ed,
-  so the rebuild must target the new Electron ABI, not Node's.
-- The Electron-as-Node integration harness needs **no change** for this bump.
-  Both integration tests resolve the runner with `require('electron')`, which
-  returns the binary of whichever version is installed, and `install-app-deps`
-  rebuilds the native module for that same version — harness and native module
-  move together. The ABI mismatch that originally motivated the harness cannot
-  reappear across the bump.
-- Resolved targets against the registry on 2026-09-25 — Electron 44 is still the
-  current stable major, so the plan has not drifted: `electron` **44.4.5**,
-  `better-sqlite3` **13.0.3**, `electron-builder` **26.15.3**,
-  `electron-updater` **6.8.9**.
+| Package | From | To |
+|---|---|---|
+| `electron` | 30.5.1 | **44.4.5** |
+| `better-sqlite3` | 11.10.0 | **13.0.3** |
+| `electron-builder` | 24.13.3 | **26.15.3** |
+| `electron-updater` | 6.8.3 | **6.8.9** |
+| `@electron/rebuild` | 4.0.1 | 4.2.0 |
 
-Execution order for S3 (one commit, revertable):
+### Two config changes the plan did not anticipate
 
-1. Edit `package.json` with those exact versions.
-2. `pnpm install` to regenerate the lockfile, then `electron-builder install-app-deps`.
-3. `pnpm exec vitest run`, `pnpm run type-check`, `pnpm run lint`, `pnpm run build`.
-4. `pnpm run dist:win` → NSIS installer, then the 7-point smoke test above against
-   the **packaged** app (the packaged run is what decides S3, not the dev run).
+**1. `pnpm-workspace.yaml`: `better-sqlite3` moved from `onlyBuiltDependencies` to
+`ignoredBuiltDependencies`.** better-sqlite3 13.x declares **no `install` script**.
+It ships Node-API prebuilds (`prebuilds/<platform>-<arch>.node`, flat files) and
+loads them directly from `lib/binding.js`. pnpm still classified it as requiring a
+build because of `gypfile: true` / `binding.gyp`, and ran `node-gyp rebuild`, which
+aborts at configure time on a machine without MSVC — before better-sqlite3's own
+`binding.gyp` prebuild detection can run.
+
+**2. `package.json` → `build.npmRebuild: false`.** `@electron/rebuild` cannot
+recognise better-sqlite3 13's prebuild format. `Prebuildify.usesTool()` requires a
+`prebuildify` entry in `devDependencies` (absent) *and* a
+`prebuilds/<plat>-<arch>/electron.napi.node` layout (better-sqlite3 uses flat
+`prebuilds/win32-x64.node`); `NodePreGyp` and `PrebuildInstall` require
+dependencies that are also absent. So it falls through to `node-gyp` and fails.
+With `npmRebuild: false`, electron-builder logs
+`skipped dependencies rebuild reason=npmRebuild is set to false` and packages the
+shipped prebuild.
+
+**Tradeoff accepted:** `npmRebuild: false` removes the automatic native rebuild for
+*every* module. That is correct today because better-sqlite3 is the app's only
+native dependency and — being Node-API — needs no rebuild. If a future dependency
+does need one, this flag must be revisited: a Node-ABI binary would fail only in
+the packaged app, never in dev.
+
+The alternative considered and rejected was installing MSVC Build Tools
+(2-6 GB, admin, on every dev machine and CI runner) to compile a binary that
+upstream already publishes and tests. `electron-builder` exposes no per-module
+rebuild exclusion — only the global `npmRebuild`, `nodeGypRebuild` and
+`buildDependenciesFromSource`.
+
+### Also fixed: a stale `node-abi`
+
+`install-app-deps` first failed with `Could not detect abi for version 44.4.5 and
+runtime electron`. The lockfile had pinned `node-abi@4.12.0` (which satisfies
+`@electron/rebuild`'s `^4.2.0`); `4.35.0` is published and computes ABI **149** for
+Electron 44.4.5. `pnpm update node-abi` moved it — a lockfile-only change inside
+the already-declared range.
+
+### Verified
+
+| Check | Result |
+|---|---|
+| `pnpm exec vitest run` | **174/174**, including both Electron-as-Node integration suites, so those ran on Electron 44 |
+| `pnpm run type-check` / `lint` / `build` | all clean (renderer 858 kB, main 505 kB, preload 7.4 kB) |
+| `pnpm exec electron --version` | `v44.4.5`, preceded by `Downloading Electron binary...` — **E42's lazy download confirmed live** |
+| Packaged layout | `app.asar` + `app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node`, i.e. outside asar as required |
+| Packaged runtime probe | the packaged binary under `ELECTRON_RUN_AS_NODE=1` loaded the packaged better-sqlite3 and round-tripped a row: `electron 44.4.5, node 24.21.0, napi 10, abi 149` |
+| `pnpm run dist:win` | `release/TW Time Register Setup 1.9.0.exe`, 135 MB, plus `.blockmap` and `latest.yml` |
+
+The Electron-as-Node harness needed **no change**, for a different reason than
+first assumed: it resolves the runner with `require('electron')`, which returns
+whichever version is installed, and better-sqlite3 13's prebuild is ABI-stable
+across Node and Electron anyway.
+
+Note: **Electron 44 ships Node 24.21.0** while the dev runtime is Node 22.17.0, so
+the main process runs on Node 24 in the packaged app. `@types/node` at `^24.x` is
+therefore the right target, consistent with the plan.
+
+### Still open before S3 can be called done
+
+Smoke-test points 1 and 4-7 need a human at the keyboard: window and custom
+titlebar, backup export/import dialogs, `safeStorage` credential decryption plus a
+sync round-trip, the auto-update path including an installed 1.9.0 (Electron 30)
+client upgrading, and a clean-machine install.
+
+The review preflight is deliberately **not** run yet. A smoke-test finding would
+change the candidate bytes, and freezing a review transaction on bytes that may
+still move would waste it.
+
+### Cleanup noted for later slices
+
+- `release.yml:77` and `build-local.ps1:29` still call `install-app-deps`
+  explicitly, which now fails on a machine without MSVC → **S4**.
+- `@electron/rebuild` sits in `devDependencies` but electron-builder bundles its
+  own; electron-builder warns `already used by electron-builder, please consider to
+  remove excess dependency from devDependencies` → S4.
+- `bindings` and `file-uri-to-path` are still listed in `build.files` and
+  `asarUnpack` but were dependencies of better-sqlite3 11 only; they are absent from
+  the packaged output → S5.
+- `vite`, `vite-plugin-electron`, `vite-plugin-electron-renderer` and
+  `@vitejs/plugin-react` live in `dependencies` though they are build-time tools.
+  That is why electron-builder reports missing platform-specific `@esbuild/*` and
+  `@rollup/rollup-*` binaries during packaging → S5.
