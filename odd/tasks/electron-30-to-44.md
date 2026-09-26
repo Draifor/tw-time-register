@@ -561,3 +561,83 @@ it could be flakiness. Do not treat "reduce scope" as a settled remedy until it 
 performance work, 5/5 empty reviewer outputs), `review-44ad33de349f2aaa` (the stopped
 combined S1+S2+S3 attempt from this session) and `review-7c1048e2042af3ea`. Each needs its own
 `review abandon` with a maintainer authorization binding.
+
+## Carry-forwards 1-3 (S4 review) — execution
+
+Task list created 2026-09-26 **before the first source write**, per the ODD tracking rule.
+
+| ID | Task | Files | Status |
+|---|---|---|---|
+| CF-01 | Freeze the lockfile in the release job and in the local packaging script | `.github/workflows/release.yml`, `build-local.ps1` | done |
+| CF-02 | Capture and restore the previous `npm_config_node_linker` instead of deleting it unconditionally | `build-local.ps1` | done |
+| CF-03 | Packaged native-module probe: load the packaged `better-sqlite3` under the packaged Electron and round-trip a row | `scripts/probe-packaged-native.cjs` | done |
+| CF-04 | Wire the probe into CI so it runs **before** publish (tag) and before the artifact upload (dispatch), and into `build-local.ps1` | `.github/workflows/release.yml`, `build-local.ps1` | done |
+
+**Design decision (CF-04) — probe placement gates the publish.** The tag path is
+restructured from one `--publish always` step into `package (--publish never)` →
+`probe` → `publish (--publish always)`. The publish *mechanism* is unchanged (still
+electron-builder's GitHub provider); only the ordering changes, so a probe failure
+aborts the job before anything reaches installed clients. Cost: the tag path builds
+twice. Rejected alternative: publishing the existing artifacts with `gh release` to
+avoid the second build — that would replace the highest-consequence mechanism
+(auto-update) in the same slice that adds a gate; it belongs to optional item 5.
+
+**Design decision (CF-01) — frozen in both places.** A published installer must be
+assembled from the committed lockfile (the exact defect R1-001 / R3-no-frozen-lockfile
+named), and `build-local.ps1` should reproduce CI's dependency bytes. A stale lockfile
+now fails loudly instead of silently resolving newer versions.
+
+**Design decision (CF-03) — the probe runs the packaged binary.** `ELECTRON_RUN_AS_NODE=1`
+on `release/win-unpacked/TW Time Register.exe`, requiring the unpacked package from
+`resources/app.asar.unpacked`. Verified live against the current packaged build *before*
+writing CI around it: `{"roundtrip":42,"electron":"44.4.5","node":"24.21.0","abi":"149","napi":"10"}`.
+This is the check whose absence R4-2 identified and which the S3 CRITICAL
+(`R3-NATIVE-REBUILD-DISABLED`, `npmRebuild: false`) made concrete: it restores a
+build-time failure for a missing or ABI-incompatible prebuild, instead of a crash at
+database init on an installed machine.
+
+### CF results (2026-09-26)
+
+Commit `cf33b90` — `build(ci): probe the packaged native module before publishing`
+(3 files, +91/-9). Route: delegated direct, one bounded writer (2+ non-trivial files).
+
+**Two of the planned details were wrong and were corrected by live evidence, not
+assumed:**
+
+1. **The planned gate shape did not gate.** `TW Time Register.exe` is a GUI-subsystem PE
+   even under `ELECTRON_RUN_AS_NODE=1`, so PowerShell's call operator `&` returns
+   **before** the process exits: `$LASTEXITCODE` is empty on a fresh shell (the manual
+   pre-flight probe in this very session printed `EXIT=` empty for that reason) and can
+   hold a stale value from an earlier native command. `& ...; if ($LASTEXITCODE -ne 0)`
+   would have **silently passed a broken package** — precisely the failure this task
+   exists to prevent. Replaced with `Start-Process -Wait -PassThru` and a real
+   `.ExitCode`, in both `release.yml` and `build-local.ps1`. Verified by the parent
+   independently: success path `ExitCode=0`, deliberate bad-package path `ExitCode=1`.
+2. **The `.cjs`-is-not-linted claim was wrong.** In `eslint.config.mjs` the base configs
+   (`js.configs.recommended`, `...tseslint.configs.recommended`) carry no `files`, so they
+   apply to **every** discovered file, and ESLint 9 lints `.cjs` by default. The scoped
+   `files: ['**/*.{js,jsx,ts,tsx}']` block only owns the project rules, not the base ones.
+   The probe therefore failed `eslint .` with 13 errors. Fixed in-file with
+   `/* eslint-disable @typescript-eslint/no-require-imports */` + `/* global ... */`
+   rather than editing the shared config. File stays `.cjs` because the packaged entry
+   point and better-sqlite3 are CJS.
+
+| Check | Result |
+|---|---|
+| `pnpm exec vitest run` | **173 passed / 1 failed** — the single failure is the known pre-existing weekend flake `timeEntriesService.test.ts:339` (today is Saturday; expected `2026-09-26`, got `2026-09-28`). Not a regression. |
+| `pnpm run type-check` | clean (exit 0) |
+| `pnpm run lint` | clean (exit 0) |
+| Probe, direct | exit 0, `{"ok":true,"roundtrip":42,"electron":"44.4.5","node":"24.21.0","abi":"149","napi":"10"}` |
+| Probe, failure path | exit 1 (bad package dir → `Cannot find module`) |
+| `./build-local.ps1` end to end | exit 0 — `fnm use 22.17.0` → frozen-lockfile install → build → `--dir --publish never` → probe printed the JSON → `Environment restored.` |
+| Parent spot check (independent) | success path `ExitCode=0`; deliberate bad-package path `ExitCode=1`; commit content matches the report |
+
+`scripts/` is **not** packaged (`build.files` lists only `dist-electron`, `dist-vite`,
+`database/**/*` and specific `node_modules` entries), so the probe is a CI/dev tool and
+never ships inside the app.
+
+**Still open after this slice:** the workflow edits change `release.yml`, so the passed
+dry run (run `36263921639`) proves the **previous** pipeline only — a fresh
+`workflow_dispatch` dry run is owed before any publish. The publish branch itself
+(`--publish always`) remains unexecuted and unproven (R4-1), and the tag path now builds
+twice (accepted cost of gating the publish; optional item 5 could remove it).
