@@ -291,11 +291,11 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - **`HashRouter`** reemplaza `BrowserRouter` — necesario en Electron (no hay servidor HTTP en producción)
 - **Paths absolutos** en `database.ts` usando `app.getPath('userData')` y `app.getAppPath()`
 - **Error handling** en `main/index.ts` con `dialog.showErrorBox` para crashes visibles
-- **GitHub Actions** (`release.yml`): Node 22, pnpm hoisted solo en CI, `electron-builder install-app-deps`
+- **GitHub Actions** (`release.yml`): Node 22, pnpm hoisted en CI vía `npm_config_node_linker`; un dispatch manual construye y sube un artifact con `--publish never`, solo un tag `v*` publica
 - **`build-local.ps1`**: script para probar builds localmente sin instalador (usa `--dir`, no requiere admin)
 - **`useAutoUpdater` hook** + badge en NavBar (amber descargando, verde listo para instalar)
 - **`.node-version`** fija Node 22 LTS para el proyecto
-- **`.npmrc`** con `onlyBuiltDependencies` para auto-aprobar builds de `better-sqlite3`/`electron`
+- **`pnpm-workspace.yaml`** con `onlyBuiltDependencies`/`ignoredBuiltDependencies` — pnpm 10 lee esa configuración solo desde ahí; el `.npmrc` queda sin claves para no emitir warnings "Unknown project config"
 
 ### ✅ Fase 7: Seguridad — Credenciales TW Encriptadas (COMPLETADA - 2026)
 - **`encryptionService.ts`** — wrapper sobre `safeStorage` de Electron (DPAPI en Windows)
@@ -551,7 +551,7 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 #### better-sqlite3 (Mar 2026)
 - API síncrona envuelta en `DatabaseWrapper` async para no cambiar los 11 servicios
 - Requiere **Node 22 LTS** — los prebuilts N-API no existen para Node 24
-- Tras instalar, ejecutar `electron-builder install-app-deps` para recompilar contra el ABI de Electron
+- `better-sqlite3` 13 es Node-API y trae prebuilds propios: no requiere recompilación contra el ABI de Electron. No ejecutar `electron-builder install-app-deps` (ignora `npmRebuild: false` y falla sin MSVC)
 - pnpm necesita `node-linker=hoisted` durante el packaging (`build-local.ps1` y CI lo hacen automáticamente)
 
 #### React Query v5
@@ -642,7 +642,7 @@ pnpm test:coverage  # Coverage report en /coverage
 - **Usar siempre Node 22 LTS** (`fnm use 22.17.0`) — `better-sqlite3` tiene prebuilts para Node 22
 - Node 24 no tiene prebuilts y sin VS Build Tools no puede compilar desde fuente
 - Tras cambiar de Node version, reimplementar `node_modules` con `pnpm install`
-- `electron-builder install-app-deps` reconstruye `better-sqlite3` contra los headers de Electron (ABI distinto al de Node)
+- `better-sqlite3` 13 es Node-API: sus prebuilds (`prebuilds/win32-x64.node`) son ABI-estables entre Node y Electron, así que no hay que reconstruir nada
 
 ---
 
