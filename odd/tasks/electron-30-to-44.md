@@ -699,3 +699,60 @@ re-run the review on this candidate.
 4. **Re-run the `workflow_dispatch` dry run** against this revision before any publish — the
    gate is unexecuted (R4-2) and the recorded dry run predates the change.
 5. Fix the doc self-contradiction at line 75 (R2-001) and the probe sentinel (R2-003).
+
+## S5 — dependency hygiene and doc drift — execution
+
+Task list created 2026-09-26 **before the first source write**, per the ODD tracking rule.
+Scope is the slices table row plus the three `→ S5` cleanup notes recorded under S4.
+
+| ID | Task | Files | Status |
+|---|---|---|---|
+| S5-01 | Remove the dead `electron-is-dev` dependency (S1 migrated the code; only historical comments remain) | `package.json`, `pnpm-lock.yaml` | done |
+| S5-02 | Drop the dead `bindings` and `file-uri-to-path` entries from `build.files` and `asarUnpack` — they were better-sqlite3 11 deps, are absent from the graph, and were already absent from the packaged output | `package.json` | done |
+| S5-03 | Move the build-time tooling (`vite`, `vite-plugin-electron`, `vite-plugin-electron-renderer`, `@vitejs/plugin-react`) from `dependencies` to `devDependencies`, so electron-builder stops walking them and reporting missing platform-specific `@esbuild/*` / `@rollup/rollup-*` binaries | `package.json`, `pnpm-lock.yaml` | done |
+| S5-04 | Clean `pnpm-workspace.yaml`: drop the inert `electron` entry (E42 removed its postinstall), the absent `lzma-native` / `sqlite3` entries, and the self-contradictory `esbuild` entry in `ignoredBuiltDependencies` | `pnpm-workspace.yaml` | done |
+| S5-05 | Fix `.github/copilot-instructions.md` drift: `asar: false` → `true`; `better-sqlite3 11.x` → `13.x`; the "Node 24 has no N-API prebuilds" claim; `Electron v30` → `v44` | `.github/copilot-instructions.md` | done |
+| S5-06 | Record the platform requirements (macOS 13+, Linux Wayland + GTK 4) and the deliberate deferral of `roundedCorners` | `.github/copilot-instructions.md`, this file | done |
+
+**Why the ordering is safe.** `build.files` already enumerates exactly what is packaged
+(`dist-electron`, `dist-vite`, `database/**/*`, and specific `node_modules` entries), so
+S5-02/S5-03 change only what electron-builder *walks*, not what the app ships. The output
+bundles are produced by Vite before packaging and are unaffected, so no new packaged smoke
+test is owed for the content — but the packaging path itself must still be proven, because
+S5-03/S5-04 change install/packaging inputs.
+
+**Deliberate deferral — `roundedCorners`.** The E43 change ("frameless windows default to
+rounded corners on Linux") was flagged optional in the impact map. This app targets Windows
+`nsis`/`x64` only, the user has already accepted the current appearance on the packaged
+smoke test under Electron 44, and it is a user-visible cosmetic change. Setting
+`roundedCorners: false` would alter window chrome on every platform; it is therefore
+**not** applied here and stays available as a one-line change if the appearance is ever
+disliked. Recorded, not silently dropped.
+
+### S5 results (2026-09-26)
+
+Commits: `0215900` (`chore(deps): drop dead electron-is-dev and packaging entries; move build
+tooling to devDependencies`) and `0110625` (`docs: fix the stack drift in the copilot
+instructions and record platform requirements`). Route: delegated direct, one bounded writer.
+
+| Check | Result |
+|---|---|
+| `pnpm why electron-is-dev` | empty (exit 0) — the last consumer was already gone since S1 |
+| `pnpm why bindings` / `file-uri-to-path` | empty — removed from `build.files` **and** `asarUnpack` |
+| `pnpm why lzma-native` / `sqlite3` | empty — both absent from the lockfile; removed from **both** lists |
+| `pnpm rebuild esbuild` | `postinstall$ node install.js` → `Done` — the surviving allowlist entry still fires |
+| `pnpm exec vitest run` | 173 passed / 1 failed — the known pre-existing Saturday flake (`timeEntriesService.test.ts:339`), not a regression |
+| `pnpm run type-check` / `lint` | clean, exit 0 each — re-run independently by the parent |
+| `./build-local.ps1` end to end | exit 0; probe `{"ok":true,"roundtrip":42,"electron":"44.4.5","node":"24.21.0","abi":"149","napi":"10"}` |
+| Packaging warnings | **zero** `@esbuild*` / `@rollup*` / "cannot find platform binary" lines — the S5-03 acceptance signal; electron-builder no longer walks the Vite tooling as production deps |
+| Packaged `app.asar.unpacked\node_modules` | contains **only** `better-sqlite3` |
+| `pnpm-lock.yaml` diff | 32 lines (12 insertions / 20 deletions), importer membership only — **no version or range changed** |
+
+**Deferred with evidence.** `@types/babel__core` is the same class of drift (types-only, zero
+`src/` usage, a transitive dev dependency of `@vitejs/plugin-react`) but was out of this
+slice's scope and stays in `dependencies` for later work.
+
+**No new packaged smoke test is owed for content.** `build.files` already enumerated exactly
+what ships, so S5-02/S5-03 changed only what electron-builder *walks*: the bundles are produced
+by Vite before packaging and are unaffected, the packaged native payload is unchanged, and the
+probe re-confirmed it. What was re-proven end to end is the packaging *path*.
