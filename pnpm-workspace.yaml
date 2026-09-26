@@ -1,6 +1,4 @@
 ignoredBuiltDependencies:
-  - esbuild
-  - sqlite3
   # better-sqlite3 13.x ships Node-API prebuilds (prebuilds/<platform>-<arch>.node)
   # and loads them directly in lib/binding.js. It declares no `install` script, but
   # pnpm still marks it as requiring a build because binding.gyp exists, and
@@ -10,7 +8,6 @@ ignoredBuiltDependencies:
   - better-sqlite3
 
 onlyBuiltDependencies:
-  - electron
+  # Electron 42+ no longer declares a postinstall, so listing it here is inert.
+  # Do not re-add it.
   - esbuild
-  - lzma-native
-  - sqlite3

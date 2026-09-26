@@ -44,9 +44,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@vitejs/plugin-react':
-        specifier: ^5.1.1
-        version: 5.1.1(vite@7.2.6(@types/node@24.0.10)(jiti@2.7.0)(yaml@2.6.0))
       axios:
         specifier: ^1.7.7
         version: 1.7.7
@@ -62,9 +59,6 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
-      electron-is-dev:
-        specifier: ^2.0.0
-        version: 2.0.0
       electron-updater:
         specifier: ^6.8.9
         version: 6.8.9
@@ -104,15 +98,6 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.18)
-      vite:
-        specifier: ^7.2.6
-        version: 7.2.6(@types/node@24.0.10)(jiti@2.7.0)(yaml@2.6.0)
-      vite-plugin-electron:
-        specifier: ^0.29.0
-        version: 0.29.0(vite-plugin-electron-renderer@0.14.6)
-      vite-plugin-electron-renderer:
-        specifier: ^0.14.6
-        version: 0.14.6
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -144,6 +129,9 @@ importers:
       '@types/react-router-dom':
         specifier: ^5.3.3
         version: 5.3.3
+      '@vitejs/plugin-react':
+        specifier: ^5.1.1
+        version: 5.1.1(vite@7.2.6(@types/node@24.0.10)(jiti@2.7.0)(yaml@2.6.0))
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18)
@@ -195,6 +183,15 @@ importers:
       typescript-eslint:
         specifier: ^8.48.1
         version: 8.48.1(eslint@9.39.1(jiti@2.7.0))(typescript@5.8.3)
+      vite:
+        specifier: ^7.2.6
+        version: 7.2.6(@types/node@24.0.10)(jiti@2.7.0)(yaml@2.6.0)
+      vite-plugin-electron:
+        specifier: ^0.29.0
+        version: 0.29.0(vite-plugin-electron-renderer@0.14.6)
+      vite-plugin-electron-renderer:
+        specifier: ^0.14.6
+        version: 0.14.6
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@24.0.10)(@vitest/ui@4.0.18)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.4.0))(yaml@2.6.0)
@@ -2166,9 +2163,6 @@ packages:
     resolution: {integrity: sha512-a1KM5heqS3gQCZzizXEI8RjJy3QVogULPdeSknt76uLDpBIW/HDGsMg/XgP0riP6PI9COsRvFITKKGDqA8fJxA==}
     engines: {node: '>=14.0.0'}
     hasBin: true
-
-  electron-is-dev@2.0.0:
-    resolution: {integrity: sha512-3X99K852Yoqu9AcW50qz3ibYBWY79/pBhlMCab8ToEWS48R0T9tyxRiQhwylE7zQdXrMnx2JKqUJyMPmt5FBqA==}
 
   electron-publish@24.13.1:
     resolution: {integrity: sha512-2ZgdEqJ8e9D17Hwp5LEq5mLQPjqU3lv/IALvgp+4W8VeNhryfGhYEQC/PgDPMrnWUp+l60Ou5SJLsu+k4mhQ8A==}
@@ -6560,8 +6554,6 @@ snapshots:
     transitivePeerDependencies:
       - electron-builder-squirrel-windows
       - supports-color
-
-  electron-is-dev@2.0.0: {}
 
   electron-publish@24.13.1:
     dependencies:
