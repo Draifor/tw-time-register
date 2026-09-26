@@ -173,7 +173,9 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 
   **Ordering hazard:** carry-forward items 1-3 edit `release.yml` and `build-local.ps1`, so
   the dry run above proves the **S4** pipeline only. Once they land the pipeline changes and
-  must be dry-run again before any publish.
+  must be dry-run again before any publish. — **Settled 2026-09-26**: the fresh dispatch dry
+  run was executed against the gated workflow (run `36277299134`); see the dry-run section at
+  the end of this document.
 
 ## S3 — executed (automated gates green; human smoke test confirmed)
 
@@ -642,6 +644,11 @@ dry run (run `36263921639`) proves the **previous** pipeline only — a fresh
 (`--publish always`) remains unexecuted and unproven (R4-1), and the tag path now builds
 twice (accepted cost of gating the publish; optional item 5 could remove it).
 
+> **Superseded 2026-09-26.** The PG slice that followed replaced the two-build tag path with
+> one gated `--publish always` build, so "builds twice" no longer describes the workflow; and
+> the owed dispatch dry run was executed (run `36277299134`). The paragraph above is kept as
+> the record of the state at the time it was written. See the PG and dry-run sections below.
+
 ## Review — the probe gate (carry-forwards 1-3) — approved 2026-09-26
 
 Transaction: lineage `review-d59b5c5ff1fb2501`, base-ref `f7c3a580` (the `195236d` tree),
@@ -867,4 +874,70 @@ aborts before upload" is the documented Phase-4 lifecycle plus a local proof tha
 any artifact exists — not an executed release. A fresh `workflow_dispatch` dry run is owed before
 any publish, and it proves the dispatch branch only. `R2-003` (the probe's hardcoded `42` sentinel)
 is untouched. `R4-2`'s concern is now concentrated rather than closed: the gate lives in exactly
-one place (`build.afterPack`), and that place has still never run in CI.
+one place (`build.afterPack`), and that place has still never run in CI. — **Resolved
+2026-09-26**: the gate has now run in CI; see the dry-run section below.
+
+## Dry run of the gated pipeline — `workflow_dispatch`, executed 2026-09-26
+
+Run `36277299134` — https://github.com/Draifor/tw-time-register/actions/runs/36277299134
+Event `workflow_dispatch`, ref `staging` @ `3f8a0c7`, conclusion **success** (3m5s).
+This is the dry run the previous slice owed after `release.yml` changed: the `afterPack` gate
+it added had never executed anywhere, not even locally in CI-equivalent conditions.
+
+**Precondition.** `staging` was **11 commits ahead** of `origin/staging` (`e7b407b`), so the
+remote still carried the previous workflow — gated, but without the hook. `staging` was
+fast-forwarded (`e7b407b..3f8a0c7`, no force) and the remote `release.yml` was fetched back
+and verified **before** dispatching to contain `--frozen-lockfile`, `--publish never` on
+dispatch, and `--publish always` only under `github.event_name == 'push'`. Dispatching against
+the stale remote would have run the old workflow — the same hazard the first dry run documented.
+
+| Step | Result |
+|---|---|
+| `Install dependencies` | `Lockfile is up to date, resolution step is skipped` — CF-01's `--frozen-lockfile` holds in CI |
+| `Build (Vite + Electron)` | success |
+| `Package and publish (tag push)` (`if: push`) | **skipped** (step 11 of the job, formally `skipped`) |
+| `Package (manual dispatch, no publish)` | success — step env carried no `GH_TOKEN` |
+| `Upload installer artifact` | success |
+| Artifact | `tw-time-register-windows`, **127 379 573 bytes** (121,5 MB) |
+| Releases after the run | unchanged — newest is still `v1.9.0` (2026-09-23) |
+| Job | `build-windows` success, 3m5s, every step terminal |
+
+**The decisive record — the gate ran in CI and passed.** This is the first execution of the
+`afterPack` probe anywhere except a developer machine. The packaging step log, in order:
+
+```
+• updating asar integrity executable resource  executablePath=release\win-unpacked\TW Time Register.exe
+[afterPack] Probing packaged better-sqlite3 via D:\a\tw-time-register\tw-time-register\release\win-unpacked\TW Time Register.exe
+{"ok":true,"roundtrip":42,"electron":"44.4.5","node":"24.21.0","abi":"149","napi":"10"}
+[afterPack] Packaged native module probe passed.
+• signing with signtool.exe  path=release\win-unpacked\TW Time Register.exe
+• building        target=nsis file=release\TW Time Register Setup 1.9.0.exe archs=x64 oneClick=false perMachine=false
+```
+
+That single sequence proves, on the real runner, three things that until now were
+documented-but-unexecuted:
+
+1. the hook is discovered and loaded by electron-builder 26.15.3 in CI
+   (`loaded configuration file=package.json ("build" field)`);
+2. the **ordering** observed locally also holds on `windows-2022` — the probe runs after
+   packing and **before signing and before the installer exists**, so a probe failure can
+   only abort the build, never ship;
+3. the probe loads the **packaged** `better-sqlite3` under the **packaged** Electron
+   (`44.4.5` / node `24.21.0` / abi `149` / napi `10`) and round-trips a row inside CI.
+
+`skipped dependencies rebuild reason=npmRebuild is set to false` also confirms in CI that
+S3's `npmRebuild: false` behaves as designed and that the prebuild the probe loaded is the
+one the packaging path ships.
+
+**What this closes.** R4-2's concern — the gate lives in exactly one place
+(`build.afterPack`) and that place had never run in CI — is closed **for the dispatch branch**:
+the place has now executed, and what it executed is precisely the packaged-binary check that
+R4-2 and the S3 CRITICAL (`R3-NATIVE-REBUILD-DISABLED`) asked for. The dispatch branch of the
+current workflow is now proven *with the gate in the path*.
+
+**What it does not close.** The tag branch (`--publish always`) remains **unexecuted** — no
+dry run can prove it, because the trigger guard is exactly what keeps it off. What improves is
+that the rehearsal and the publish branch now share the build steps *and* their point of
+failure (R4-1); only `--publish never` / `--publish always` differs. R2-003 (the probe's
+hardcoded `42` sentinel — visible in the log as the echoed `"roundtrip":42`) is untouched.
+The app version bump and the publish itself remain separate decisions.
