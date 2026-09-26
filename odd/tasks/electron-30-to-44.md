@@ -641,3 +641,61 @@ dry run (run `36263921639`) proves the **previous** pipeline only — a fresh
 `workflow_dispatch` dry run is owed before any publish. The publish branch itself
 (`--publish always`) remains unexecuted and unproven (R4-1), and the tag path now builds
 twice (accepted cost of gating the publish; optional item 5 could remove it).
+
+## Review — the probe gate (carry-forwards 1-3) — approved 2026-09-26
+
+Transaction: lineage `review-d59b5c5ff1fb2501`, base-ref `f7c3a580` (the `195236d` tree),
+committed-only, projection workspace, tier **high** (389 lines / 4 files). Four lenses were
+selected (risk, resilience, readability, reliability); **all four were admitted**; the
+review closed **approved** with no correction opened, and the acknowledgement burned
+authority (`gentle-ai.review-acknowledged/v1`, `authority: burned`, consumed revision
+`sha256:a2a043e5…`).
+
+Covered candidate: the committed bytes of `cf33b90` + `a5949af`.
+
+**Runtime note (honest).** The `review-readability` slot returned
+`opencode_task_output_empty` on attempts 1 and 2 while the other three lenses were admitted
+on their first launch. The exact-lineage STATUS reoffered the slot after each empty capture,
+so a third launch was permitted under the contract, and it succeeded. This is the same
+recurring OpenCode-side empty-output condition recorded earlier in this document; here it
+cost two extra launches and did **not** stop the transaction.
+
+### Reviewer results
+
+- **risk** — no findings. Confirmed the `--frozen-lockfile` switch closes a
+  dependency-substitution vector, `GH_TOKEN` stays scoped to the publish step (not exposed to
+  the probe), and the probe adds no secret or trust boundary: its argv path is always the
+  fixed repository-relative argument and the script is not packaged.
+- **reliability** — no build-blocking finding; two WARNINGs.
+- **resilience** — no build-blocking finding; two WARNINGs and one SUGGESTION.
+- **readability** — no build-blocking finding; four SUGGESTIONs.
+
+### Advisory findings (non-blocking, informational)
+
+None opened a correction; none reopens this review. They are later work, never a reason to
+re-run the review on this candidate.
+
+| ID | Lens | Location | Severity | Note |
+|---|---|---|---|---|
+| R3-publish-build-not-probed | reliability | `.github/workflows/release.yml:94` | WARNING | The probe validates the `--publish never` build, but the tag path re-runs `electron-builder --publish always` as a **second build**: the artifact that reaches installed clients is not the artifact the probe inspected, so the gate is only partial. |
+| R4-1 | resilience | `.github/workflows/release.yml:78` | WARNING | The same finding, reached independently: the tag path packages twice and the native-module assurance never applies to the published artifact. |
+| R3-probe-launch-preflight | reliability | `.github/workflows/release.yml:90` | WARNING | No preflight that `scripts/probe-packaged-native.cjs` exists. With `ELECTRON_RUN_AS_NODE=1` and a missing script argument, the GUI binary starts as a normal app and `Start-Process -Wait` blocks to the Actions timeout instead of failing fast. |
+| R4-2 | resilience | `.github/workflows/release.yml:80-88` | WARNING | The new gate itself has **no execution record** — the workflow edit was never dry-run, so a gate defect would first surface during a real tag release. |
+| R2-004 | readability | `.github/workflows/release.yml:73-76` | SUGGESTION | The inline comment omits that the gate covers a build that is thrown away on a tag push; that nuance lives only in this document. |
+| R2-002 / R4-3 | readability / resilience | `build-local.ps1:39` | SUGGESTION | `ELECTRON_RUN_AS_NODE` is deleted unconditionally, while CF-02 made `npm_config_node_linker` capture/restore — opposite conventions for the same hazard in one script, and "Environment restored." is then untrue for a caller that had it set. |
+| R2-001 | readability | `odd/tasks/electron-30-to-44.md:75` | SUGGESTION | The S4 row says the workflow has never been executed and a dry run is owed, while the dry-run section records run `36263921639` as executed — a self-contradiction about whether the pipeline is verified. |
+| R2-003 | readability | `scripts/probe-packaged-native.cjs:36` | SUGGESTION | The reported `roundtrip` is the hardcoded literal `42` (repeated at the insert, the assertion and the error text), so the JSON echoes the expectation rather than the observed row. |
+
+### Follow-ups the review motivates (not this slice)
+
+1. **Make the probe cover the published artifact** (R3-publish-build-not-probed / R4-1 /
+   R2-004). Three independent lenses reached it: either publish the already-probed output, or
+   probe after the publish build and gate on that. This is the S4 review's optional item 5,
+   now concretely motivated. Until it lands, the gate certifies a build that a tag push
+   discards.
+2. **Preflight the probe script's existence** in both call sites so a missing script fails
+   immediately instead of hanging to the timeout (R3-probe-launch-preflight).
+3. **Restore `ELECTRON_RUN_AS_NODE` like `npm_config_node_linker`** (R2-002 / R4-3).
+4. **Re-run the `workflow_dispatch` dry run** against this revision before any publish — the
+   gate is unexecuted (R4-2) and the recorded dry run predates the change.
+5. Fix the doc self-contradiction at line 75 (R2-001) and the probe sentinel (R2-003).
