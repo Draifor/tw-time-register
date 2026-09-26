@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 vi.mock('../../../main/database/database', () => ({ default: vi.fn() }));
+vi.mock('axios');
 // encryptionService is synchronous and called only inside getTWCredentials/saveTWCredentials.
 // We leave it un-mocked so we can test its integration via the decrypt fallback
 // (plain-text values are returned as-is when safeStorage isn't available in tests).
@@ -14,6 +15,7 @@ vi.mock('electron', () => ({
   }
 }));
 
+import axios from 'axios';
 import openDb from '../../../main/database/database';
 import {
   getWorkSettings,
@@ -21,8 +23,11 @@ import {
   updateWorkSettings,
   isHoliday,
   isWorkDay,
+  syncHolidaysFromApi,
   type WorkSettings
 } from '../../../main/services/settingsService';
+
+const mockedAxios = vi.mocked(axios, true);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -30,13 +35,15 @@ type MockDb = {
   all: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
   run: ReturnType<typeof vi.fn>;
+  exec: ReturnType<typeof vi.fn>;
 };
 
 function setupMockDb(overrides: Partial<MockDb> = {}): MockDb {
   const mockDb: MockDb = {
     all: overrides.all ?? vi.fn().mockResolvedValue([]),
     get: overrides.get ?? vi.fn().mockResolvedValue(null),
-    run: overrides.run ?? vi.fn().mockResolvedValue({ lastID: 1, changes: 1 })
+    run: overrides.run ?? vi.fn().mockResolvedValue({ lastID: 1, changes: 1 }),
+    exec: overrides.exec ?? vi.fn().mockResolvedValue(undefined)
   };
   vi.mocked(openDb).mockResolvedValue(mockDb as unknown as Awaited<ReturnType<typeof openDb>>);
   return mockDb;
@@ -218,5 +225,55 @@ describe('isWorkDay', () => {
       get: vi.fn().mockResolvedValue(null)
     });
     expect(await isWorkDay('2026-03-02')).toBe(false); // Monday
+  });
+});
+
+// ── syncHolidaysFromApi (P1-04b) ──────────────────────────────────────────────
+
+describe('syncHolidaysFromApi', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  const holidays = [
+    { date: '2026-01-01', localName: 'New Year' },
+    { date: '2026-01-12', localName: 'Epiphany' }
+  ];
+
+  it('replaces the whole year inside a single transaction', async () => {
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: holidays });
+    const mockDb = setupMockDb({ get: vi.fn().mockResolvedValue(null) });
+
+    const result = await syncHolidaysFromApi(2026);
+
+    expect(result).toEqual({ inserted: 2, year: 2026 });
+    expect(mockDb.exec).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(mockDb.exec).toHaveBeenNthCalledWith(2, 'COMMIT');
+    expect(mockDb.exec).toHaveBeenCalledTimes(2);
+    // One DELETE for the year plus one INSERT per holiday.
+    expect(mockDb.run).toHaveBeenCalledTimes(3);
+  });
+
+  it('preserves custom holidays and does not insert over them', async () => {
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: holidays });
+    const mockDb = setupMockDb({ get: vi.fn().mockResolvedValue({ holiday_id: 5 }) });
+
+    const result = await syncHolidaysFromApi(2026);
+
+    expect(result.inserted).toBe(0);
+    // Only the year DELETE runs; every date is blocked by a custom holiday.
+    expect(mockDb.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('rolls back and rethrows when an insert fails', async () => {
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: holidays });
+    const mockDb = setupMockDb({
+      get: vi.fn().mockResolvedValue(null),
+      run: vi.fn().mockResolvedValueOnce({ changes: 0 }).mockRejectedValueOnce(new Error('insert failed'))
+    });
+
+    await expect(syncHolidaysFromApi(2026)).rejects.toThrow('insert failed');
+
+    expect(mockDb.exec).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(mockDb.exec).toHaveBeenNthCalledWith(2, 'ROLLBACK');
+    expect(mockDb.exec).not.toHaveBeenCalledWith('COMMIT');
   });
 });

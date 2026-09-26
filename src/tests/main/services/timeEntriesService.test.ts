@@ -6,21 +6,24 @@ vi.mock('../../../main/database/database', () => ({ default: vi.fn() }));
 vi.mock('../../../main/services/settingsService', () => ({
   getWorkSettings: vi.fn(),
   getMaxHoursForDay: vi.fn(),
-  isWorkDay: vi.fn()
+  getHolidays: vi.fn()
 }));
 
 import openDb from '../../../main/database/database';
 import {
   getWorkSettings,
   getMaxHoursForDay,
-  isWorkDay,
+  getHolidays,
   type WorkSettings
 } from '../../../main/services/settingsService';
 import {
   addTimeEntryService,
+  addTimeEntries,
+  getAllTimeEntries,
   getTotalMinutesForDate,
   getDailyTimeInfo,
   getNextAvailableSlot,
+  formatLocalDate,
   type TimeEntryInput
 } from '../../../main/services/timeEntriesService';
 
@@ -40,16 +43,39 @@ type MockDb = {
   run: ReturnType<typeof vi.fn>;
   all: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
+  exec: ReturnType<typeof vi.fn>;
 };
 
 function setupMockDb(overrides: Partial<MockDb> = {}): MockDb {
   const mockDb: MockDb = {
     run: overrides.run ?? vi.fn().mockResolvedValue({ lastID: 1 }),
     all: overrides.all ?? vi.fn().mockResolvedValue([]),
-    get: overrides.get ?? vi.fn().mockResolvedValue(null)
+    get: overrides.get ?? vi.fn().mockResolvedValue(null),
+    exec: overrides.exec ?? vi.fn().mockResolvedValue(undefined)
   };
   vi.mocked(openDb).mockResolvedValue(mockDb as unknown as Awaited<ReturnType<typeof openDb>>);
   return mockDb;
+}
+
+/** Local date helpers mirroring the service contract (local calendar, not UTC). */
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
+function formatDate(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+function localTodayAtNoon(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+}
+function addDays(base: Date, days: number): Date {
+  const next = new Date(base);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+function dayOfWeek(date: Date): number {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
 }
 
 const sampleEntry: TimeEntryInput = {
@@ -92,6 +118,95 @@ describe('addTimeEntryService', () => {
     setupMockDb({ run: vi.fn().mockResolvedValue({}) });
     const id = await addTimeEntryService(sampleEntry);
     expect(id).toBe(0);
+  });
+});
+
+// ── addTimeEntries (P1-04b) ───────────────────────────────────────────────────
+
+describe('addTimeEntries', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('inserts every entry inside a single transaction', async () => {
+    const mockDb = setupMockDb({
+      run: vi.fn().mockResolvedValueOnce({ lastID: 1 }).mockResolvedValueOnce({ lastID: 2 })
+    });
+
+    const ids = await addTimeEntries([sampleEntry, { ...sampleEntry, description: 'second' }]);
+
+    expect(ids).toEqual([1, 2]);
+    expect(mockDb.run).toHaveBeenCalledTimes(2);
+    expect(mockDb.exec).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(mockDb.exec).toHaveBeenNthCalledWith(2, 'COMMIT');
+    expect(mockDb.exec).toHaveBeenCalledTimes(2);
+  });
+
+  it('rolls back and rethrows when an insert fails', async () => {
+    const failure = new Error('insert failed');
+    const mockDb = setupMockDb({
+      run: vi.fn().mockResolvedValueOnce({ lastID: 1 }).mockRejectedValueOnce(failure)
+    });
+
+    await expect(addTimeEntries([sampleEntry, { ...sampleEntry, description: 'boom' }])).rejects.toThrow(
+      'insert failed'
+    );
+
+    expect(mockDb.exec).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(mockDb.exec).toHaveBeenNthCalledWith(2, 'ROLLBACK');
+    expect(mockDb.exec).not.toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('does not open a transaction for an empty batch', async () => {
+    const mockDb = setupMockDb();
+    expect(await addTimeEntries([])).toEqual([]);
+    expect(mockDb.exec).not.toHaveBeenCalled();
+    expect(mockDb.run).not.toHaveBeenCalled();
+  });
+});
+
+// ── getAllTimeEntries (P1-07) ─────────────────────────────────────────────────
+
+describe('getAllTimeEntries', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('stays unbounded by default', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+
+    await getAllTimeEntries();
+
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).not.toContain('LIMIT');
+    expect(sql).not.toContain('WHERE');
+    expect(params).toEqual([]);
+  });
+
+  it('applies limit and offset when provided', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+
+    await getAllTimeEntries({ limit: 25, offset: 50 });
+
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('LIMIT ? OFFSET ?');
+    expect(params).toEqual([25, 50]);
+  });
+
+  it('applies an explicit date range', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+
+    await getAllTimeEntries({ startDate: '2026-01-01', endDate: '2026-01-31' });
+
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('te.entry_date >= ?');
+    expect(sql).toContain('te.entry_date <= ?');
+    expect(params).toEqual(['2026-01-01', '2026-01-31']);
+  });
+
+  it('keeps the boolean mapping and returned shape', async () => {
+    setupMockDb({ all: vi.fn().mockResolvedValue([{ entryId: 1, isBillable: 1, isSent: 0 }]) });
+
+    const rows = await getAllTimeEntries();
+
+    expect(rows[0].isBillable).toBe(true);
+    expect(rows[0].isSent).toBe(false);
   });
 });
 
@@ -191,54 +306,49 @@ describe('getDailyTimeInfo', () => {
   });
 });
 
-// ── getNextAvailableSlot ──────────────────────────────────────────────────────
+// ── formatLocalDate (P1-06) ───────────────────────────────────────────────────
+
+describe('formatLocalDate', () => {
+  it('formats using local calendar components, not UTC', () => {
+    // A late-evening local instant must keep its local day even when the UTC day
+    // has already rolled over (this is the bug the old toISOString() path had).
+    expect(formatLocalDate(new Date(2026, 0, 2, 23, 30))).toBe('2026-01-02');
+    expect(formatLocalDate(new Date(2026, 11, 31, 0, 15))).toBe('2026-12-31');
+  });
+});
+
+// ── getNextAvailableSlot (P1-06) ──────────────────────────────────────────────
 
 describe('getNextAvailableSlot', () => {
   beforeEach(() => vi.resetAllMocks());
 
-  // Helper: configure mocked dependencies for getNextAvailableSlot scenarios.
-  // Since getDailyTimeInfo is in the same module (can't be isolated), we control
-  // it through the db mock (all → totalMinutes rows, get calls → lastEntry row).
+  // The refactored service loads settings + holidays once and fetches every
+  // per-day total with a single `db.all` range query; the last used date is one
+  // `db.get`. Scenarios therefore only need to feed those two calls.
 
   it('returns today with defaultStartTime when there are no saved entries', async () => {
     vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
     vi.mocked(getMaxHoursForDay).mockReturnValue(9);
-    vi.mocked(isWorkDay).mockResolvedValue(true);
+    vi.mocked(getHolidays).mockResolvedValue([]);
 
     const mockDb = setupMockDb();
-    // Call 1: db.get for lastEntryRow → null (no entries)
-    // Call 2+: db.all/get for getDailyTimeInfo of today
-    mockDb.get
-      .mockResolvedValueOnce(null) // lastEntryRow
-      .mockResolvedValueOnce(null); // lastEndTime for today
-    mockDb.all.mockResolvedValue([]); // totalMinutes rows → 0 min
+    mockDb.get.mockResolvedValueOnce(null); // no last entry
 
     const slot = await getNextAvailableSlot();
 
-    // The service resolves "today" as the LOCAL date (it pins local noon before
-    // formatting). Comparing against the UTC date of the current instant is flaky:
-    // for negative UTC offsets the UTC date rolls over during the evening.
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(
-      2,
-      '0'
-    )}`;
-    expect(slot.date).toBe(today);
+    expect(slot.date).toBe(formatDate(localTodayAtNoon()));
     expect(slot.startTime).toBe('09:00');
   });
 
   it('returns the last entry date + lastEndTime when that day is incomplete', async () => {
     vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
     vi.mocked(getMaxHoursForDay).mockReturnValue(9); // max 540 min
+    vi.mocked(getHolidays).mockResolvedValue([]);
 
     const mockDb = setupMockDb();
-    // Call 1: lastEntryRow → 2026-03-02
-    // Call 2: db.all for totalMinutes on 2026-03-02 → 2h = 120 min (not complete)
-    // Call 3: db.get for lastEndTime on 2026-03-02 → 11:00
-    mockDb.get
-      .mockResolvedValueOnce({ date: '2026-03-02' }) // lastEntryRow
-      .mockResolvedValueOnce({ endTime: '11:00' }); // lastEndTime
-    mockDb.all.mockResolvedValueOnce([{ startTime: '09:00', endTime: '11:00' }]); // 120 min
+    // 2026-03-02 has 2 h logged (120 min) — not complete.
+    mockDb.get.mockResolvedValueOnce({ date: '2026-03-02' });
+    mockDb.all.mockResolvedValueOnce([{ date: '2026-03-02', totalMinutes: 120, lastEndTime: '11:00' }]);
 
     const slot = await getNextAvailableSlot();
 
@@ -249,12 +359,11 @@ describe('getNextAvailableSlot', () => {
   it('uses defaultStartTime when last date is incomplete but has no lastEndTime', async () => {
     vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
     vi.mocked(getMaxHoursForDay).mockReturnValue(9);
+    vi.mocked(getHolidays).mockResolvedValue([]);
 
     const mockDb = setupMockDb();
-    mockDb.get
-      .mockResolvedValueOnce({ date: '2026-03-02' }) // lastEntryRow
-      .mockResolvedValueOnce(null); // lastEndTime → null
-    mockDb.all.mockResolvedValueOnce([]); // 0 min (fresh entry may have been deleted)
+    mockDb.get.mockResolvedValueOnce({ date: '2026-03-02' });
+    mockDb.all.mockResolvedValueOnce([{ date: '2026-03-02', totalMinutes: 0, lastEndTime: null }]);
 
     const slot = await getNextAvailableSlot();
 
@@ -264,51 +373,114 @@ describe('getNextAvailableSlot', () => {
 
   it('advances to the next work day when the last entry date is complete', async () => {
     vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
-    // Monday = 9h max (540 min), Tuesday = 9h
     vi.mocked(getMaxHoursForDay).mockReturnValue(9);
-    // 2026-03-03 (Tuesday) is a work day; others are skipped
-    vi.mocked(isWorkDay).mockImplementation(async (date: string) => date === '2026-03-03');
+    vi.mocked(getHolidays).mockResolvedValue([]);
+
+    // Anchor on the most recent configured work day on or before today so the
+    // scenario is independent of the actual test-run date.
+    const today = localTodayAtNoon();
+    let base = new Date(today);
+    while (!defaultSettings.workDays.includes(dayOfWeek(base))) {
+      base = addDays(base, -1);
+    }
+    const baseStr = formatDate(base);
 
     const mockDb = setupMockDb();
-    // Call 1: lastEntryRow → 2026-03-02 (Monday)
-    // Call 2: db.all → 540 min on 2026-03-02 (complete)
-    // Call 3: db.get → lastEndTime for 2026-03-02
-    // Call 4: db.all → 0 min on 2026-03-03 (empty)
-    // Call 5: db.get → null lastEndTime for 2026-03-03
-    mockDb.get
-      .mockResolvedValueOnce({ date: '2026-03-02' }) // lastEntryRow
-      .mockResolvedValueOnce({ endTime: '18:00' }) // lastEndTime Mon
-      .mockResolvedValueOnce(null); // lastEndTime Tue
-    mockDb.all
-      .mockResolvedValueOnce([{ startTime: '09:00', endTime: '18:00' }]) // 540 min Mon
-      .mockResolvedValueOnce([]); // 0 min Tue
+    mockDb.get.mockResolvedValueOnce({ date: baseStr });
+    mockDb.all.mockResolvedValueOnce([{ date: baseStr, totalMinutes: 9 * 60, lastEndTime: '18:00' }]);
+
+    // Forward search starts at max(base + 1, today) and skips non-work days.
+    let expected = addDays(base, 1);
+    if (expected < today) expected = new Date(today);
+    while (!defaultSettings.workDays.includes(dayOfWeek(expected))) {
+      expected = addDays(expected, 1);
+    }
 
     const slot = await getNextAvailableSlot();
 
-    expect(slot.date).toBe('2026-03-03');
-    expect(slot.startTime).toBe('09:00'); // defaultStartTime (no entries on Tue yet)
-    expect(slot.dayOfWeek).toBe(2); // Tuesday
+    expect(slot.date).toBe(formatDate(expected));
+    expect(slot.startTime).toBe('09:00');
+    expect(slot.dayOfWeek).toBe(dayOfWeek(expected));
   });
 
   it('does not go back before the last entry date when searching forward', async () => {
-    // Last entry is 2026-03-10 (future), complete. Today is before that.
     vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
     vi.mocked(getMaxHoursForDay).mockReturnValue(9);
-    // Only 2026-03-11 (Wednesday) is available
-    vi.mocked(isWorkDay).mockImplementation(async (date: string) => date === '2026-03-11');
+    vi.mocked(getHolidays).mockResolvedValue([]);
+
+    // Pre-filled future day, already complete: the search must continue forward
+    // from the day after it instead of jumping back to today.
+    const today = localTodayAtNoon();
+    let future = addDays(today, 3);
+    while (!defaultSettings.workDays.includes(dayOfWeek(future))) {
+      future = addDays(future, 1);
+    }
+    const futureStr = formatDate(future);
 
     const mockDb = setupMockDb();
-    mockDb.get
-      .mockResolvedValueOnce({ date: '2026-03-10' }) // lastEntryRow
-      .mockResolvedValueOnce({ endTime: '18:00' }) // lastEndTime 2026-03-10
-      .mockResolvedValueOnce(null); // lastEndTime 2026-03-11
-    mockDb.all
-      .mockResolvedValueOnce([{ startTime: '09:00', endTime: '18:00' }]) // complete on 2026-03-10
-      .mockResolvedValueOnce([]); // empty on 2026-03-11
+    mockDb.get.mockResolvedValueOnce({ date: futureStr });
+    mockDb.all.mockResolvedValueOnce([{ date: futureStr, totalMinutes: 9 * 60, lastEndTime: '18:00' }]);
+
+    let expected = addDays(future, 1);
+    while (!defaultSettings.workDays.includes(dayOfWeek(expected))) {
+      expected = addDays(expected, 1);
+    }
 
     const slot = await getNextAvailableSlot();
 
-    // Must NOT jump back to today (2026-03-03) — must land on 2026-03-11
-    expect(slot.date).toBe('2026-03-11');
+    expect(slot.date).toBe(formatDate(expected));
+    expect(slot.date > formatDate(today)).toBe(true);
+  });
+
+  it('honours holidays loaded once for the whole forward search', async () => {
+    vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
+    vi.mocked(getMaxHoursForDay).mockReturnValue(9);
+
+    const today = localTodayAtNoon();
+    let base = new Date(today);
+    while (!defaultSettings.workDays.includes(dayOfWeek(base))) {
+      base = addDays(base, -1);
+    }
+    const baseStr = formatDate(base);
+
+    // The first candidate after the completed base is marked as a holiday.
+    let firstCandidate = addDays(base, 1);
+    if (firstCandidate < today) firstCandidate = new Date(today);
+    while (!defaultSettings.workDays.includes(dayOfWeek(firstCandidate))) {
+      firstCandidate = addDays(firstCandidate, 1);
+    }
+    const holidayDate = formatDate(firstCandidate);
+    vi.mocked(getHolidays).mockResolvedValue([{ holidayId: 1, holidayDate, description: 'Holiday', isCustom: false }]);
+
+    const mockDb = setupMockDb();
+    mockDb.get.mockResolvedValueOnce({ date: baseStr });
+    mockDb.all.mockResolvedValueOnce([{ date: baseStr, totalMinutes: 9 * 60, lastEndTime: '18:00' }]);
+
+    let expected = addDays(firstCandidate, 1);
+    while (!defaultSettings.workDays.includes(dayOfWeek(expected))) {
+      expected = addDays(expected, 1);
+    }
+
+    const slot = await getNextAvailableSlot();
+
+    expect(slot.date).toBe(formatDate(expected));
+    expect(slot.date).not.toBe(holidayDate);
+  });
+
+  it('issues a constant number of DB queries regardless of the search length', async () => {
+    vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
+    vi.mocked(getMaxHoursForDay).mockReturnValue(9);
+    vi.mocked(getHolidays).mockResolvedValue([]);
+
+    const mockDb = setupMockDb();
+    mockDb.get.mockResolvedValue({ date: '2026-03-02' });
+    mockDb.all.mockResolvedValue([{ date: '2026-03-02', totalMinutes: 0, lastEndTime: null }]);
+
+    await getNextAvailableSlot();
+
+    expect(vi.mocked(getWorkSettings)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(getHolidays)).toHaveBeenCalledTimes(1);
+    expect(mockDb.get).toHaveBeenCalledTimes(1);
+    expect(mockDb.all).toHaveBeenCalledTimes(1);
   });
 });
