@@ -513,3 +513,51 @@ proceed under ordinary repository policy, carrying the existing evidence (per-sl
 
 Until one of those is chosen, **S1, S2 and S3 remain unreviewed** - that is the honest state,
 not a covered one.
+
+### S3 reviewed alone — a real CRITICAL found, then abandoned by decision
+
+The reduced-scope retry **worked where the 9-file candidate did not**: 3 files
+(`package.json` + `pnpm-workspace.yaml` authored, `pnpm-lock.yaml` generated), ~19 authored
+diff lines.
+
+| Step | Result |
+|---|---|
+| `review assess` (base `0007fc6`) | medium, 1730 lines, `review_due: true` |
+| `review start` (consent granted) | lineage `review-44bbfdb357ca3135`, one lens `review-reliability` |
+| Reviewer lens Task | **admitted** — `gentle-ai.review-result-artifact/v2`, `admission_decision: completed` |
+| Refuter (provider-required) | **corroborated** → `correction_required` |
+| Correction plan | a bounded correction (1–200 lines) was required to close |
+| Decision | accept the risk → `review abandon` committed; lineage quarantined |
+
+**The finding:** `R3-NATIVE-REBUILD-DISABLED`, lens reliability, `package.json:113`, severity
+**CRITICAL**, `evidence_class: inferential`, `causal_disposition: introduced`. `npmRebuild:
+false` disables native-dependency rebuild for the whole packaged tree, not just
+`better-sqlite3`; combined with the 30→44 jump in the same change, any non-Node-API packaged
+runtime dependency ships a wrong-ABI binary and fails at application startup rather than at
+build time. The candidate adds no packaging check or launch assertion proving the shipped
+binaries load under the pinned Electron, and the generated lockfile is delivered without
+content hunks, so the reviewer could not enumerate the native modules actually packaged.
+
+**Why the risk was accepted** (explicit user decision, not an orchestrator call): the finding is
+*inferential*, not deterministic - it is about the absence of a gate, not an observed failure.
+For the current dependency set the direct evidence runs the other way: the packaged probe
+recorded earlier in this document loaded the packaged `better-sqlite3` under Electron 44 and
+round-tripped a row (`electron 44.4.5, node 24.21.0, napi 10, abi 149`), and the human packaged
+smoke test passed. `better-sqlite3` is the only native runtime dependency. The reviewer also
+could not see the lockfile *by design*, so its "unknown native module set" premise is a
+limitation of the frozen input, not a discovered module.
+
+**Consequence recorded honestly:** S3 has **no approval receipt**. It carries a corroborated
+CRITICAL that is now an explicitly accepted risk — not a covered one. The reviewer's actionable
+part is already carry-forward #3 in the S4 review section (a post-packaging native-module probe
+in CI); that stays the right fix, and when it lands it should be reviewed on its own.
+
+**Open scope reduction, unresolved:** the reviewer returned output at ~19 authored diff lines
+after returning nothing at ~350. That is a real correlation but not proof — it could be size, or
+it could be flakiness. Do not treat "reduce scope" as a settled remedy until it reproduces.
+
+**Stale store state (needs a decision, not urgent):** three non-terminal lineages remain
+`reviewing` in `.git/gentle-ai/review-transactions/v2/` — `review-17eaa498cf6f9e2f` (the
+performance work, 5/5 empty reviewer outputs), `review-44ad33de349f2aaa` (the stopped
+combined S1+S2+S3 attempt from this session) and `review-7c1048e2042af3ea`. Each needs its own
+`review abandon` with a maintainer authorization binding.
