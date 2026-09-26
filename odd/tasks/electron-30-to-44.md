@@ -70,7 +70,7 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 | Slice | Work | Risk |
 |---|---|---|
 | **S1 ✅ `ed07d9d`** | Replace `electron-is-dev` with `app.isPackaged` in `index.ts` + `updater.ts`; update the updater test mock. Behaviour-identical. | none |
-| **S2** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
+| **S2 ✅ `de2af27`** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
 | **S3** | The version bump: electron 44, better-sqlite3 13, electron-builder 26, electron-updater 6.8.9. Regenerate the lockfile with pnpm, run `install-app-deps`, produce an NSIS installer, smoke-test the **packaged** app. | **high** |
 | **S4** | Packaging/CI for the E42 lazy binary download; verify `release.yml` + `build-local.ps1` still produce a working installer on a clean checkout. | medium |
 | **S5** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
@@ -114,4 +114,45 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 
 - 2026-09-25 — Reconnaissance complete: official breaking changes 31→44 mapped against
   an exhaustive code audit; every app-specific impact has evidence. S1 landed.
-- Next: S2, then S3.
+- 2026-09-25 — **S2 landed** (`de2af27`). `backupService` now remembers the folder
+  chosen in each dialog (export and import tracked independently) and passes it
+  explicitly as `defaultPath`, falling back to `app.getPath('documents')`. E43's
+  "no `defaultPath` → Downloads" regression can no longer ship. Deliberately
+  **session-scoped**: it restores the pre-43 convenience without adding a new
+  persistence surface (the alternative — a `work_settings` row — would couple a
+  low-risk fix to the migration file S3 is about to churn). Covered by
+  `src/tests/main/services/backupService.test.ts` (4 cases: first-use default,
+  remembered folder, cancel keeps the folder, export/import independence).
+  Gates: `pnpm exec vitest run` **174/174**, `pnpm run type-check` clean,
+  `pnpm run lint` clean. Route: direct inline (one production file + its test,
+  design fully resolved after reading the service, migrations and existing test
+  conventions).
+- Next: S3 (the version bump) — high risk, needs its own run and a packaged-app
+  smoke test. See the checklist above.
+
+## S3 preparation (ready to execute)
+
+Prerequisites verified on this checkout:
+
+- Branch `staging` is clean; S1 (`ed07d9d`) and S2 (`de2af27`) are the last two
+  functional commits, so a failed S3 reverts to a known-good pair.
+- `release/` is git-ignored and is **not** in the review candidate; keep the last
+  known-good installer there before bumping, per the rollback section.
+- Lockfile is `pnpm-lock.yaml` with pnpm 10 authoritative. Regenerate with
+  `pnpm install`, never npm (`.npmrc` is pnpm syntax that npm misparses).
+- Native rebuild is driven by `electron-builder install-app-deps`
+  (`release.yml:77`, `build-local.ps1:29`); `better-sqlite3` is `asarUnpack`ed,
+  so the rebuild must target the new Electron ABI, not Node's.
+- The Electron-as-Node test harness (`src/tests/fixtures/*-harness.cjs`) is
+  pinned to the Electron 30 ABI today. After the bump, the integration suites
+  must be re-run against Electron 44's ABI or they will fail with
+  `ERR_DLOPEN_FAILED` — that is a harness update, not an app regression.
+
+Execution order for S3 (one commit, revertable):
+
+1. Edit `package.json`: `electron` 44.x, `better-sqlite3` 13.x,
+   `electron-builder` 26.x, `electron-updater` 6.8.9.
+2. `pnpm install` to regenerate the lockfile, then `electron-builder install-app-deps`.
+3. `pnpm exec vitest run`, `pnpm run type-check`, `pnpm run lint`, `pnpm run build`.
+4. `pnpm run dist:win` → NSIS installer, then the 7-point smoke test above against
+   the **packaged** app (the packaged run is what decides S3, not the dev run).
