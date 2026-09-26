@@ -472,3 +472,44 @@ distinct transaction with its own base and target, closes all three slices with 
 and avoids three separate consent envelopes. The value is concentrated in S3: its 19
 non-lockfile lines carry `npmRebuild: false`, which disables the automatic native rebuild for
 *every* module — the least obvious and highest-consequence decision in the migration.
+
+### S1/S2/S3 review — attempted, blocked by the runtime, terminal stop
+
+Executed the decided transaction. It did **not** complete, and the gap stays open.
+
+| Stage | Result |
+|---|---|
+| Consent (`gentle-ai.review-integration.consent/v3`) | granted by the user |
+| `review start` | `action: created`, `state: reviewing`, lineage `review-44ad33de349f2aaa`, one lens `review-reliability`, correction budget 200 |
+| Reviewer lens Task | `opencode_task_output_empty` — **attempt 1** |
+| Exact-lineage STATUS | reoffered the same bound slot (`reviewer_results_required`, same `subject_hash`), so one relaunch was permitted |
+| Reviewer lens Task | `opencode_task_output_empty` — **attempt 2** |
+| `review capture-unachievable` | `recorded: true`, reason `reviewer_task_output_empty` |
+| STATUS | **stop**, reason `unachievable_lens_slot`, `horizon: terminal` |
+
+**No approval, no receipt, no burned authority, nothing delivered.** The provider stopped
+terminally rather than closing over an unexecuted lens, so no hollow "approved" exists.
+
+**Cause is not scope and not the budget.** The reviewer `provider_task.prompt` the runtime
+materializes is binding + context + instruction + result schema + the changed paths' diffs;
+it is materialized by the host from the binding line, not authored by the orchestrator
+(proof: it carried the full 138-line content of `src/tests/main/services/backupService.test.ts`,
+a file the orchestrator never read). The generated `pnpm-lock.yaml` is delivered as metadata
+with no content hunk, so the payload was ~350 diff lines — small.
+
+**This is a recurring runtime condition, not a one-off.** The same
+`opencode_task_output_empty` was previously recorded at 5/5 attempts on lineage
+`review-17eaa498cf6f9e2f` (the performance work). That is 7 consecutive empty reviewer
+outputs across two unrelated transactions in this runtime. Both are OpenCode-side
+(`opencode_task_output_empty`), so they are **not** a Gentle AI provider defect and no
+upstream report applies.
+
+**Remaining continuations** (from the provider's own stop table for `unachievable_lens_slot`):
+withdraw with `--withdraw=true` and let the slot be reoffered (**only if transient** — the
+evidence says it is not); or reduce scope and start a new `review start`; or disable
+receipt-driven development at clone scope (`gentle-ai review mode disable --scope clone`) and
+proceed under ordinary repository policy, carrying the existing evidence (per-slice `assess`,
+174/174 on Electron 44, the human packaged smoke test) and this documented gap.
+
+Until one of those is chosen, **S1, S2 and S3 remain unreviewed** - that is the honest state,
+not a covered one.
