@@ -135,6 +135,14 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
   overwritten by the next build; (c) the earlier note claiming the test harness is
   pinned to the Electron 30 ABI was **incorrect** — the harness resolves
   `require('electron')`, so it follows the installed version and needs no change.
+- 2026-09-25 — **Packaged smoke test confirmed by the user** on
+  `release\win-unpacked\TW Time Register.exe`: the app launches and runs cleanly,
+  backup export/import dialogs behave (the S2 fix, including the `defaultPath`
+  directory), and `safeStorage` credential decryption plus a TeamWork sync
+  round-trip work under Electron 44. Still unverifiable without publishing:
+  auto-update (point 6) and clean-machine install (point 7).
+- Next: **S4** (packaging/CI) — full work order below. Do not bump the app version
+  or publish before it lands.
 - 2026-09-25 — **S3 executed.** Versions bumped, installer built, all automated gates
   green on Electron 44; two config changes the plan did not anticipate were required
   (see the S3 section below). Blocked on the human packaged smoke test before it can
@@ -227,13 +235,56 @@ The review preflight is deliberately **not** run yet. A smoke-test finding would
 change the candidate bytes, and freezing a review transaction on bytes that may
 still move would waste it.
 
+## S4 — ready to execute (packaging/CI)
+
+**Objective:** make the release pipeline match the new dependency reality and prove
+it on a clean checkout, **without publishing to installed clients**.
+
+**Files:** `.github/workflows/release.yml`, `build-local.ps1`.
+
+**Before starting:** close any running copy of the packaged app — it holds a lock on
+`release/win-unpacked` and the next build cannot overwrite it.
+
+1. **Remove the obsolete native rebuild.** Delete the `install-app-deps` step
+   (`release.yml:77`) and its call in `build-local.ps1:29`. Verified on 2026-09-25:
+   better-sqlite3 13.0.3 is Node-API with shipped prebuilds and needs no rebuild, and
+   the explicit `electron-builder install-app-deps` command **ignores
+   `npmRebuild: false`** — it still runs `node-gyp rebuild`. Locally that fails with
+   `Could not find any Visual Studio installation to use`; on `windows-2022` MSVC
+   *is* present, so there it would compile from source and silently replace the
+   tested upstream prebuild with a runner-built binary.
+2. **Stop rewriting `.npmrc` with build-dependency settings.** `release.yml:59-69`
+   and `build-local.ps1:15-22` both overwrite `.npmrc`, putting `better-sqlite3`
+   back into `onlyBuiltDependencies` and undoing the `pnpm-workspace.yaml` fix from
+   S3. On a clean checkout, establish whether pnpm 10 still reads
+   `onlyBuiltDependencies` and `node-linker` from `.npmrc` or only from
+   `pnpm-workspace.yaml`. If the latter, move the CI packaging config into
+   `pnpm-workspace.yaml` and delete the `.npmrc` rewrite. Note that
+   `node-linker=hoisted` **is** still required for electron-builder — preserve that
+   behaviour however it ends up configured.
+3. **Split publish from build.** `workflow_dispatch` already exists
+   (`release.yml:7`) but the build step runs `--publish always` (`release.yml:82`),
+   so a manual dispatch publishes to every installed client. Make manual dispatch
+   build and upload a workflow artifact with no publish; keep publishing on tag push
+   only. This is what allows proving the pipeline without any client pulling it.
+4. **Drop the redundant `@electron/rebuild` devDependency.** electron-builder warns
+   it `already used by electron-builder, please consider to remove excess dependency
+   from devDependencies`.
+5. **Confirm E42 lazy-download tolerance.** Electron no longer downloads itself in
+   `postinstall`; the first binary use triggers it (confirmed live: `pnpm exec
+   electron --version` printed `Downloading Electron binary...`). Check neither
+   script assumes `node_modules/electron/dist` exists right after `pnpm install`,
+   and keep `ELECTRON_GET_MAX_RETRIES` (`release.yml:73`).
+6. **Prove it end to end on a clean checkout:** fresh clone → `pnpm install` → build
+   → installer, on this machine (which has **no** MSVC, so it is the strictest case).
+   A run that succeeds only because a toolchain happens to be present has not been
+   proven.
+
+**Out of scope for S4:** the app version bump and the publish itself. Both are
+separate decisions taken after S4 lands.
+
 ### Cleanup noted for later slices
 
-- `release.yml:77` and `build-local.ps1:29` still call `install-app-deps`
-  explicitly, which now fails on a machine without MSVC → **S4**.
-- `@electron/rebuild` sits in `devDependencies` but electron-builder bundles its
-  own; electron-builder warns `already used by electron-builder, please consider to
-  remove excess dependency from devDependencies` → S4.
 - `bindings` and `file-uri-to-path` are still listed in `build.files` and
   `asarUnpack` but were dependencies of better-sqlite3 11 only; they are absent from
   the packaged output → S5.
