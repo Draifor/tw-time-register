@@ -124,7 +124,7 @@ tag or publish.
 | A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [ ] |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml` | direct inline | [ ] |
 | A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | direct inline (one component + one regression test) | [x] — the *expected* surface did **not** break (E13); the bump broke something else instead. Real fix: `input-date.tsx` + `src/tests/renderer/inputDate.test.tsx` (E16, E17, F8) |
-| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] — machine gates green; the human smoke test ran and found the date-field regression (E16/F8), which is now fixed. **Re-run pending** on the fixed build, and again after A3 |
+| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] — machine gates green on React 19, and the **fixed** build passed the human smoke test (date field is one row again). **Remaining: the post-A3 pass over the date/time pickers**, since A3 rewrites the same wrapper |
 | A7 | Record results, evidence and residue here | this document | direct inline | [ ] |
 
 Task detail is deliberately deferred to A1's result: writing a fix-list before knowing what actually
@@ -238,3 +238,10 @@ trusted as behaviourally complete.
   `mem_doctor` reported the store healthy (9/9 checks `ok`, project `tw-time-register`). The write path
   refused; the store did not. Nothing is lost — **this document is the authoritative record** and it is
   committed — but the mirror must be re-synchronised in the next session.
+- 2026-09-27 — **The smoke test on the fixed build passed.** The date field renders one row again, and
+  nothing else in the app changed. A6's remaining item is now only the **post-A3** pass over the
+  date/time pickers.
+- 2026-09-27 — **Stale worktree registrations from an earlier session removed** (`s123-review/s1|s2|s3`,
+  under the temp dir). Inspected before removal: all three were detached HEADs on commits already
+  reachable from `main`, `staging`, `origin/*` and tag `v1.10.0`, with **no uncommitted changes, no
+  stashes and no unique commits**. Nothing was lost; only the registrations went.
