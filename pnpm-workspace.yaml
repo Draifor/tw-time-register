@@ -8,6 +8,9 @@ ignoredBuiltDependencies:
   - better-sqlite3
 
 onlyBuiltDependencies:
-  # Electron 42+ no longer declares a postinstall, so listing it here is inert.
-  # Do not re-add it.
+  # An `electron` entry here would be inert: Electron 42+ declares no `postinstall`,
+  # which is why it is absent from this list. Do not re-add it.
+  #
+  # The entry below is a DIFFERENT package and is load-bearing: esbuild's install
+  # script downloads the platform-specific binary and must keep running.
   - esbuild

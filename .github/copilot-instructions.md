@@ -288,10 +288,10 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - **`better-sqlite3`** reemplaza `sqlite3 + sqlite` — prebuilts N-API, sin VS Build Tools
   - `DatabaseWrapper` en `database.ts`: API async compatible, preserva signatures de todos los servicios
   - Tipos genéricos en `db.all<T>()` y `db.get<T>()` para type-safety estricto
-- **ASAR habilitado** (`"asar": true`) con `asarUnpack` para `better-sqlite3` — el bundle JS viaja dentro de `app.asar` y el módulo nativo (`.node`) se desempaqueta para poder cargarse
+- **ASAR habilitado** (`"asar": true`) con `asarUnpack` para `better-sqlite3` — el bundle JS viaja dentro de `app.asar` y el paquete nativo se desempaqueta para poder cargarse: tanto `files` como `asarUnpack` matchean `node_modules/better-sqlite3/**/*`, así que se desempaqueta el subtree completo de `better-sqlite3`, no solo el `.node`
 - **Vite bundlea todas las deps JS** del main process en `dist-electron/index.js`
   - Solo se externalizan `electron` (runtime) y `better-sqlite3` (nativo)
-  - El `app.asar` empaquetado no necesita `node_modules`: el JS va bundleado y solo se desempaqueta el `.node` nativo vía `asarUnpack`
+  - El `app.asar` empaquetado no necesita `node_modules` en general: el JS va bundleado y, vía `asarUnpack`, se desempaqueta el subtree de `better-sqlite3` (el único `node_modules` que viaja fuera del asar)
 - **`HashRouter`** reemplaza `BrowserRouter` — necesario en Electron (no hay servidor HTTP en producción)
 - **Paths absolutos** en `database.ts` usando `app.getPath('userData')` y `app.getAppPath()`
 - **Error handling** en `main/index.ts` con `dialog.showErrorBox` para crashes visibles

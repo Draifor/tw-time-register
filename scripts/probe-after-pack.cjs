@@ -91,6 +91,10 @@ function afterPack(context) {
   // build fast instead of hanging CI or a developer shell.
   const childEnv = buildChildEnv();
   childEnv.ELECTRON_RUN_AS_NODE = '1';
+  // Argument contract with probe-packaged-native.cjs: argv[2] is the absolute path
+  // of the packaged better-sqlite3 directory to load. It is passed explicitly
+  // because the probe resolves a relative argv[2] against its own cwd and would
+  // otherwise fall back to a dev-machine path.
   const result = spawnSync(exePath, [PROBE_SCRIPT, packageDir], {
     env: childEnv,
     stdio: 'inherit',
