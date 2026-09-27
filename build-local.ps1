@@ -26,6 +26,14 @@ try {
     Write-Host "==> Packaging (unpacked, no installer)..." -ForegroundColor Cyan
     pnpm exec electron-builder --win --dir --publish never
 
+    # A native command's non-zero exit does NOT stop this script: $ErrorActionPreference
+    # governs cmdlet errors only. Without this check a failed afterPack gate would still
+    # print "Done!" and exit 0. This is the last native step, so install/build failures
+    # surface here too.
+    if ($LASTEXITCODE -ne 0) {
+        throw "Packaging failed (exit $LASTEXITCODE). The afterPack probe gate aborts the build before any installer is created."
+    }
+
     Write-Host ""
     Write-Host "==> Done! Run the app at:" -ForegroundColor Green
     Write-Host "    release\win-unpacked\TW Time Register.exe" -ForegroundColor Yellow
