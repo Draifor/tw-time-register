@@ -233,3 +233,8 @@ trusted as behaviourally complete.
   `under_budget`. By the gate's own batching rule this change **stays pending in the slice** until a later
   commit reaches the ~400-line budget, so it has no separate review yet. The reviewed boundary remains
   `23b361f`, and the next assessment is measured from there.
+- 2026-09-27 — **The Engram mirror for this session is PENDING, not written.** `mem_save` failed three
+  times with `gentle-engram could not confirm Engram session registration for engram_mem_save`, while
+  `mem_doctor` reported the store healthy (9/9 checks `ok`, project `tw-time-register`). The write path
+  refused; the store did not. Nothing is lost — **this document is the authoritative record** and it is
+  committed — but the mirror must be re-synchronised in the next session.
