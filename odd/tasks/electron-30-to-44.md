@@ -1121,8 +1121,102 @@ behaviour is only observable by launching the packaged executable and the repo h
 test harness; the harness is one byte-identical copy plus a wedged probe, so a future session can
 re-run it from this record.
 
-**Still open from this review** — the six findings not in scope: `R4-003` (`build-local.ps1` should
+**Still open from this review** — the four findings not in scope: `R4-003` (`build-local.ps1` should
 assert it fails when the gate fails), `R2-001` (the `pnpm-workspace.yaml` comment sits above the
 esbuild entry), `R2-002` (the probe's second positional argument is undocumented), `R2-003` (the
 `copilot-instructions.md` asar claim overstates what unpacks). `R4-002` / `R3-2`'s fail-open half is
 now closed, but there is still **no macOS probe** — a macOS artifact is refused rather than verified.
+
+**Correction to the paragraph above.** An earlier revision of this section said "the six findings not
+in scope" and then listed four. The gated-pipeline review raised seven advisory rows; the HK slice
+closed three of them, so **four** remained. "Six" was a miscount; corrected here rather than left
+standing.
+
+## Clarity findings from the gated-pipeline review — execution
+
+Task list created 2026-09-26 **before the first source write**, per the ODD tracking rule.
+Scope is exactly the four advisory findings left over from the approved gated-pipeline review
+(`review-5fa63b3f506b9672`). Nothing else in the residue block is touched.
+
+| ID | Task | Files | Status |
+|---|---|---|---|
+| F1 | Make the local packaging script **fail when the gate fails**: assert the packaging step's exit code, because a native non-zero exit does not stop a PowerShell script | `build-local.ps1` | done |
+| F2 | Stop the Electron comment in `onlyBuiltDependencies` from reading as a description of the `esbuild` entry beneath it, and name which entry is load-bearing | `pnpm-workspace.yaml` | done |
+| F3 | Document the probe's positional-argument contract at the call site | `scripts/probe-after-pack.cjs` | done |
+| F4 | Correct the `asarUnpack` claim: the whole `better-sqlite3` package subtree is matched, not only the `.node` | `.github/copilot-instructions.md` | done |
+
+**Design decision (F1) — an explicit exit-code assertion, not a preference variable.**
+`$ErrorActionPreference = "Stop"` governs cmdlet errors and **not** a native command's non-zero exit.
+That is precisely why the script could print "Done!" and exit 0 after a failed gate.
+`$PSNativeCommandUseErrorActionPreference = $true` would be one line, but it does not exist before
+PowerShell 7.3 and on such a host would silently leave the old fail-open behaviour in place — a
+fail-open fix that fails open. An explicit `$LASTEXITCODE` check is portable and self-documenting.
+It goes after the packaging step, which is the **last** native command in the script, so a failure in
+`pnpm install` or `pnpm build` also surfaces there and not only the gate's own.
+
+**Why the `$LASTEXITCODE` caveat documented in `probe-after-pack.cjs` does not apply here.** That
+caveat is about a PowerShell `&` call on a **GUI-subsystem** PE. This call is `pnpm exec
+electron-builder`, a console application, so the exit code is reliable.
+
+**Design decision (F3) — document the contract where it is consumed.**
+`probe-packaged-native.cjs:16` resolves `argv[2]` against its cwd and falls back to
+`release/win-unpacked/resources/app.asar.unpacked/node_modules/better-sqlite3`. The hook passes the
+absolute packaged path, so the fallback is never used in the gated path; the call site is the right
+place to say so, because that is where a future reader edits the argument list.
+
+**Verified for F4, not assumed.** `package.json` has `asarUnpack: ["node_modules/better-sqlite3/**/*"]`
+and the matching `files` entry, i.e. a package-subtree glob, so the doc's "only the native `.node` is
+unpacked" understates what is matched.
+
+**No unit test for F1.** A `.ps1` script has no test harness in this repo. F1 is proved the way the
+gate itself was proved: by running the packaging path against a deliberately broken package and
+observing the script's own exit code. Recorded in the results below, not silently skipped.
+
+### F results (2026-09-26)
+
+Commits: `4d3e70f` — `fix(build): fail the local packaging script when the probe gate fails`
+(`build-local.ps1`, +8) and `2be5048` — `docs: correct the packaging-gate clarity findings`
+(3 files, +11/−4). Route: delegated direct, one bounded writer; the load-bearing proof was re-run
+independently by the parent as the spot check.
+
+| Check | Result |
+|---|---|
+| `pnpm run lint` | exit 0 — the edited `.cjs` stays ESLint-clean |
+| `pnpm run type-check` | exit 0 |
+| `pnpm exec vitest run` | 179 passed / 1 failed — the known pre-existing Saturday flake `timeEntriesService.test.ts:339`, no other failure |
+| `./build-local.ps1` baseline | exit **0**, printed `==> Done!`, probe `{"ok":true,"roundtrip":42,…}` |
+| `./build-local.ps1` with the source prebuild renamed (gate broken) | exit **1**; threw `Packaging failed (exit 1). The afterPack probe gate aborts the build before any installer is created.`; **`==> Done!` did NOT print**; the failing task was the gate — `⨯ [afterPack] Packaged native module probe failed (status=1, signal=null). failedTask=build` |
+| `./build-local.ps1` after restore | exit **0**, `Done!`, probe passed; `release/win-unpacked` left good |
+| Parent spot check (independent) | re-ran the whole broken → restore → clean cycle in a child `pwsh -NoProfile -File` process: broken exit **1**, `Done!` absent, `Packaging failed` thrown, the only `[afterPack]` lines being the probe launch and its attributed failure; prebuild restored (`.bak` absent); clean exit **0** with `Done!` and `probe passed` |
+
+**Why the broken run isolates the gate.** `pnpm install --frozen-lockfile` and `pnpm build` both
+completed before the gate failed, and pnpm did **not** re-materialize the renamed prebuild —
+better-sqlite3 sits in `ignoredBuiltDependencies` and declares no install script. So the non-zero
+exit belongs to the gate, not to install, which is exactly the attribution the finding asked for.
+
+**F1 is proved on the real path, not by a unit test,** because a `.ps1` has no harness here.
+Invoking the script as a child process (`pwsh -NoProfile -File ./build-local.ps1`) is what makes the
+exit code observable as a process exit — precisely the property that was broken.
+
+**Incidental confirmation of HK-01 in the real run:** the hook logged
+`[afterPack] Removed credential variable(s) from the probe child env: OPENCODE_CONSOLE_TOKEN`,
+i.e. the tail-pattern stripping caught an unrelated runtime token the exact-name set would have
+missed.
+
+**What this closes.** All four advisory findings of the gated-pipeline review
+(`review-5fa63b3f506b9672`) are addressed.
+
+**Still open after this slice** — unchanged, recorded so none of it is mistaken for closed:
+
+- the `--publish always` **tag branch remains unexecuted**;
+- the *earlier* probe-gate review's `R2-003` — the hardcoded `42` sentinel in
+  `scripts/probe-packaged-native.cjs` — is untouched. It is a **different finding from the
+  gated-pipeline review's `R2-003`** fixed above; the two reviews reused the ID, which is why the
+  same label appears in two closed/open lists;
+- **no macOS probe**: a macOS packaging run under CI is refused rather than verified. That is a
+  decision, not a debt — no job in this repo packages macOS, and `dist:mac` still warns loudly
+  locally;
+- four non-terminal lineages (`review-17eaa498cf6f9e2f`, `review-44ad33de349f2aaa`,
+  `review-7c1048e2042af3ea`, `review-d0130dfc222606cf`) still need their own `review abandon`;
+- **S6** (`vite-plugin-electron` 1.x) is the last planned slice never executed;
+- the app version bump and the publish remain separate decisions.
