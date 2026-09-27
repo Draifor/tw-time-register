@@ -16,13 +16,43 @@ const { spawnSync } = require('node:child_process');
 
 const PROBE_SCRIPT = path.join(__dirname, 'probe-packaged-native.cjs');
 
+// Bounds how long the probe child may run. A wedged child must fail the build
+// fast instead of hanging CI or a developer shell.
+const CHILD_TIMEOUT_MS = 120000;
+
+const SECRET_ENV_NAMES = new Set(['GH_TOKEN', 'GITHUB_TOKEN', 'NPM_TOKEN', 'NODE_AUTH_TOKEN']);
+const SECRET_ENV_TAIL =
+  /(?:^|_)(?:TOKEN|SECRET|SECRETS|PASSWORD|PASSWD|CREDENTIAL|CREDENTIALS|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY)$/;
+
+// Builds the environment for the probe child. Credential-looking variables are
+// stripped so a packaged build never receives CI publish tokens, and the source
+// object is copied rather than mutated.
+function buildChildEnv(sourceEnv = process.env) {
+  const childEnv = { ...sourceEnv };
+  const removed = [];
+  for (const name of Object.keys(childEnv)) {
+    if (SECRET_ENV_NAMES.has(name) || SECRET_ENV_TAIL.test(name)) {
+      delete childEnv[name];
+      removed.push(name);
+    }
+  }
+  if (removed.length > 0) {
+    console.log(`[afterPack] Removed credential variable(s) from the probe child env: ${removed.sort().join(', ')}`);
+  }
+  return childEnv;
+}
+
 function afterPack(context) {
   // The probe assumes the Windows layout (win-unpacked exe name and resources
-  // paths). Do not skip silently on other platforms: say so explicitly.
+  // paths). A non-win32 target cannot be probed, so fail closed on CI and warn
+  // loudly elsewhere instead of returning a green result that is
+  // indistinguishable from a real probe.
   if (context.electronPlatformName !== 'win32') {
-    console.log(
-      `[afterPack] Skipping packaged native probe: platform is ${context.electronPlatformName}, not win32.`,
-    );
+    const marker = `[afterPack] NOT VERIFIED: the packaged native probe is win32-only and this packaging run targets ${context.electronPlatformName}`;
+    if (process.env.CI) {
+      throw new Error(`${marker}. Refusing to certify an unprobed build.`);
+    }
+    console.warn(`${marker}. The packaged native module was NOT checked.`);
     return;
   }
 
@@ -56,14 +86,24 @@ function afterPack(context) {
   // shell call is not enough here: PowerShell's `&` returns early for a
   // GUI-subsystem PE and yields an unreliable $LASTEXITCODE, whereas Node waits
   // on the process handle. ELECTRON_RUN_AS_NODE is set on the child env only —
-  // process.env is spread, never mutated.
+  // buildChildEnv returns a fresh object, so process.env is never mutated. The
+  // child is bounded by CHILD_TIMEOUT_MS because a wedged probe must fail the
+  // build fast instead of hanging CI or a developer shell.
+  const childEnv = buildChildEnv();
+  childEnv.ELECTRON_RUN_AS_NODE = '1';
   const result = spawnSync(exePath, [PROBE_SCRIPT, packageDir], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    env: childEnv,
     stdio: 'inherit',
+    timeout: CHILD_TIMEOUT_MS,
+    killSignal: 'SIGKILL',
   });
 
   if (result.error) {
-    throw result.error;
+    const detail =
+      result.error.code === 'ETIMEDOUT'
+        ? `timed out after ${CHILD_TIMEOUT_MS} ms without exiting`
+        : `could not be started: ${result.error.message}`;
+    throw new Error(`[afterPack] Packaged native module probe ${detail}.`);
   }
   if (result.status !== 0) {
     throw new Error(
@@ -78,3 +118,4 @@ function afterPack(context) {
 // exposing the function both as module.exports and as .default satisfies that.
 module.exports = afterPack;
 module.exports.default = afterPack;
+module.exports.buildChildEnv = buildChildEnv;
