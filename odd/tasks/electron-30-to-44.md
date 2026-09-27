@@ -1297,3 +1297,28 @@ Gentle AI provider defect, so no upstream report applies.
 **Delivery follows ordinary repository policy.** The acknowledgement burned the review authority;
 commit, push, PR and release remain separate human decisions, and this receipt neither authorizes
 nor blocks any of them.
+
+## Stale review lineages — abandoned 2026-09-26
+
+The four non-terminal lineages were abandoned, each with its own maintainer authorization binding
+(`--reason operator_disposition`, `--actor opencode`) and each to its own quarantine directory. The
+authority store is now clean: `gentle-ai review status --cwd .` returns `entries: []` with no
+diagnostics.
+
+| Lineage | State before | Captured lens results discarded |
+|---|---|---|
+| `review-17eaa498cf6f9e2f` | `reviewing` | none |
+| `review-44ad33de349f2aaa` | `reviewing` | none — the combined S1+S2+S3 attempt that stopped on `unachievable_lens_slot` |
+| `review-7c1048e2042af3ea` | `reviewing` | none |
+| `review-d0130dfc222606cf` | `reviewing` | **three** — `00-review-risk`, `01-review-resilience`, `03-review-reliability`, with `findings_present: true` |
+
+**The one real loss, stated.** `review-d0130dfc222606cf` held captured reviewer output containing
+findings and never produced a receipt, so that wording is discarded unreported. Its frozen candidate
+was the `3f8a0c7` tree, whose content was afterwards covered by the approved transaction
+`review-5fa63b3f506b9672` — the one that produced the seven advisory rows recorded earlier in this
+document. So the *coverage* is not lost; what is lost is one intermediate reviewer's own phrasing.
+Recorded rather than glossed, because "abandoned" and "there was nothing there" are different facts.
+
+This closes the last item of the residue list in the review section above. The remaining residue is
+S1/S2 (never reviewed, no receipt), R3-1/R3-2, the unexecuted `--publish always` tag branch, the
+probe-gate review's `R2-003` sentinel, the absent macOS probe, S6, and the version bump plus publish.
