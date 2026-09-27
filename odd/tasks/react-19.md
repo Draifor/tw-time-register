@@ -127,8 +127,8 @@ tag or publish.
 | A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [x] — v4 installed; **all three call sites had to be rewritten**, not merely re-verified (E19). Committed `34577dc`; suite 189/189. **The review is blocked, not declined** — see F11 |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml` | direct inline | [ ] |
 | A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | direct inline (one component + one regression test) | [x] — the *expected* surface did **not** break (E13); the bump broke something else instead. Real fix: `input-date.tsx` + `src/tests/renderer/inputDate.test.tsx` (E16, E17, F8) |
-| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] — machine gates green on React 19, and the **fixed** build passed the human smoke test (date field is one row again). **Remaining: the post-A3 pass over the date/time pickers**, since A3 rewrites the same wrapper |
-| A7 | Record results, evidence and residue here | this document | direct inline | [ ] |
+| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [x] — machine gates green (**191/191**), and the human smoke test passed **twice**: once on the A2 fix (date field back to one row) and again after A3 + the StrictMode fix (date and duration both show their value when the view opens and after returning to it) |
+| A7 | Record results, evidence and residue here | this document | direct inline | [x] — recorded incrementally through E1–E20, F1–F12, the Route log, the Delivery plan and both Review records. **What is not recorded as done is not done:** A3 and its remedy are un-reviewed (F11, F12), and A4 is untouched. |
 
 Task detail is deliberately deferred to A1's result: writing a fix-list before knowing what actually
 breaks would be inventing work.
@@ -306,3 +306,24 @@ trusted as behaviourally complete.
 - 2026-09-27 — **This candidate's review is blocked too (F12).** Fresh lineage
   `review-adc411d312248c2a`, reviewer actor returned empty on the first attempt, authority untouched. The
   bounded retry is spent; no further attempts. **The A3 slice and its remedy are un-reviewed.**
+
+## Resume — the next session starts here
+
+State at hand-off: Track A is functionally complete **except A4**. Branch `staging`, 17 commits ahead of
+`origin/staging`, nothing pushed, working tree clean, all four gates green at **191/191**.
+
+1. **Close the A3 review first (F11, F12).** The reviewer actor returned an empty result three times in the
+   previous session across two lineages, so nothing is captured and nothing is burned — the slot is still
+   offered. From a fresh session, the entry point is:
+   `gentle-ai review assess --cwd . --agent opencode --base-ref 23b361f --committed-only --json`
+   then execute the returned `next_transition` verbatim and follow its transitions. **Do not claim the A3
+   slice or its remedy were reviewed unless an acknowledgement actually burned authority.**
+2. **Then A4** — `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps. It is the
+   last task in Track A. It will push the delivery slice further past the budget, so re-read the Delivery
+   plan before the first commit and keep `stacked-to-main`.
+3. **The Engram mirror is still pending.** Every `mem_save` in the previous session failed with
+   `gentle-engram could not confirm Engram session registration for engram_mem_save` while `mem_doctor`
+   reported the store healthy (9/9). Re-synchronise it on arrival, and until then treat this file as the
+   only record.
+4. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
+   publish; English artifacts; the reviewed boundary is still `23b361f`.
