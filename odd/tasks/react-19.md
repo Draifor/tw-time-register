@@ -160,6 +160,7 @@ breaks would be inventing work.
 | F10 | **A3's scope line said "re-verified, not assumed" — the honest outcome is that the call sites had to be *rewritten*.** The plan framed A3 as a version move with a contract check (F3). That check is what produced the rewrite: v4's instance rebuild is invisible in a diff and only shows itself when a parent re-renders — and this parent re-renders every second. Recorded so the 421-line slice is read as "the migration the library required", not as scope creep. | E18, E19 | Kept as the A3 work unit. Deliberately **not** split: splitting the rewrite across two PRs would land v4 with two of three call sites still on the pattern it breaks. |
 | F11 | **The A3 slice has no review, and that is not because the review declined it.** The gate opened lineage `review-16182467d565e446`, selected one lens (`review-reliability`) and offered the slot. The reviewer actor returned an empty result **twice** (`opencode_task_output_empty`), and after each attempt a fresh target-bound STATUS still reported `collect` / `reviewer_results_required` with the authority untouched. Two attempts is the bounded retry, so it stopped there. **State: un-reviewed with an open lineage** — no capture, no receipt, no acknowledgement, nothing burned. Not a Gentle AI engine failure and not reported as one: the reviewer is a client-runtime actor, and an empty sub-agent result is the runtime's. The honest record is that a dependency-plus-rewrite slice of this kind would ship **without independent review**, which is a residual risk the next session must close or consciously accept. | lineage `review-16182467d565e446`; `gentle-ai review status` after each attempt | Retry in a fresh session while the slot is still offered, or accept the risk explicitly. **Never claim this candidate was reviewed.** |
 | F12 | **The reviewer actor is unavailable in this session, and the bounded retry is now spent on both lineages.** The StrictMode fix (`c3f800f`) changed the candidate, so the gate opened a **fresh** lineage `review-adc411d312248c2a` and offered one `review-reliability` slot; the reviewer actor returned `opencode_task_output_empty` on the first attempt. State after: `state: reviewing`, `generation: 1`, `action: collect`, `reason_code: reviewer_results_required`, authority untouched — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** Three empty reviewer results across two lineages is an actor/session problem, not a candidate one: the *same* actor completed the A2 review earlier in this session, and the failure reproduced both with a hand-authored materialisation and with the bare provider binding alone (which rules out the prompt size I suspected). No further attempts were made. | lineages `review-16182467d565e446` (2 attempts) and `review-adc411d312248c2a` (1 attempt); `gentle-ai review status` after each | Neither the A3 migration nor its remedy carries an independent review. Close it in a fresh session, or accept the residual risk in writing. **Not a Gentle AI engine defect and not reported as one** — an empty sub-agent result belongs to the client runtime. |
+| F13 | **The reviewer actor is unavailable in a fresh session too, so the A3 slice's review is closed as an accepted risk instead of being left open.** The hand-off's entry point was re-run exactly: `gentle-ai review assess --base-ref 23b361f --committed-only` returned `review_due: true` / `slice_budget_reached` (8 paths, 784 changed lines, `medium`), and its `next_transition` opened a **third** lineage `review-eb3e736869e2d2c8` with one `review-reliability` lens and a 200-line correction budget. The consent envelope was relayed verbatim and **granted**; the reviewer actor then returned `opencode_task_output_empty` **four times**. After every attempt the bound target STATUS returned `action: collect` / `reviewer_results_required` with `state: reviewing`, `generation: 1` and the revision unchanged — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** The same failure now spans two sessions and three lineages (F11, F12), and Engram holds an equivalent prior occurrence in the `electron-30-to-44` probe gate (a *readability* lens empty three times), so it is an actor/environment failure and not a property of this candidate. **Disposition: the residual risk is accepted in writing** — the A3 migration and its remedy ship without independent review. This is a recorded risk, never a reviewed candidate. | lineages `review-16182467d565e446` (2 attempts, prior session), `review-adc411d312248c2a` (1, prior session), `review-eb3e736869e2d2c8` (4, this session); `gentle-ai review status` after every attempt; Engram observation on the `electron-30-to-44` probe gate | **Closed as accepted risk.** Never claimed as reviewed. Not reported as a Gentle AI engine defect — an empty sub-agent result belongs to the client runtime. |
 
 ## Route log
 
@@ -181,7 +182,7 @@ this document.
 | PR | Commits | Authored lines | State |
 |---|---|---|---|
 | **1 — React 19** | `23b361f` + `c0ececd` | 88 | The bump **plus the date-field regression it caused**, with its test. They ship together because a PR must not merge a known user-visible regression. Bump reviewed and approved; the fix was assessed `under_budget` and never separately reviewed. |
-| **2 — react-flatpickr 4** | `34577dc` | 421 | The migration and the three call-site rewrites. **Over budget by 21** — see below. |
+| **2 — react-flatpickr 4** | `34577dc` | 421 | The migration and the three call-site rewrites. **Over budget by 21** — see below. **Review closed as accepted risk (F13): it ships without independent review.** |
 | **3 — the coupled renderer versions** | — (A4, not started) | unknown | `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps. |
 
 **`size:exception` recommended for PR 2.** One honest slicing pass was made, and no cohesive split exists:
@@ -306,24 +307,31 @@ trusted as behaviourally complete.
 - 2026-09-27 — **This candidate's review is blocked too (F12).** Fresh lineage
   `review-adc411d312248c2a`, reviewer actor returned empty on the first attempt, authority untouched. The
   bounded retry is spent; no further attempts. **The A3 slice and its remedy are un-reviewed.**
+- 2026-09-27 — **The A3 review was re-attempted from a fresh session and still could not be captured
+  (F13), so the residual risk is accepted in writing.** `assess --base-ref 23b361f --committed-only`
+  returned `review_due: true` / `slice_budget_reached`; its transition opened fresh lineage
+  `review-eb3e736869e2d2c8`; the consent envelope was relayed verbatim and **granted**; the reviewer actor
+  returned empty **four times** and the bound STATUS kept reporting `collect` /
+  `reviewer_results_required` with the revision unchanged. **No capture, no receipt, no acknowledgement,
+  nothing burned, no result invented.** The A3 slice and its remedy ship **without independent review** —
+  recorded as an accepted risk, never as a reviewed candidate.
 
 ## Resume — the next session starts here
 
 State at hand-off: Track A is functionally complete **except A4**. Branch `staging`, 17 commits ahead of
 `origin/staging`, nothing pushed, working tree clean, all four gates green at **191/191**.
 
-1. **Close the A3 review first (F11, F12).** The reviewer actor returned an empty result three times in the
-   previous session across two lineages, so nothing is captured and nothing is burned — the slot is still
-   offered. From a fresh session, the entry point is:
-   `gentle-ai review assess --cwd . --agent opencode --base-ref 23b361f --committed-only --json`
-   then execute the returned `next_transition` verbatim and follow its transitions. **Do not claim the A3
-   slice or its remedy were reviewed unless an acknowledgement actually burned authority.**
+1. ~~**Close the A3 review first (F11, F12).**~~ **Closed (F13): attempted from a fresh session and
+   impossible there too.** A third lineage (`review-eb3e736869e2d2c8`) was opened, the consent envelope was
+   relayed verbatim and granted, and the reviewer actor returned empty four more times with the authority
+   untouched. The A3 slice and its remedy ship **without independent review**; the residual risk is
+   **accepted in writing, not discharged**. There is no receipt and no acknowledgement, so **never claim
+   either was reviewed**.
 2. **Then A4** — `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps. It is the
    last task in Track A. It will push the delivery slice further past the budget, so re-read the Delivery
    plan before the first commit and keep `stacked-to-main`.
-3. **The Engram mirror is still pending.** Every `mem_save` in the previous session failed with
-   `gentle-engram could not confirm Engram session registration for engram_mem_save` while `mem_doctor`
-   reported the store healthy (9/9). Re-synchronise it on arrival, and until then treat this file as the
-   only record.
+3. ~~**The Engram mirror is still pending.**~~ **Resolved (2026-09-27, same session).** The write path
+   works again: `mem_doctor` reports 9/9 and `mem_save` is succeeding, so the mirror for this document has
+   been re-synchronised.
 4. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
    publish; English artifacts; the reviewed boundary is still `23b361f`.
