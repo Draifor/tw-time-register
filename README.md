@@ -217,7 +217,7 @@ pnpm test:coverage    # Coverage en /coverage
 pnpm dist:win    # Instalador NSIS para Windows x64
 ```
 
-> Tras cambiar versión de Node, ejecutar `electron-builder install-app-deps` para recompilar `better-sqlite3` contra el ABI de Electron.
+> `better-sqlite3` 13 es Node-API y trae prebuilds propios: no requiere recompilación contra el ABI de Electron. No ejecutar `electron-builder install-app-deps` (ignora `npmRebuild: false` y falla sin MSVC).
 
 ---
 
@@ -282,6 +282,10 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] Exportar reportes a CSV/Excel
 - [ ] Timeline de eventos de sync por entrada (auditable)
 - [ ] Checklist de release para validaciones críticas post-build
+
+### v1.11.0 — Distribución & Actualizaciones
+
+- [ ] **Actualizaciones silenciosas estilo VS Code**: instalar sin el asistente NSIS (`/S`) al pulsar "Actualizar" o al cerrar la app, con relanzado automático
 
 ### v2.0.0 — Multi-plataforma
 

@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS type_tasks (
     type_name TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_typetasks_name ON type_tasks(type_name);
+
 -- Insertar valores por defecto solo si la tabla está vacía
 INSERT INTO type_tasks (type_name)
 SELECT 'Acompañamiento' WHERE NOT EXISTS (SELECT 1 FROM type_tasks)
@@ -29,6 +31,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     FOREIGN KEY (type_id) REFERENCES type_tasks(type_id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_tasks_type ON tasks(type_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_name ON tasks(task_name, type_id);
+
 CREATE TABLE IF NOT EXISTS time_entries (
     entry_id INTEGER PRIMARY KEY,
     task_id INTEGER NOT NULL,
@@ -40,6 +45,15 @@ CREATE TABLE IF NOT EXISTS time_entries (
     send BOOLEAN DEFAULT 0,
     FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE CASCADE
 );
+
+-- Indexes backing the access paths used by the time-entry queries
+-- (date filters, per-date ordering, task joins/aggregates and pending syncs).
+CREATE INDEX IF NOT EXISTS idx_te_date ON time_entries(entry_date);
+CREATE INDEX IF NOT EXISTS idx_te_date_start ON time_entries(entry_date, hora_inicio);
+CREATE INDEX IF NOT EXISTS idx_te_date_end ON time_entries(entry_date, hora_fin);
+CREATE INDEX IF NOT EXISTS idx_te_task ON time_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_te_send ON time_entries(send);
+CREATE INDEX IF NOT EXISTS idx_te_task_times ON time_entries(task_id, hora_inicio, hora_fin);
 
 CREATE TABLE IF NOT EXISTS worktime_drafts (
     draft_key TEXT PRIMARY KEY,

@@ -1,11 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron';
 import { Task } from '../types/tasks';
-
-/**
- * Using the ipcRenderer directly in the browser through the contextBridge ist not really secure.
- * I advise using the Main/api way !!
- */
-contextBridge.exposeInMainWorld('ipcRenderer', ipcRenderer);
+import { createIpcEventBridge } from './ipcEventBridge';
 
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {
   return new Promise((resolve) => {
@@ -151,9 +146,10 @@ domReady().then(appendLoading);
 declare global {
   interface Window {
     Main: typeof api;
-    ipcRenderer: typeof ipcRenderer;
   }
 }
+
+const eventBridge = createIpcEventBridge(ipcRenderer);
 
 const api = {
   /**
@@ -374,14 +370,12 @@ const api = {
   getAppVersion: (): Promise<string> => ipcRenderer.invoke('getAppVersion'),
 
   /**
-   * Provide an easier way to listen to events
+   * Provide an easier way to listen to events.
+   * `off` removes the exact wrapper registered by `on`, so listeners no longer
+   * accumulate across component mounts.
    */
-  on: (channel: string, callback: (data: unknown) => void) => {
-    ipcRenderer.on(channel, (_, data) => callback(data));
-  },
-  off: (channel: string, callback: (data: unknown) => void) => {
-    ipcRenderer.removeListener(channel, (_, data) => callback(data));
-  }
+  on: eventBridge.on,
+  off: eventBridge.off
 };
 
 contextBridge.exposeInMainWorld('Main', api);

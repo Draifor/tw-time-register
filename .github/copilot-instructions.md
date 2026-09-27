@@ -20,8 +20,8 @@ Desarrollador que necesita registrar su tiempo de trabajo diario en TeamWork de 
 ## Stack Tecnológico
 
 ### Proceso Principal (Electron Main)
-- **Electron v30** - El proceso main maneja la ventana, IPC y acceso a SQLite
-- **better-sqlite3 v11** - Base de datos local para persistencia (sync API, prebuilts nativos sin compilar)
+- **Electron v44.4.5** - El proceso main maneja la ventana, IPC y acceso a SQLite
+- **better-sqlite3 v13** - Base de datos local para persistencia (sync API, prebuilds Node-API sin compilar)
 - **Axios** - Cliente HTTP para API de TeamWork
 - **electron-updater v6** - Auto-actualizaciones via GitHub Releases
 
@@ -45,6 +45,10 @@ Desarrollador que necesita registrar su tiempo de trabajo diario en TeamWork de 
 - **Prettier v3** - Formateo de código
 - **typescript-eslint v8** - Reglas TypeScript para ESLint
 - **Vitest v4** - Tests unitarios (compatible con Vite, sin config extra)
+
+### Requisitos de Plataforma (Electron 44)
+- **macOS 13+** — Electron 44 dejó de soportar macOS 12; el script `dist:mac` sigue disponible
+- **Linux**: Wayland es el backend por defecto en sesiones Wayland y GTK 4 es el default en GNOME; los binarios `ia32` y `armv7l` ya no se publican
 
 ---
 
@@ -284,18 +288,18 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 - **`better-sqlite3`** reemplaza `sqlite3 + sqlite` — prebuilts N-API, sin VS Build Tools
   - `DatabaseWrapper` en `database.ts`: API async compatible, preserva signatures de todos los servicios
   - Tipos genéricos en `db.all<T>()` y `db.get<T>()` para type-safety estricto
-- **ASAR deshabilitado** (`"asar": false`) — simplifica packaging con módulos nativos + pnpm hoisted
+- **ASAR habilitado** (`"asar": true`) con `asarUnpack` para `better-sqlite3` — el bundle JS viaja dentro de `app.asar` y el paquete nativo se desempaqueta para poder cargarse: tanto `files` como `asarUnpack` matchean `node_modules/better-sqlite3/**/*`, así que se desempaqueta el subtree completo de `better-sqlite3`, no solo el `.node`
 - **Vite bundlea todas las deps JS** del main process en `dist-electron/index.js`
   - Solo se externalizan `electron` (runtime) y `better-sqlite3` (nativo)
-  - Elimina necesidad de `node_modules` en la app instalada (excepto el `.node` nativo)
+  - El `app.asar` empaquetado no necesita `node_modules` en general: el JS va bundleado y, vía `asarUnpack`, se desempaqueta el subtree de `better-sqlite3` (el único `node_modules` que viaja fuera del asar)
 - **`HashRouter`** reemplaza `BrowserRouter` — necesario en Electron (no hay servidor HTTP en producción)
 - **Paths absolutos** en `database.ts` usando `app.getPath('userData')` y `app.getAppPath()`
 - **Error handling** en `main/index.ts` con `dialog.showErrorBox` para crashes visibles
-- **GitHub Actions** (`release.yml`): Node 22, pnpm hoisted solo en CI, `electron-builder install-app-deps`
+- **GitHub Actions** (`release.yml`): Node 22, pnpm hoisted en CI vía `npm_config_node_linker`; un dispatch manual construye y sube un artifact con `--publish never`, solo un tag `v*` publica
 - **`build-local.ps1`**: script para probar builds localmente sin instalador (usa `--dir`, no requiere admin)
 - **`useAutoUpdater` hook** + badge en NavBar (amber descargando, verde listo para instalar)
 - **`.node-version`** fija Node 22 LTS para el proyecto
-- **`.npmrc`** con `onlyBuiltDependencies` para auto-aprobar builds de `better-sqlite3`/`electron`
+- **`pnpm-workspace.yaml`** con `onlyBuiltDependencies`/`ignoredBuiltDependencies` — pnpm 10 lee esa configuración solo desde ahí; el `.npmrc` queda sin claves para no emitir warnings "Unknown project config"
 
 ### ✅ Fase 7: Seguridad — Credenciales TW Encriptadas (COMPLETADA - 2026)
 - **`encryptionService.ts`** — wrapper sobre `safeStorage` de Electron (DPAPI en Windows)
@@ -544,14 +548,14 @@ sync_history  (history_id, entry_id, action, synced_at, tw_time_entry_id, tw_tas
 | ESLint | 8.11.0 | **9.39.1** |
 | Prettier | 2.6.0 | **3.7.4** |
 | typescript-eslint | 5.16.0 | **8.48.1** |
-| sqlite3 + sqlite | 5.x + 4.x | **better-sqlite3 11.x** |
+| sqlite3 + sqlite | 5.x + 4.x | **better-sqlite3 13.x** |
 
 ### Cambios importantes en la migración
 
 #### better-sqlite3 (Mar 2026)
 - API síncrona envuelta en `DatabaseWrapper` async para no cambiar los 11 servicios
-- Requiere **Node 22 LTS** — los prebuilts N-API no existen para Node 24
-- Tras instalar, ejecutar `electron-builder install-app-deps` para recompilar contra el ABI de Electron
+- El toolchain de desarrollo fija **Node 22 LTS** (`.node-version`, `build-local.ps1`) como versión probada; no porque Node 24 carezca de prebuilds
+- `better-sqlite3` 13 es Node-API: sus prebuilds son ABI-estables entre Node y Electron, así que cargan tanto en Node 22 como en el Node 24.21.0 que trae Electron 44. No requiere recompilación contra el ABI de Electron. No ejecutar `electron-builder install-app-deps` (ignora `npmRebuild: false` y falla sin MSVC)
 - pnpm necesita `node-linker=hoisted` durante el packaging (`build-local.ps1` y CI lo hacen automáticamente)
 
 #### React Query v5
@@ -629,7 +633,7 @@ Los siguientes componentes de shadcn/ui están disponibles en `components/ui/`:
 ## Comandos de Desarrollo
 
 ```bash
-pnpm install        # Instalar dependencias (requiere Node 22: fnm use 22)
+pnpm install        # Instalar dependencias (toolchain fijado: Node 22, fnm use 22)
 pnpm dev            # Iniciar desarrollo (Vite + Electron)
 pnpm build          # Compilar para producción
 pnpm test           # Ejecutar tests (Vitest, una pasada)
@@ -639,10 +643,9 @@ pnpm test:coverage  # Coverage report en /coverage
 ```
 
 ### Notas sobre Node y módulos nativos
-- **Usar siempre Node 22 LTS** (`fnm use 22.17.0`) — `better-sqlite3` tiene prebuilts para Node 22
-- Node 24 no tiene prebuilts y sin VS Build Tools no puede compilar desde fuente
+- **Usar siempre Node 22 LTS** (`fnm use 22.17.0`) — es el toolchain fijado y probado del proyecto
+- `better-sqlite3` 13 es Node-API: sus prebuilds (`prebuilds/win32-x64.node`) son ABI-estables entre Node y Electron (incluido el Node 24.21.0 de Electron 44), así que no hace falta compilar desde fuente ni reconstruir nada
 - Tras cambiar de Node version, reimplementar `node_modules` con `pnpm install`
-- `electron-builder install-app-deps` reconstruye `better-sqlite3` contra los headers de Electron (ABI distinto al de Node)
 
 ---
 

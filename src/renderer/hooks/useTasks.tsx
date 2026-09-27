@@ -11,6 +11,7 @@ import DeleteButton from '../components/DeleteButton';
 import PullTaskDialog from '../components/PullTaskDialog';
 import TaskCommentDialog from '../components/TaskCommentDialog';
 import { parseHHMMToMinutes, formatMinutesToHHMM } from '../lib/timeUtils';
+import { queryKeys } from '../lib/queryKeys';
 
 // ── Inline editable task link cell ────────────────────────────────────────────
 function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) => void }) {
@@ -186,7 +187,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
     isPending: isLoading,
     error
   } = useQuery({
-    queryKey: ['tasks', searchTerm],
+    queryKey: queryKeys.tasks.list(searchTerm),
     queryFn: () => fetchTasks(searchTerm || undefined)
   });
   const queryClient = useQueryClient();
@@ -196,17 +197,25 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
   const { mutate: onSubmit, isPending: isLoadingMutation } = useMutation({
     mutationFn: addTask,
     onMutate: async (newTask) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
 
-      const previousTasks = queryClient.getQueryData(['tasks']);
+      // Snapshot every cached `tasks` search variant, not just an exact `['tasks']`
+      // entry (which no query ever registers).
+      const previousTasks = queryClient.getQueriesData<Task[]>({ queryKey: queryKeys.tasks.all });
 
-      queryClient.setQueryData(['tasks'], (old: Task[] = []) => [...old, newTask]);
+      // Append to every variant that already has data; variants still loading have
+      // nothing to optimistically update.
+      queryClient.setQueriesData<Task[]>({ queryKey: queryKeys.tasks.all }, (old) => (old ? [...old, newTask] : old));
 
       return { previousTasks };
     },
     onError: (err, _variables, context) => {
       console.error(err);
-      queryClient.setQueryData(['tasks'], context?.previousTasks);
+      for (const [key, data] of context?.previousTasks ?? []) {
+        if (data !== undefined) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       toast.error('Failed to add task', {
         description: err.message
       });
@@ -215,14 +224,14 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
       toast.success('Task added successfully');
     },
     onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
     }
   });
 
   const { mutate: onEdit } = useMutation({
     mutationFn: editTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       toast.success('Task updated successfully');
     },
     onError: (error) => {
@@ -236,7 +245,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
   const { mutate: deleteTaskMutation } = useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       toast.success('Task deleted successfully');
     },
     onError: (error) => {
@@ -256,7 +265,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
   );
 
   const { data: typeTasks } = useQuery({
-    queryKey: ['typeTasks'],
+    queryKey: queryKeys.typeTasks.all,
     queryFn: fetchTypeTasks
   });
   interface RowT {

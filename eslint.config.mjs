@@ -13,7 +13,21 @@ export default tseslint.config(
 
   // Global ignores
   {
-    ignores: ['node_modules/', 'dist/', 'dist-electron/', 'dist-vite/', 'src/out/']
+    ignores: [
+      'node_modules/',
+      'dist/',
+      'dist-electron/',
+      'dist-vite/',
+      'src/out/',
+      // electron-builder output (~364 MB, 12k+ files): scanning it makes `eslint .`
+      // effectively hang.
+      'release/',
+      'coverage/',
+      '.opencode/',
+      // Vendored skill templates (third-party): formatting them would diverge from
+      // upstream and be re-broken on every skill refresh.
+      '.agents/'
+    ]
   },
 
   // Main config for all JS/TS files

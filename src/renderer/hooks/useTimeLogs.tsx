@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchWorkTimes, columns } from '../services/timesService';
+import { queryKeys } from '../lib/queryKeys';
 
 function useTimeLogs() {
   const {
@@ -7,7 +8,7 @@ function useTimeLogs() {
     isPending: isLoading,
     error
   } = useQuery({
-    queryKey: ['workTimes'],
+    queryKey: queryKeys.workTimes.all,
     queryFn: fetchWorkTimes
   });
 

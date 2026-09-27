@@ -12,24 +12,48 @@ export interface RunResult {
   changes: number;
 }
 
+type CachedStatement = BetterSqlite3.Statement;
+
 class DatabaseWrapper {
-  private db: BetterSqlite3.Database;
+  private readonly db: BetterSqlite3.Database;
+  private readonly statements = new Map<string, CachedStatement>();
 
   constructor(filename: string) {
     this.db = new BetterSqlite3(filename);
+    // WAL keeps readers from blocking the writer; NORMAL is the safe/cheap
+    // durability tradeoff for WAL; foreign_keys makes the ON DELETE CASCADE
+    // declared in schema.sql effective; busy_timeout avoids
+    // SQLITE_BUSY when a second connection briefly holds a lock.
     this.db.pragma('journal_mode = WAL');
+    this.db.pragma('synchronous = NORMAL');
+    this.db.pragma('foreign_keys = ON');
+    this.db.pragma('busy_timeout = 5000');
+  }
+
+  /**
+   * Return a prepared statement for `sql`, reusing it on subsequent calls.
+   * The key space is bounded by the distinct SQL strings the app issues, so a
+   * plain Map is enough — no eviction policy is required.
+   */
+  private prepare(sql: string): CachedStatement {
+    let statement = this.statements.get(sql);
+    if (!statement) {
+      statement = this.db.prepare(sql);
+      this.statements.set(sql, statement);
+    }
+    return statement;
   }
 
   async all<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]> {
-    return this.db.prepare(sql).all(...(params ?? [])) as T[];
+    return this.prepare(sql).all(...(params ?? [])) as T[];
   }
 
   async get<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | undefined> {
-    return this.db.prepare(sql).get(...(params ?? [])) as T | undefined;
+    return this.prepare(sql).get(...(params ?? [])) as T | undefined;
   }
 
   async run(sql: string, params?: unknown[]): Promise<RunResult> {
-    const result = this.db.prepare(sql).run(...(params ?? []));
+    const result = this.prepare(sql).run(...(params ?? []));
     return { lastID: Number(result.lastInsertRowid), changes: result.changes };
   }
 
@@ -37,7 +61,27 @@ class DatabaseWrapper {
     this.db.exec(sql);
   }
 
+  /**
+   * Run `fn` inside a SQLite transaction backed by better-sqlite3.
+   *
+   * `fn` MUST be synchronous: better-sqlite3 rejects a callback that returns a
+   * promise, so awaited work cannot happen inside it. The wrapper's `run`,
+   * `get` and `all` execute their SQL synchronously, so they can be invoked
+   * (without awaiting) inside the callback and still be part of the
+   * transaction. The synchronous return value `T` can still be awaited by
+   * callers without changing behaviour.
+   */
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
+  }
+
+  /** Number of prepared statements currently cached — used for diagnostics/tests. */
+  preparedStatementCount(): number {
+    return this.statements.size;
+  }
+
   async close(): Promise<void> {
+    this.statements.clear();
     this.db.close();
   }
 }
@@ -76,50 +120,14 @@ async function openDb(): Promise<DatabaseWrapper> {
     const dbPath = getDbPath();
     db = new DatabaseWrapper(dbPath);
 
-    // schema.sql ships inside the app bundle (resources/app/database/)
+    // schema.sql ships inside the app bundle (resources/app/database/).
+    // Executed once per open: the singleton guard above means this only runs
+    // on the first call, or after closeDb() replaced the file (DB import).
     const schemaPath = path.join(app.getAppPath(), 'database', 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     await db.exec(schema);
-
-    // ─── Migrations ──────────────────────────────────────────────────
-    try {
-      await db.exec('ALTER TABLE tasks ADD COLUMN estimated_time INTEGER;');
-    } catch {
-      // Column already exists — ignore
-    }
   }
   return db;
-}
-
-export async function addTimeEntry(
-  taskId: number,
-  description: string,
-  date: string,
-  startTime: string,
-  endTime: string,
-  isBillable: boolean
-) {
-  const db = await openDb();
-  return db.run(
-    'INSERT INTO time_entries (task_id, description, entry_date, hora_inicio, hora_fin, facturable) VALUES (?, ?, ?, ?, ?, ?)',
-    [taskId, description, date, startTime, endTime, isBillable]
-  );
-}
-
-export async function getTimeEntries() {
-  const db = await openDb();
-  return db.all(`
-    SELECT
-      te.entry_id,
-      te.description,
-      te.entry_date as date,
-      te.hora_inicio as startTime,
-      te.hora_fin as endTime,
-      t.task_name as task
-    FROM time_entries te
-    LEFT JOIN tasks t ON te.task_id = t.task_id
-    ORDER BY te.entry_date DESC
-  `);
 }
 
 export async function addWorkTime(description: string, hours: number, date: string) {
@@ -135,11 +143,6 @@ export async function getWorkTimes() {
 export async function addCredential(username: string, password: string) {
   const db = await openDb();
   return db.run('INSERT INTO credentials (username, password) VALUES (?, ?)', [username, password]);
-}
-
-export async function getActiveCredential() {
-  const db = await openDb();
-  return db.get('SELECT * FROM credentials ORDER BY id DESC LIMIT 1');
 }
 
 export async function getCredential(username: string) {

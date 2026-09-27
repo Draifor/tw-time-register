@@ -125,6 +125,37 @@ describe('getSyncHistory', () => {
     const result = await getSyncHistory(10);
     expect(result[0].success).toBe(false);
   });
+
+  it('stays unbounded by default', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+
+    await getSyncHistory(10);
+
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).not.toContain('LIMIT');
+    expect(params).toEqual([10]);
+  });
+
+  it('applies limit and offset when provided', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+
+    await getSyncHistory(10, { limit: 5, offset: 10 });
+
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('LIMIT ? OFFSET ?');
+    expect(params).toEqual([10, 5, 10]);
+  });
+
+  it('applies a synced_at date range when provided', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+
+    await getSyncHistory(10, { startDate: '2026-01-01', endDate: '2026-01-31' });
+
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('synced_at >= ?');
+    expect(sql).toContain('synced_at <= ?');
+    expect(params).toEqual([10, '2026-01-01', '2026-01-31']);
+  });
 });
 
 // ── getRecentHistory ──────────────────────────────────────────────────────────

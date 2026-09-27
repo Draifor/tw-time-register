@@ -1,6 +1,7 @@
 import axios from 'axios';
 import openDb from '../database/database';
 import { encrypt, decrypt } from './encryptionService';
+import { withTransaction } from './transactionHelper';
 
 export interface WorkSettings {
   defaultStartTime: string;
@@ -153,26 +154,31 @@ export async function syncHolidaysFromApi(year: number): Promise<{ inserted: num
 
   const db = await openDb();
 
-  // Remove existing system holidays for this year (custom ones are untouched)
-  await db.run(`DELETE FROM holidays WHERE holiday_date LIKE ? AND is_custom = 0`, [`${year}-%`]);
+  // The delete-and-replace runs as ONE transaction: a failure part-way through
+  // cannot leave the year with its system holidays deleted but only partially
+  // re-inserted. The HTTP call above stays outside the transaction.
+  return withTransaction(db, async () => {
+    // Remove existing system holidays for this year (custom ones are untouched)
+    await db.run(`DELETE FROM holidays WHERE holiday_date LIKE ? AND is_custom = 0`, [`${year}-%`]);
 
-  let inserted = 0;
-  for (const holiday of response.data) {
-    // Skip if a custom holiday already occupies this date
-    const existing = await db.get<{ holiday_id: number }>(
-      'SELECT holiday_id FROM holidays WHERE holiday_date = ? AND is_custom = 1',
-      [holiday.date]
-    );
-    if (!existing) {
-      await db.run('INSERT INTO holidays (holiday_date, description, is_custom) VALUES (?, ?, 0)', [
-        holiday.date,
-        holiday.localName
-      ]);
-      inserted++;
+    let inserted = 0;
+    for (const holiday of response.data) {
+      // Skip if a custom holiday already occupies this date
+      const existing = await db.get<{ holiday_id: number }>(
+        'SELECT holiday_id FROM holidays WHERE holiday_date = ? AND is_custom = 1',
+        [holiday.date]
+      );
+      if (!existing) {
+        await db.run('INSERT INTO holidays (holiday_date, description, is_custom) VALUES (?, ?, 0)', [
+          holiday.date,
+          holiday.localName
+        ]);
+        inserted++;
+      }
     }
-  }
 
-  return { inserted, year };
+    return { inserted, year };
+  });
 }
 
 // Get the UI language setting

@@ -1,6 +1,6 @@
 {
   "name": "tw-time-register",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "license": "MIT",
   "main": "dist-electron/index.js",
   "author": {
@@ -51,14 +51,12 @@
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-table": "^8.21.3",
     "@types/babel__core": "^7.20.5",
-    "@vitejs/plugin-react": "^5.1.1",
     "axios": "^1.7.7",
-    "better-sqlite3": "^11.9.1",
+    "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "electron-is-dev": "^2.0.0",
-    "electron-updater": "^6.8.3",
+    "electron-updater": "^6.8.9",
     "flatpickr": "^4.6.13",
     "i18next": "^23.11.5",
     "lucide-react": "^0.441.0",
@@ -70,13 +68,9 @@
     "react-router-dom": "^6.30.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss-animate": "^1.0.7",
-    "vite": "^7.2.6",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
     "@eslint/js": "^9.39.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -87,11 +81,12 @@
     "@types/react-dom": "^18.3.7",
     "@types/react-flatpickr": "^3.8.11",
     "@types/react-router-dom": "^5.3.3",
+    "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.22",
-    "electron": "^30.0.7",
-    "electron-builder": "^24.13.3",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.4",
@@ -104,24 +99,25 @@
     "tailwindcss": "^3.4.18",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.48.1",
+    "vite": "^7.2.6",
+    "vite-plugin-electron": "^1.1.2",
+    "vite-plugin-electron-renderer": "^0.14.7",
     "vitest": "^4.0.18"
   },
   "build": {
     "appId": "com.draifor.tw-time-register",
     "productName": "TW Time Register",
     "asar": true,
+    "npmRebuild": false,
+    "afterPack": "scripts/probe-after-pack.cjs",
     "asarUnpack": [
-      "node_modules/better-sqlite3/**/*",
-      "node_modules/bindings/**/*",
-      "node_modules/file-uri-to-path/**/*"
+      "node_modules/better-sqlite3/**/*"
     ],
     "files": [
       "dist-electron",
       "dist-vite",
       "database/**/*",
-      "node_modules/better-sqlite3/**/*",
-      "node_modules/bindings/**/*",
-      "node_modules/file-uri-to-path/**/*"
+      "node_modules/better-sqlite3/**/*"
     ],
     "directories": {
       "buildResources": "resources",

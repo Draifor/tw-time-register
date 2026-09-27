@@ -1,6 +1,7 @@
 import openDB from '../database/database';
 import { Task, TaskDB, columnsDB } from '../../types/tasks';
 import { columnsDB as typeTasksDBColumns } from '../../types/typeTasks';
+import { withTransaction } from './transactionHelper';
 
 // Function to add a task
 export async function addTask({ typeName, taskName, taskLink, description, estimatedTime }: Task): Promise<void> {
@@ -38,7 +39,10 @@ export async function getTasks(search?: string): Promise<Task[]> {
       ${columnsDB.TABLE_NAME}.${columnsDB.DESCRIPTION},
       ${columnsDB.TABLE_NAME}.${columnsDB.ESTIMATED_TIME},
       ${typeTasksDBColumns.TABLE_NAME}.${typeTasksDBColumns.TYPE_NAME},
-      ROUND(COALESCE(SUM((julianday(te.hora_fin) - julianday(te.hora_inicio)) * 24 * 60), 0)) AS total_logged_minutes
+      COALESCE(SUM(
+        (CAST(substr(te.hora_fin, 1, 2) AS INTEGER) * 60 + CAST(substr(te.hora_fin, 4, 2) AS INTEGER)) -
+        (CAST(substr(te.hora_inicio, 1, 2) AS INTEGER) * 60 + CAST(substr(te.hora_inicio, 4, 2) AS INTEGER))
+      ), 0) AS total_logged_minutes
     FROM
       ${columnsDB.TABLE_NAME}
     LEFT JOIN
@@ -207,62 +211,67 @@ export async function importTasksFromCSV(rows: CSVTaskRow[]): Promise<ImportCSVR
   );
   const typeMap = new Map<string, number>(existingTypes.map((t) => [t.type_name.toLowerCase(), t.type_id]));
 
-  for (const row of rows) {
-    const typeLower = row.typeName.trim().toLowerCase();
-    const taskName = row.taskName.trim();
-    const taskLink = row.taskLink.trim();
+  // One transaction for the whole CSV: every per-row insert (types + tasks) is
+  // committed once, and an unexpected throw rolls the import back atomically.
+  // Per-row problems are still captured in `result.errors` without aborting the batch.
+  return withTransaction(db, async () => {
+    for (const row of rows) {
+      const typeLower = row.typeName.trim().toLowerCase();
+      const taskName = row.taskName.trim();
+      const taskLink = row.taskLink.trim();
 
-    if (!taskName || !row.typeName.trim()) {
-      result.errors.push(`Row skipped – missing taskName or typeName: "${taskName}"`);
-      continue;
-    }
+      if (!taskName || !row.typeName.trim()) {
+        result.errors.push(`Row skipped – missing taskName or typeName: "${taskName}"`);
+        continue;
+      }
 
-    // Create type if missing
-    if (!typeMap.has(typeLower)) {
-      try {
-        await db.run(`INSERT INTO ${typeTasksDBColumns.TABLE_NAME} (${typeTasksDBColumns.TYPE_NAME}) VALUES (?)`, [
-          row.typeName.trim()
-        ]);
-        const inserted: { type_id: number } | undefined = await db.get(
-          `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
-          [row.typeName.trim()]
-        );
-        if (!inserted) {
-          result.errors.push(`Could not retrieve newly created type "${row.typeName.trim()}"`);
+      // Create type if missing
+      if (!typeMap.has(typeLower)) {
+        try {
+          await db.run(`INSERT INTO ${typeTasksDBColumns.TABLE_NAME} (${typeTasksDBColumns.TYPE_NAME}) VALUES (?)`, [
+            row.typeName.trim()
+          ]);
+          const inserted: { type_id: number } | undefined = await db.get(
+            `SELECT ${typeTasksDBColumns.ID} FROM ${typeTasksDBColumns.TABLE_NAME} WHERE ${typeTasksDBColumns.TYPE_NAME} = ?`,
+            [row.typeName.trim()]
+          );
+          if (!inserted) {
+            result.errors.push(`Could not retrieve newly created type "${row.typeName.trim()}"`);
+            continue;
+          }
+          typeMap.set(typeLower, inserted.type_id);
+          result.typesCreated.push(row.typeName.trim());
+        } catch (err) {
+          result.errors.push(`Could not create type "${row.typeName.trim()}": ${String(err)}`);
           continue;
         }
-        typeMap.set(typeLower, inserted.type_id);
-        result.typesCreated.push(row.typeName.trim());
-      } catch (err) {
-        result.errors.push(`Could not create type "${row.typeName.trim()}": ${String(err)}`);
+      }
+
+      const typeId = typeMap.get(typeLower)!;
+
+      // Skip if duplicate (same task_name + type_id)
+      const existing = await db.get(
+        `SELECT ${columnsDB.ID} FROM ${columnsDB.TABLE_NAME} WHERE ${columnsDB.TASK_NAME} = ? AND ${columnsDB.TYPE_ID} = ?`,
+        [taskName, typeId]
+      );
+      if (existing) {
+        result.skipped++;
         continue;
+      }
+
+      try {
+        await db.run(
+          `INSERT INTO ${columnsDB.TABLE_NAME} (${columnsDB.TYPE_ID}, ${columnsDB.TASK_NAME}, ${columnsDB.TASK_LINK}, ${columnsDB.DESCRIPTION}, ${columnsDB.ESTIMATED_TIME}) VALUES (?, ?, ?, ?, ?)`,
+          [typeId, taskName, taskLink, '', null]
+        );
+        result.created++;
+      } catch (err) {
+        result.errors.push(`Could not insert task "${taskName}": ${String(err)}`);
       }
     }
 
-    const typeId = typeMap.get(typeLower)!;
-
-    // Skip if duplicate (same task_name + type_id)
-    const existing = await db.get(
-      `SELECT ${columnsDB.ID} FROM ${columnsDB.TABLE_NAME} WHERE ${columnsDB.TASK_NAME} = ? AND ${columnsDB.TYPE_ID} = ?`,
-      [taskName, typeId]
-    );
-    if (existing) {
-      result.skipped++;
-      continue;
-    }
-
-    try {
-      await db.run(
-        `INSERT INTO ${columnsDB.TABLE_NAME} (${columnsDB.TYPE_ID}, ${columnsDB.TASK_NAME}, ${columnsDB.TASK_LINK}, ${columnsDB.DESCRIPTION}, ${columnsDB.ESTIMATED_TIME}) VALUES (?, ?, ?, ?, ?)`,
-        [typeId, taskName, taskLink, '', null]
-      );
-      result.created++;
-    } catch (err) {
-      result.errors.push(`Could not insert task "${taskName}": ${String(err)}`);
-    }
-  }
-
-  return result;
+    return result;
+  });
 }
 
 // Fetch and preview which tasks would be imported (without saving)

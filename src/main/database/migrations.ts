@@ -78,6 +78,13 @@ export async function runMigrations(): Promise<void> {
   `);
   console.log('Migration: sync_history table ensured');
 
+  // Indexes backing the sync-history lookups (per-entry history, TW id lookup
+  // and the "last successful sync" query). Idempotent like the tables above.
+  await db.run('CREATE INDEX IF NOT EXISTS idx_sh_entry ON sync_history(entry_id)');
+  await db.run('CREATE INDEX IF NOT EXISTS idx_sh_tw_entry ON sync_history(tw_time_entry_id)');
+  await db.run('CREATE INDEX IF NOT EXISTS idx_sh_entry_ok ON sync_history(entry_id, success, synced_at)');
+  console.log('Migration: sync_history indexes ensured');
+
   // Migration: create comment_templates table (idempotent)
   await db.run(`
     CREATE TABLE IF NOT EXISTS comment_templates (

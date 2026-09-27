@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useForm, useFieldArray, useWatch, Control, FieldValues, Controller } from 'react-hook-form';
+import { useQueryClient, QueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, TimerOff, GripVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
@@ -25,8 +26,11 @@ import {
   WorkTimeDraftEntry,
   getWorkTimeDraft,
   saveWorkTimeDraft,
-  clearWorkTimeDraft
+  clearWorkTimeDraft,
+  addTimeEntries,
+  TimeEntryInput
 } from '../services/timesService';
+import { queryKeys } from '../lib/queryKeys';
 
 type WorkTimeEntry = {
   date: string;
@@ -86,6 +90,42 @@ const getEntryMinutes = (entry?: WorkTimeEntry): number => {
   return duration ? duration.getHours() * 60 + duration.getMinutes() : 0;
 };
 
+/**
+ * Map form entries to the payload accepted by the batch time-entry endpoint.
+ */
+export function toTimeEntryInputs(entries: WorkTimeEntry[]): TimeEntryInput[] {
+  const formatTime = (date: Date) => {
+    if (!date) return '00:00';
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return entries.map((entry) => {
+    const taskId = typeof entry.task === 'object' ? Number(entry.task.value) : Number(entry.task);
+
+    return {
+      taskId,
+      description: entry.description,
+      date: entry.date,
+      startTime: formatTime(entry.startTime[0]),
+      endTime: formatTime(entry.endTime[0]),
+      isBillable: entry.isBillable
+    };
+  });
+}
+
+/**
+ * Persist every draft entry through the batch endpoint, then refresh the caches
+ * that depend on them so Home / TimeLogs / Reports reflect the new data without
+ * a manual reload.
+ */
+export async function saveWorkTimeEntries(entries: WorkTimeEntry[], queryClient: QueryClient): Promise<void> {
+  await addTimeEntries(toTimeEntryInputs(entries));
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.workTimes.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+  ]);
+}
+
 // Hoverable divider between entries that lets the user insert a row at any
 // position without having to drag one up from the bottom.
 function InsertDivider({ onClick, label }: { onClick: () => void; label: string }) {
@@ -125,6 +165,7 @@ const serializeEntryDates = (entry: WorkTimeEntry): WorkTimeDraftEntry => ({
 
 export default function WorkTimeForm() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
@@ -693,30 +734,7 @@ export default function WorkTimeForm() {
         }
       }
 
-      const promises = data.entries.map((entry) => {
-        // Format times for DB (HH:MM)
-        const formatTime = (date: Date) => {
-          if (!date) return '00:00';
-          return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        };
-
-        const startTimeStr = formatTime(entry.startTime[0]);
-        const endTimeStr = formatTime(entry.endTime[0]);
-
-        // Save locally
-        const taskId = typeof entry.task === 'object' ? Number(entry.task.value) : Number(entry.task);
-
-        return window.Main.addTimeEntry({
-          taskId,
-          description: entry.description,
-          date: entry.date,
-          startTime: startTimeStr,
-          endTime: endTimeStr,
-          isBillable: entry.isBillable
-        });
-      });
-
-      await Promise.all(promises);
+      await saveWorkTimeEntries(data.entries, queryClient);
 
       toast.success(t('workTimeForm.savedTitle'), {
         description: t('workTimeForm.savedDesc', { count: data.entries.length })

@@ -51,16 +51,52 @@ export async function recordSync(input: SyncHistoryInput): Promise<number> {
 }
 
 /**
- * Return all sync events for a given time entry, newest first.
+ * Optional bounding for {@link getSyncHistory}. All parameters are opt-in:
+ * omitting them preserves the original unbounded query.
  */
-export async function getSyncHistory(entryId: number): Promise<SyncHistory[]> {
+export interface SyncHistoryQueryOptions {
+  /** Maximum number of rows to return. */
+  limit?: number;
+  /** Rows to skip; only meaningful together with `limit`. */
+  offset?: number;
+  /** Inclusive lower bound on `synced_at`. */
+  startDate?: string;
+  /** Inclusive upper bound on `synced_at`. */
+  endDate?: string;
+}
+
+/**
+ * Return the sync events for a given time entry, newest first.
+ * Unbounded by default; pass `options` to page or filter by date.
+ */
+export async function getSyncHistory(entryId: number, options: SyncHistoryQueryOptions = {}): Promise<SyncHistory[]> {
   const db = await openDb();
-  const rows = await db.all<SyncHistoryDB>(
-    `SELECT * FROM ${columnsDB.TABLE_NAME}
-     WHERE ${columnsDB.ENTRY_ID} = ?
-     ORDER BY ${columnsDB.SYNCED_AT} DESC`,
-    [entryId]
-  );
+  const params: (string | number)[] = [entryId];
+
+  let query = `SELECT * FROM ${columnsDB.TABLE_NAME}
+     WHERE ${columnsDB.ENTRY_ID} = ?`;
+
+  if (options.startDate !== undefined) {
+    query += ` AND ${columnsDB.SYNCED_AT} >= ?`;
+    params.push(options.startDate);
+  }
+  if (options.endDate !== undefined) {
+    query += ` AND ${columnsDB.SYNCED_AT} <= ?`;
+    params.push(options.endDate);
+  }
+
+  query += ` ORDER BY ${columnsDB.SYNCED_AT} DESC`;
+
+  if (options.limit !== undefined) {
+    query += ' LIMIT ?';
+    params.push(options.limit);
+    if (options.offset !== undefined) {
+      query += ' OFFSET ?';
+      params.push(options.offset);
+    }
+  }
+
+  const rows = await db.all<SyncHistoryDB>(query, params);
   return rows.map(mapRow);
 }
 

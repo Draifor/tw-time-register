@@ -10,7 +10,11 @@ import ReportsPage from './pages/ReportsPage';
 import NavBar from './components/NavBar';
 import { Toaster } from './components/ui/sonner';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, gcTime: 300_000, refetchOnWindowFocus: false, retry: 1 }
+  }
+});
 
 function App() {
   useEffect(() => {

@@ -4,12 +4,14 @@ import fs from 'fs';
 
 // Packages
 import { BrowserWindow, app, nativeTheme, dialog } from 'electron';
-import isDev from 'electron-is-dev';
 import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc';
 import './database/database';
 import { runMigrations } from './database/migrations';
 import { initAutoUpdater } from './updater';
+
+// Equivalent to the deprecated `electron-is-dev` package, without the dependency.
+const isDev = !app.isPackaged;
 
 const height = 600;
 const width = 800;

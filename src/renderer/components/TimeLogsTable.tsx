@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
@@ -46,28 +46,20 @@ interface EditData {
 
 import { parseDuration, formatDuration } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
+import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo } from '../lib/progressUtils';
+import { Task } from '../../types/tasks';
 
 function TimeLogsTable() {
   const { data, isLoading, error } = useTimeLogs();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const [tasks, setTasks] = useState<
-    Array<{ id: number; taskName: string; estimatedTime: number | null; totalLoggedMinutes: number }>
-  >([]);
-
-  useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        const data = await fetchTasks();
-        setTasks(data ?? []);
-      } catch {
-        /* silent */
-      }
-    };
-    loadTasks();
-  }, []);
-
+  // Reuse the cached task list (same key as useTasks) instead of bypassing the cache.
+  const { data: tasksData } = useQuery<Task[]>({
+    queryKey: queryKeys.tasks.list(''),
+    queryFn: () => fetchTasks()
+  });
+  const tasks = tasksData ?? [];
   // Track loading state per entry
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
   const [syncingAll, setSyncingAll] = useState(false);
