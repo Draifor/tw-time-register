@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -321,12 +321,23 @@ describe('formatLocalDate', () => {
 
 describe('getNextAvailableSlot', () => {
   beforeEach(() => vi.resetAllMocks());
+  // Tests that pin the clock with `vi.useFakeTimers({ toFake: ['Date'] })` restore real
+  // time here; only `Date` is faked, so no timer behaviour of the runtime is affected.
+  afterEach(() => vi.useRealTimers());
 
   // The refactored service loads settings + holidays once and fetches every
   // per-day total with a single `db.all` range query; the last used date is one
   // `db.get`. Scenarios therefore only need to feed those two calls.
 
-  it('returns today with defaultStartTime when there are no saved entries', async () => {
+  it('returns today with defaultStartTime when today is a work day and there are no saved entries', async () => {
+    // Pin the clock. The service anchors its search on `new Date()`, so asserting "today"
+    // against the real calendar made this test depend on the day it happened to run on: with
+    // the Mon-Fri `workDays`, the service correctly skips forward on a Saturday or Sunday and
+    // the assertion failed. The test was red every weekend for reasons that had nothing to do
+    // with the code under test. Wednesday 2026-09-23, 12:00 local.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 23, 12, 0, 0));
+
     vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
     vi.mocked(getMaxHoursForDay).mockReturnValue(9);
     vi.mocked(getHolidays).mockResolvedValue([]);
@@ -337,6 +348,27 @@ describe('getNextAvailableSlot', () => {
     const slot = await getNextAvailableSlot();
 
     expect(slot.date).toBe(formatDate(localTodayAtNoon()));
+    expect(slot.startTime).toBe('09:00');
+  });
+
+  it('skips to the next work day when today itself is not a work day', async () => {
+    // Saturday 2026-09-26 → the next configured work day is Monday 2026-09-28. This is the
+    // behaviour that made the test above fail every weekend, so it is asserted explicitly
+    // instead of being left as an implicit assumption about the calendar.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 26, 12, 0, 0));
+
+    vi.mocked(getWorkSettings).mockResolvedValue(defaultSettings);
+    vi.mocked(getMaxHoursForDay).mockReturnValue(9);
+    vi.mocked(getHolidays).mockResolvedValue([]);
+
+    const mockDb = setupMockDb();
+    mockDb.get.mockResolvedValueOnce(null); // no last entry
+
+    const slot = await getNextAvailableSlot();
+
+    expect(slot.date).toBe('2026-09-28');
+    expect(slot.dayOfWeek).toBe(1);
     expect(slot.startTime).toBe('09:00');
   });
 
