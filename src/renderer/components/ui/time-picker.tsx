@@ -4,7 +4,7 @@
  * Use this for standalone controlled inputs (e.g. inline table editing).
  * For react-hook-form forms, use InputTime instead.
  */
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DateTimePicker from 'react-flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 
@@ -37,15 +37,22 @@ function TimePickerInput({ value, onChange, className, placeholder, disabled }: 
     'w-24 rounded border border-input bg-background px-2 py-1 text-xs font-mono text-center ' +
     'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
-  // Read the latest onChange through a ref so the options object can stay
-  // stable. react-flatpickr v4 mutates an options object that receives prop
-  // hooks and rebuilds the flatpickr instance whenever its identity changes
+  // Read the latest props through refs so the options object can stay stable.
+  // react-flatpickr v4 mutates an options object that receives prop hooks and
+  // rebuilds the flatpickr instance whenever its identity changes
   // (react-flatpickr/build/react-flatpickr.js:13-25,34-46); a stable object
   // keeps an open picker from closing on every parent render.
   const onChangeRef = useRef(onChange);
+  const valueRef = useRef(value);
   useEffect(() => {
     onChangeRef.current = onChange;
+    valueRef.current = value;
   });
+
+  // The live flatpickr instance, published by `onReady` below. Held in state
+  // rather than a plain ref so that a replacement instance re-runs the sync
+  // effect instead of leaving the picker blank.
+  const [instance, setInstance] = useState<FlatpickrInstance | null>(null);
 
   const options = useMemo(
     () => ({
@@ -55,6 +62,17 @@ function TimePickerInput({ value, onChange, className, placeholder, disabled }: 
       time_24hr: true,
       minuteIncrement: 15,
       disableMobile: true,
+      // Published, and given its value, here rather than from
+      // react-flatpickr's `onCreate` prop — see the note in input-date.tsx:
+      // v4 deletes `onCreate` from a memoised props copy and StrictMode's
+      // double render reuses that mutated copy, so the replacement instance is
+      // never published and renders blank. `onReady` lives in `options`, which
+      // v4 passes through untouched.
+      onReady: (_dates: Date[], _str: string, created: FlatpickrInstance) => {
+        const parsed = toDate(valueRef.current);
+        created.setDate(parsed ? [parsed] : [], false);
+        setInstance(created);
+      },
       onChange: (dates: Date[]) => {
         // v4 also routes a native input event through onChange with
         // `[new Date(input.value)]`; for a time-only picker that value is
@@ -69,25 +87,19 @@ function TimePickerInput({ value, onChange, className, placeholder, disabled }: 
     []
   );
 
-  // Capture the instance through onCreate and let flatpickr own the input.
-  // v4 renders the input as controlled and re-asserts `value.toString()`,
-  // which would clobber the "HH:mm" display it derives from setDate
+  // Re-applies the value when it changes and when the instance is replaced. The
+  // DOM input is left uncontrolled on purpose: v4 renders it controlled to
+  // `value.toString()` and re-asserts that on every commit, which would clobber
+  // the "HH:mm" display it derives from setDate
   // (react-flatpickr/build/react-flatpickr.js:56,76).
-  const instanceRef = useRef<FlatpickrInstance | null>(null);
-  const handleCreate = useCallback((instance: FlatpickrInstance) => {
-    instanceRef.current = instance;
-  }, []);
-
   useEffect(() => {
-    const flatpickr = instanceRef.current;
-    if (!flatpickr) return;
+    if (!instance) return;
     const parsed = toDate(value);
-    flatpickr.setDate(parsed ? [parsed] : [], false);
-  }, [value]);
+    instance.setDate(parsed ? [parsed] : [], false);
+  }, [instance, value]);
 
   return (
     <DateTimePickerAny
-      onCreate={handleCreate}
       className={`${baseStyles} ${className ?? ''}`}
       placeholder={placeholder ?? '--:--'}
       disabled={disabled ?? false}

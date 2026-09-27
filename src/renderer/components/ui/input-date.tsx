@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useController } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import DateTimePicker from 'react-flatpickr';
@@ -48,17 +48,10 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
     fieldRef.current = field;
   });
 
-  // The flatpickr instance, captured through onCreate. Driving setDate from
-  // the form value is deliberate: v4 always renders the input as a controlled
-  // input whose value is `value.toString()` (react-flatpickr/build/react-flatpickr.js:76)
-  // and only calls setDate when the prop differs from the input's current
-  // value (:56). React re-asserts that value on every commit, which both hides
-  // altInput's formatted value and makes the guard skip setDate, so the input
-  // is left uncontrolled here and flatpickr owns it (the v3 behaviour).
-  const instanceRef = useRef<FlatpickrInstance>(null);
-  const handleCreate = useCallback((instance: FlatpickrInstance) => {
-    instanceRef.current = instance;
-  }, []);
+  // The live flatpickr instance, published by `onReady` below. Held in state
+  // rather than a plain ref so that a replacement instance re-runs the sync
+  // effect instead of leaving the picker blank.
+  const [instance, setInstance] = useState<FlatpickrInstance | null>(null);
 
   // Get locale based on current language
   const locale = useMemo(() => {
@@ -74,6 +67,20 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
       allowInput: true,
       locale,
       ...options,
+      // The instance is published, and given its value, here — NOT from
+      // react-flatpickr's `onCreate` prop. v4 deletes `onCreate` from a
+      // memoised copy of its props (build/react-flatpickr.js:22-23), and
+      // StrictMode renders twice with the same props object, so the second
+      // render reuses that already-mutated copy: `onCreate` is undefined, v4's
+      // create effect re-runs on the changed callback, and the replacement
+      // instance is never given a value — the picker then renders empty.
+      // flatpickr's own `onReady` lives inside `options`, which v4 passes
+      // through untouched, and fires at the end of every init
+      // (flatpickr/dist/esm/index.js:88).
+      onReady: (_dates: Date[], _str: string, created: FlatpickrInstance) => {
+        created.setDate(toIsoDate(fieldRef.current.value) || null, false);
+        setInstance(created);
+      },
       onChange: (dates: Date[]) => {
         // Store the selected date in ISO format (Y-m-d) for DB consistency
         if (dates[0] && !Number.isNaN(dates[0].getTime())) {
@@ -86,11 +93,15 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
 
   const isoValue = toIsoDate(field.value);
 
+  // Re-applies the value when it changes and when the instance is replaced.
+  // The DOM input is left uncontrolled on purpose: v4 renders it controlled to
+  // `value.toString()` and only calls setDate when that differs from the
+  // input's own value (build/react-flatpickr.js:56,76), so handing React the
+  // value makes it fight flatpickr over the altInput display.
   useEffect(() => {
-    const flatpickr = instanceRef.current;
-    if (!flatpickr) return;
-    flatpickr.setDate(isoValue || null, false);
-  }, [isoValue]);
+    if (!instance) return;
+    instance.setDate(isoValue || null, false);
+  }, [instance, isoValue]);
 
   return (
     <div className="w-full">
@@ -102,7 +113,6 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
         // leaves the original input visible next to the alt one — two date rows.
         // Declaring it keeps React's model in step with flatpickr's.
         type="hidden"
-        onCreate={handleCreate}
         className={`${baseStyles} ${className || ''}`}
         options={defaultOptions}
       />

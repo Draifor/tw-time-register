@@ -7,9 +7,16 @@
  * routes a native input event through `onChange` with `[new Date(input.value)]`
  * (:64-70). For a time-only picker that value is "HH:mm", which parses to an
  * Invalid Date. These tests pin that:
+ *   - the form's value is displayed at mount, and stays displayed across a
+ *     parent re-render,
  *   - an open picker survives a parent re-render (options stay stable), and
  *   - a real flatpickr selection is applied while an invalid native-event
  *     payload is ignored.
+ *
+ * Everything renders inside <React.StrictMode>, because the app does
+ * (src/renderer/main.tsx). StrictMode double-invokes effects, which makes
+ * react-flatpickr replace its instance; a test that renders without it passes
+ * while the real app shows an empty field.
  */
 import React from 'react';
 import { describe, it, expect } from 'vitest';
@@ -30,6 +37,14 @@ function fpOf(container: HTMLElement): FpLike {
   return input._flatpickr as FpLike;
 }
 
+function inputValue(container: HTMLElement): string {
+  return (container.querySelector('input') as HTMLInputElement).value;
+}
+
+function Strict({ children }: { children: React.ReactNode }) {
+  return <React.StrictMode>{children}</React.StrictMode>;
+}
+
 function describeValue(value: unknown): string {
   if (!Array.isArray(value) || value.length === 0) return 'empty';
   const first = value[0];
@@ -37,9 +52,9 @@ function describeValue(value: unknown): string {
   return Number.isNaN(first.getTime()) ? 'invalid' : first.toTimeString().slice(0, 5);
 }
 
-function TimeForm() {
+function TimeForm({ initial = [] as Date[] }: { initial?: Date[] }) {
   const [tick, setTick] = React.useState(0);
-  const { control } = useForm<FieldValues>({ defaultValues: { t: [] } });
+  const { control } = useForm<FieldValues>({ defaultValues: { t: initial } });
   const value = useWatch({ control, name: 't' });
   return (
     <div>
@@ -74,10 +89,23 @@ function TimePickerHarness({ onEmit }: { onEmit?: (value: string) => void }) {
 }
 
 describe('InputTime under react-flatpickr v4', () => {
+  it('displays the form value at mount', () => {
+    const { container } = render(
+      <Strict>
+        <TimeForm initial={[new Date('1970-01-01T01:30:00')]} />
+      </Strict>
+    );
+
+    expect(inputValue(container)).toBe('01:30');
+  });
+
   it('keeps an open picker open across parent re-renders (stable options, no duplicate hooks)', () => {
-    const { container, getByRole } = render(<TimeForm />);
-    const input = container.querySelector('input') as HTMLInputElement;
-    fireEvent.click(input);
+    const { container, getByRole } = render(
+      <Strict>
+        <TimeForm />
+      </Strict>
+    );
+    fireEvent.click(container.querySelector('input') as HTMLInputElement);
     expect(fpOf(container).isOpen).toBe(true);
 
     fireEvent.click(getByRole('button'));
@@ -88,7 +116,11 @@ describe('InputTime under react-flatpickr v4', () => {
   });
 
   it('applies a real selection but ignores the invalid native-event payload', () => {
-    const { container, getByTestId } = render(<TimeForm />);
+    const { container, getByTestId } = render(
+      <Strict>
+        <TimeForm />
+      </Strict>
+    );
     const selected = new Date('1970-01-01T09:30:00');
 
     act(() => {
@@ -103,10 +135,23 @@ describe('InputTime under react-flatpickr v4', () => {
 });
 
 describe('TimePickerInput under react-flatpickr v4', () => {
+  it('displays its value at mount', () => {
+    const { container } = render(
+      <Strict>
+        <TimePickerHarness />
+      </Strict>
+    );
+
+    expect(inputValue(container)).toBe('09:00');
+  });
+
   it('keeps an open picker open across parent re-renders', () => {
-    const { container, getByRole } = render(<TimePickerHarness />);
-    const input = container.querySelector('input') as HTMLInputElement;
-    fireEvent.click(input);
+    const { container, getByRole } = render(
+      <Strict>
+        <TimePickerHarness />
+      </Strict>
+    );
+    fireEvent.click(container.querySelector('input') as HTMLInputElement);
     expect(fpOf(container).isOpen).toBe(true);
 
     fireEvent.click(getByRole('button'));
@@ -118,7 +163,11 @@ describe('TimePickerInput under react-flatpickr v4', () => {
 
   it('emits "HH:mm" from a selection and never "NaN:NaN" from a native event', () => {
     const calls: string[] = [];
-    const { container } = render(<TimePickerHarness onEmit={(v) => calls.push(v)} />);
+    const { container } = render(
+      <Strict>
+        <TimePickerHarness onEmit={(v) => calls.push(v)} />
+      </Strict>
+    );
     const input = container.querySelector('input') as HTMLInputElement;
 
     act(() => {

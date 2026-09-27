@@ -9,6 +9,11 @@
  * flatpickr set imperatively loses it and becomes visible — the field then shows
  * two date rows. These tests pin the contract that the original input stays
  * hidden, including across the value change that triggers the rewrite.
+ *
+ * Everything renders inside <React.StrictMode>, because the app does
+ * (src/renderer/main.tsx). StrictMode double-invokes effects, which makes
+ * react-flatpickr rebuild its instance; a test that renders without it passes
+ * while the real app shows an empty field.
  */
 import React from 'react';
 import { describe, it, expect } from 'vitest';
@@ -22,6 +27,10 @@ import InputDate from '../../renderer/components/ui/input-date';
 
 const ISO_DATE = '2026-09-27';
 const ISO_DATE_ALT_FORMATTED = 'Sun-27-Sep-2026';
+
+function Strict({ children }: { children: React.ReactNode }) {
+  return <React.StrictMode>{children}</React.StrictMode>;
+}
 
 function DateForm({ initialDate = ISO_DATE }: { initialDate?: string }) {
   const { control, setValue } = useForm<{ d: string }>({ defaultValues: { d: initialDate } });
@@ -50,7 +59,11 @@ function originalInput(container: HTMLElement): HTMLInputElement | undefined {
 
 describe('InputDate dual-input contract', () => {
   it('hides the ISO-carrying original and shows the formatted value in the only visible input', () => {
-    const { container } = render(<DateForm />);
+    const { container } = render(
+      <Strict>
+        <DateForm />
+      </Strict>
+    );
 
     expect(allInputs(container)).toHaveLength(2);
     expect(visibleInputs(container)).toHaveLength(1);
@@ -61,7 +74,11 @@ describe('InputDate dual-input contract', () => {
   });
 
   it('keeps the original hidden when the form value changes, and the visible input follows', () => {
-    const { container, getByRole } = render(<DateForm />);
+    const { container, getByRole } = render(
+      <Strict>
+        <DateForm />
+      </Strict>
+    );
 
     fireEvent.click(getByRole('button', { name: 'advance' }));
 

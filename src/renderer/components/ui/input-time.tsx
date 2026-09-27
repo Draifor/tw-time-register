@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useController, Control, FieldValues, RegisterOptions } from 'react-hook-form';
 import DateTimePicker from 'react-flatpickr';
 import { Options } from 'flatpickr/dist/types/options';
@@ -42,13 +42,28 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
     parentOptionsRef.current = options;
   });
 
+  // The live flatpickr instance, published by `onReady` below. Held in state
+  // rather than a plain ref so that a replacement instance re-runs the sync
+  // effect instead of leaving the picker blank.
+  const [instance, setInstance] = useState<FlatpickrInstance | null>(null);
+
   const optionsKey = JSON.stringify({ ...(options ?? {}), onChange: undefined });
   const stableOptions = useMemo(() => {
     const restOptions: Partial<Options> = { ...(options ?? {}) };
     delete restOptions.onChange;
     return {
       ...restOptions,
-      onChange: (dates: Date[], dateStr: string, instance: unknown) => {
+      // Published, and given its value, here rather than from
+      // react-flatpickr's `onCreate` prop — see the note in input-date.tsx:
+      // v4 deletes `onCreate` from a memoised props copy and StrictMode's
+      // double render reuses that mutated copy, so the replacement instance is
+      // never published and renders blank. `onReady` lives in `options`, which
+      // v4 passes through untouched.
+      onReady: (_dates: Date[], _str: string, created: FlatpickrInstance) => {
+        created.setDate(fieldRef.current.value || [], false);
+        setInstance(created);
+      },
+      onChange: (dates: Date[], dateStr: string, fp: unknown) => {
         // v4 also routes a native input event through onChange with
         // `[new Date(input.value)]`; for a time-only picker that value is
         // "HH:mm" and parses to an Invalid Date. flatpickr's own hook (this
@@ -59,42 +74,30 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
         // (e.g. the current entry index) even though this object is stable.
         const parentOnChange = parentOptionsRef.current?.onChange;
         const hooks = Array.isArray(parentOnChange) ? parentOnChange : parentOnChange ? [parentOnChange] : [];
-        hooks.forEach((hook) => hook(dates, dateStr, instance as never));
+        hooks.forEach((hook) => hook(dates, dateStr, fp as never));
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [optionsKey]);
 
-  // Capture the instance through onCreate and let flatpickr own the input.
-  // v4 renders the input as controlled and re-asserts `value.toString()` on
-  // every commit, which would clobber the "HH:mm" display and defeat v4's own
-  // setDate guard (react-flatpickr/build/react-flatpickr.js:56,76).
-  const instanceRef = useRef<FlatpickrInstance | null>(null);
-  const handleCreate = useCallback((instance: FlatpickrInstance) => {
-    instanceRef.current = instance;
-  }, []);
-
   const pickerValue = useMemo(() => field.value || [], [field.value]);
 
+  // Re-applies the value when it changes and when the instance is replaced. The
+  // DOM input is left uncontrolled on purpose: v4 renders it controlled to
+  // `value.toString()` and re-asserts that on every commit, which would clobber
+  // the "HH:mm" display and defeat v4's own setDate guard
+  // (react-flatpickr/build/react-flatpickr.js:56,76).
   useEffect(() => {
-    const flatpickr = instanceRef.current;
-    if (!flatpickr) return;
-    flatpickr.setDate(pickerValue, false);
-  }, [pickerValue]);
+    if (!instance) return;
+    instance.setDate(pickerValue, false);
+  }, [instance, pickerValue]);
 
   // field.onChange and field.value are wired through `options` and the setDate
   // effect above; leaving them off the DOM input keeps it uncontrolled so React
   // does not overwrite what flatpickr writes.
   const fieldProps = { ...field, onChange: undefined, value: undefined };
 
-  return (
-    <DateTimePickerAny
-      {...fieldProps}
-      onCreate={handleCreate}
-      className={`${baseStyles} ${className || ''}`}
-      options={stableOptions}
-    />
-  );
+  return <DateTimePickerAny {...fieldProps} className={`${baseStyles} ${className || ''}`} options={stableOptions} />;
 }
 
 export default InputTime;
