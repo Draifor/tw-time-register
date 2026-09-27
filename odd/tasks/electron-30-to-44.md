@@ -1451,3 +1451,13 @@ with the Vite 8 track.
 **Scope honesty.** The dev check is process-level: it proves Electron loads the real app (renderer and
 GPU children plus DB migrations) and that the main process hot-restarts with a new PID. It does not
 assert rendered-window pixels or GUI interaction.
+
+**Review status — NOT reviewed, and deliberately so.** `gentle-ai review assess` over
+`ff5eea2..9e81af6` returns `risk: medium` (`configuration_change` on `package.json`),
+`changed_paths: 4`, `changed_lines: 337`, and **`review_due: false` with
+`review_due_reason: under_budget`**. The slice sits under the ~400-authored-line delivery budget, so
+the native assessment offers no continuation and the reviewed boundary stays at `ff5eea2`. S6's commit
+is therefore **pending in an unreviewed range**, not covered by a receipt. It becomes reviewable once
+further work pushes that range past the budget, or on request. Recorded because "committed and
+verified" is a different claim from "reviewed" — and because the S1/S2 slices already sit in exactly
+that state.
