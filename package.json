@@ -100,8 +100,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.48.1",
     "vite": "^7.2.6",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6",
+    "vite-plugin-electron": "^1.1.2",
+    "vite-plugin-electron-renderer": "^0.14.7",
     "vitest": "^4.0.18"
   },
   "build": {

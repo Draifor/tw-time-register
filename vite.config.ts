@@ -29,7 +29,11 @@ function plugins(isDev: boolean) {
         // Main-Process entry file of the Electron App.
         entry: join(root, 'src/main/index.ts'),
         onstart(options) {
-          options.startup();
+          // v1 spawns Electron with `cwd = Vite's root`, which this project sets to
+          // `src/renderer`, so `electron .` would not find the app. Pin the child to
+          // the repo root — where v0.29 spawned from, because it used `process.cwd()`.
+          // `triggerStartup` spreads caller options after its own `cwd`, so this wins.
+          options.startup(undefined, { cwd: root });
         },
         vite: {
           build: buildElectron(isDev)
