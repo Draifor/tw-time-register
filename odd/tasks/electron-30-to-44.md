@@ -1220,3 +1220,80 @@ missed.
   `review-7c1048e2042af3ea`, `review-d0130dfc222606cf`) still need their own `review abandon`;
 - **S6** (`vite-plugin-electron` 1.x) is the last planned slice never executed;
 - the app version bump and the publish remain separate decisions.
+
+## Review — the clarity findings and the hook hardening — approved 2026-09-26
+
+Transaction: lineage `review-3b0bfd80cce6bbaf`, base-ref `fbe1be8c` (the `83149da` tree),
+committed-only, projection workspace, tier **medium** (505 lines / 6 paths). One lens was selected
+(`review-reliability`) and it was **admitted**; the review closed **approved** with no correction
+opened, and the acknowledgement burned authority (`gentle-ai.review-acknowledged/v1`,
+`authority: burned`, consumed revision `sha256:e9b8d7d1…`).
+
+**Covered candidate — the important part.** The unreviewed range did **not** start at the clarity
+slice: the **hook hardening** (`0137e4d`) and its new unit test had never been reviewed either. The
+preflight proposed one candidate spanning both, so a single receipt covers `7755c71`, `0137e4d`,
+`cadd790`, `4d3e70f`, `2be5048` and `ff5eea2` — HEAD itself.
+
+### Reviewer result (reliability)
+
+| ID | Location | Severity | Note |
+|---|---|---|---|
+| R3-1 | `src/tests/main/scripts/probeAfterPack.test.ts:7-12` | WARNING | The bounded-execution behaviour has **no permanent test**: the suite documents that it never spawns a child, so the `timeout` / `killSignal` options and the `ETIMEDOUT`-attributed error are proved only by the one-off manual wedge harness in the HK section. A regression that dropped the `timeout` would leave the suite green and restore the unbounded hang this change exists to prevent. Suggested fix: extract the spawn call or inject a fake `spawnSync` so the timeout, non-zero-status and attribution branches are asserted at unit level. |
+| R3-2 | `src/tests/main/scripts/probeAfterPack.test.ts:35-44` | SUGGESTION | `SECRET_ENV_TAIL` has eleven alternation branches; the suite exercises four tails (`SECRET`, `PASSWORD`, `ACCESS_KEY`, `API_KEY`) plus the four exact names, so `SECRETS`, `CREDENTIAL`, `CREDENTIALS`, `PASSWD`, `APIKEY`, `PRIVATE_KEY` and bare `TOKEN` are never asserted. Deleting one branch would silently re-expose a credential-shaped variable with no failing test. |
+
+Both are `informational`: neither opened a correction and the review offers no correction
+transition for this candidate. They are later work, never a reason to re-run the review.
+
+**R3-1 is an independent confirmation of the HK section's own deferral.** That section said HK-02
+stays on the reproducible harness because the repo has no `scripts/` test harness. The reliability
+lens reached the same gap and named a concrete fix (dependency injection of `spawnSync`), which
+turns it into a cheap follow-up instead of an open-ended worry. It is **not** closed by this
+receipt.
+
+### Runtime note (honest), and a third occurrence of the orchestrator's own defect
+
+Three launches were needed for the single lens:
+
+| Attempt | Result |
+|---|---|
+| 1 | `opencode_task_output_empty` |
+| 2 | `opencode_reviewer_result_refused` — "OpenCode Task transport did not produce a capturable reviewer result" |
+| 3 | **admitted**; the review closed approved |
+
+Each failure was followed by a fresh exact-lineage STATUS that reoffered the same bound slot
+(`reviewer_results_required`, same `subject_hash`), so each relaunch was contract-permitted rather
+than a blind retry.
+
+**The orchestrator's own defect, for the third recorded time:** on attempts 1 and 2 the reviewer
+`prompt` was built as the binding line **plus** the materialized context, instruction, schema,
+name-status, numstat and patches. The contract requires the prompt to be **exactly**
+`provider_task.prompt` — the short `GENTLE_AI_REVIEW_BINDING {...}` line — because the host
+materializes the rest itself from that binding. This is the same mistake already recorded in the
+gated-pipeline review section and in the HK record. Attempt 3 passed the binding line exactly and
+was admitted on its first try. Whether the two failures were caused by the malformed prompt or by
+the chronic runtime condition cannot be separated from the evidence available; both causes are
+plausible and both are recorded rather than one being blamed.
+
+**Chronic condition, restated.** `opencode_task_output_empty` has now been observed across four
+transactions in this runtime, and has never correlated with candidate size: a 9-file candidate
+returned nothing twice and a 3-file candidate returned output; a 6-file candidate returned nothing
+twice and then output on the third launch. It is an OpenCode-side transport condition, not a
+Gentle AI provider defect, so no upstream report applies.
+
+**Residue this receipt does not cover**, carried forward so none of it reads as closed:
+
+- **S1 and S2 remain unreviewed.** Their combined transaction with S3 stopped on
+  `unachievable_lens_slot`; the reduced-scope retry covered **S3 alone**, where a corroborated
+  CRITICAL (`R3-NATIVE-REBUILD-DISABLED`) was accepted as risk by explicit decision and the
+  transaction abandoned. S3 therefore has no approval receipt, and S1/S2 have none at all;
+- R3-1 / R3-2 above;
+- the four non-terminal lineages (`review-17eaa498cf6f9e2f`, `review-44ad33de349f2aaa`,
+  `review-7c1048e2042af3ea`, `review-d0130dfc222606cf`) still need their own `review abandon`;
+- the `--publish always` tag branch remains unexecuted;
+- the earlier probe-gate review's `R2-003` (the hardcoded `42` sentinel);
+- no macOS probe — a macOS artifact under CI is refused rather than verified;
+- S6, and the app version bump plus the publish.
+
+**Delivery follows ordinary repository policy.** The acknowledgement burned the review authority;
+commit, push, PR and release remain separate human decisions, and this receipt neither authorizes
+nor blocks any of them.
