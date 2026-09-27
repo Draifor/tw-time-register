@@ -50,6 +50,13 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
       render={({ field, fieldState }) => (
         <div className="w-full">
           <DateTimePickerAny
+            // React 19 rewrites the `type` attribute of this input on every commit
+            // where `value` changes. flatpickr sets type="hidden" imperatively
+            // (flatpickr/dist/esm/index.js:1773) and inserts its own visible alt
+            // input, so without this declaration React deletes the attribute and
+            // leaves the original input visible next to the alt one — two date rows.
+            // Declaring it keeps React's model in step with flatpickr's.
+            type="hidden"
             value={field.value || ''}
             onChange={(dates: Date[]) => {
               // Store the selected date in ISO format (Y-m-d) for DB consistency
