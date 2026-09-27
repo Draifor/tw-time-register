@@ -1322,3 +1322,132 @@ Recorded rather than glossed, because "abandoned" and "there was nothing there" 
 This closes the last item of the residue list in the review section above. The remaining residue is
 S1/S2 (never reviewed, no receipt), R3-1/R3-2, the unexecuted `--publish always` tag branch, the
 probe-gate review's `R2-003` sentinel, the absent macOS probe, S6, and the version bump plus publish.
+
+## S6 — `vite-plugin-electron` 1.x — evaluation and execution
+
+Task list created 2026-09-26 **before the first source write**, per the ODD tracking rule.
+
+**Evaluation, against the upstream sources rather than against memory.** Read: the plugin's
+`migrate-to-v1.md`, its v1 `README.md`, and the `vite-plugin-electron-renderer` README, plus the
+registry metadata for both packages.
+
+Target versions, resolved against the registry on 2026-09-26:
+
+| Package | Current | Target | Why |
+|---|---|---|---|
+| `vite-plugin-electron` | `^0.29.0` | **`^1.1.2`** | latest; peer `vite >=6` is satisfied by the installed 7.2.6 |
+| `vite-plugin-electron-renderer` | `^0.14.6` | **`^0.14.7`** | see the trap below — **not** 1.0.0 |
+| `vite` | `^7.2.6` | **unchanged** | Vite 8 is a separate track (Scope: Out) |
+
+**The trap this evaluation exists to catch.** `vite-plugin-electron-renderer@1.0.0` is the obvious
+paired bump for a 1.x main plugin — and it is wrong here. Its README states the v1 breaking change
+plainly: **"Drop Vite < 8 support."** This project is on **Vite 7.2.6**, named in the plugin's own
+README as the version whose behaviour requires `vite-plugin-electron-renderer@0.14.7`. Bumping the
+renderer plugin to 1.0.0 would have broken the renderer build. It stays on the 0.14.x line until the
+Vite 8 track lands.
+
+**Why the v1 breaking changes do not reach this codebase — checked, not assumed.** The migration
+guide's agent checklist names the things to search for; the repository has **zero** matches for
+`notBundle`, `startup.exit`, `tree-kill`, `vite-plugin-electron/simple`, `vite-plugin-electron/plugin`,
+`vite-plugin-electron/multi-env`, `esmShim` and the `electron-vite&type=hot-reload` message:
+
+| v1 breaking change | Reaches this repo? |
+|---|---|
+| `notBundle()` rewritten to config-time `external` (the guide calls this "the most important migration point") | **No** — `notBundle()` is not used; `vite.config.ts` sets `build.rollupOptions.external` explicitly |
+| `build.rollupOptions` → `rolldownOptions` | **No** — that is Vite 8+ only; Vite 7 keeps `rollupOptions`, and the plugin adapts its own defaults automatically |
+| `startup()` now returns `Promise<boolean>` | **No** — `onstart` calls `options.startup()` without awaiting it |
+| `startup.exit()` / process-tree waiting removed | **No** — neither is used |
+| `esmShim()` needed for ESM entries | **No** — `package.json` has no `"type"`, so the build is CJS |
+| `multi-env` / factory API | **No** — not adopted; it is explicitly not a required replacement |
+| Flat API `electron([{entry, onstart, vite}])` | **Unchanged** — still the documented shape |
+
+**The one behaviour change that *does* reach the repo, and is therefore the real test.** v1 "stops the
+current Electron child process before starting the next one" and callers "should not rely on the old
+process-tree waiting behavior". That is the dev-mode hot-restart path, which is why S6-03 includes a
+bounded `pnpm dev` check rather than only a production build.
+
+| ID | Task | Files | Status |
+|---|---|---|---|
+| S6-01 | Bump `vite-plugin-electron` to `^1.1.2` and `vite-plugin-electron-renderer` to `^0.14.7` (explicitly **not** 1.0.0), then regenerate the lockfile with **pnpm** | `package.json`, `pnpm-lock.yaml` | done |
+| S6-02 | Confirm whether `vite.config.ts` needs a change: Vite 7 keeps `build.rollupOptions`, the flat API and `onstart` are unchanged | `vite.config.ts` | done — **it did need one**, see below |
+| S6-03 | Verify: `lint`, `type-check`, `vitest`, `pnpm run build`, `./build-local.ps1` end to end (packaging + the afterPack probe), and a **bounded `pnpm dev`** that proves Electron starts and survives a main-process hot restart | — | done |
+| S6-04 | Record the slice and its evidence here | this file | done |
+
+**Rollback.** S6 is one commit of dependency versions plus the lockfile diff. Revert the commit and
+re-run `pnpm install`; `vite.config.ts` is expected to need no change, so there is no config to unwind.
+
+**Out of scope.** Vite 8, and with it `vite-plugin-electron-renderer@1.x` — both belong to the Vite 8
+track named in this document's Scope section.
+
+### S6 results (2026-09-26)
+
+Commit `45f56a1` — `chore(deps): upgrade vite-plugin-electron to 1.x` (`package.json`,
+`pnpm-lock.yaml`, `vite.config.ts`; +92/−14). Route: delegated direct, one bounded writer, resumed
+once after it correctly **stopped instead of improvising** the config change the slice had forbidden.
+
+**The evaluation earned its keep: the break that reaches this repo is one the migration guide does
+not mention.** S6-02 expected an empty `vite.config.ts` diff — every documented v1 breaking change is
+inert here, as the table above shows. The bounded `pnpm dev` check disagreed: Vite came up on port
+3000 and built both entries, but **Electron never ran the app**.
+
+The evidence separated the two failure modes cleanly. The failing state was a *lone main process with
+no renderer/GPU children and no `Migration:` lines* — visibly not the app, rather than a slow start.
+The cause, read out of the installed 1.1.2 source at
+`node_modules/vite-plugin-electron/dist/base-Dw44hDAy.cjs:110-116`:
+
+```js
+function triggerStartup(context, server, options) {
+  const startupWithRoot = (argv, spawnOptions, customElectronPkg) => {
+    return startup(argv, {
+      cwd: server.config.root,
+      ...spawnOptions
+    }, customElectronPkg);
+  };
+```
+
+v1 spawns Electron with **`cwd = Vite's root`**. This project sets `root: src/renderer` (it must —
+the renderer's `index.html` lives there), so `electron .` was executed from `src/renderer`, where
+there is no app. v0.29 called `startup()` with no options and therefore inherited `process.cwd()`,
+the repo root. The writer proved it by running the packaged Electron binary directly from both
+directories: from `src/renderer` only a bare main process, from the repo root the real app with the
+`Migration:` lines.
+
+**The fix is one line**, and it works because `spawnOptions` is spread **after** `cwd`, so a
+caller-supplied `cwd` wins:
+
+```ts
+        onstart(options) {
+          // v1 spawns Electron with `cwd = Vite's root`, which this project sets to
+          // `src/renderer`, so `electron .` would not find the app. Pin the child to
+          // the repo root — where v0.29 spawned from, because it used `process.cwd()`.
+          // `triggerStartup` spreads caller options after its own `cwd`, so this wins.
+          options.startup(undefined, { cwd: root });
+        },
+```
+
+**One commit, not two.** The dependency bump alone leaves `pnpm dev` broken; splitting it would have
+put a commit in this history that no one should bisect into. Rollback is therefore "revert `45f56a1`".
+
+| Check | Result |
+|---|---|
+| `pnpm install` / `--frozen-lockfile` | both exit 0; resolved `vite-plugin-electron 1.1.2`, `vite-plugin-electron-renderer 0.14.7` |
+| `pnpm run lint` | exit 0 |
+| `pnpm run type-check` | exit 0 — `options.startup(undefined, { cwd: root })` type-checks with no `SpawnOptions` widening |
+| `pnpm exec vitest run` | 179 passed / 1 failed — the known pre-existing Saturday flake, no other failure |
+| `pnpm run build` | exit 0 |
+| `./build-local.ps1` | exit 0 with `[afterPack]` lines and `{"ok":true,"roundtrip":42,"electron":"44.4.5","node":"24.21.0","abi":"149","napi":"10"}` |
+| bounded `pnpm dev` | **pass** — port 3000 up; Electron main `55784` plus GPU/utility and two renderer children, all `--app-path` = repo root, with `Migration: sync_history table ensured` and four more migration lines; after touching `src/main/index.ts` the **main PID changed `55784 → 64596`** with fresh renderer children and the migrations re-emitted; `src/main/index.ts` SHA-256 unchanged; no stray processes and port free afterwards |
+
+**Residual, deliberately not fixed.** The plugin's `reload()` falls back to its internal
+`startupWithRoot()` when `process.electronApp` is unset, and that fallback still passes
+`cwd = src/renderer`. The main entry's `onstart` runs first and starts the app, so the fallback is not
+reached in practice and the preload-rebuild path uses `reload()` only once the app exists. Recorded
+as a latent edge case, not worked around.
+
+**Benign warning, recorded not fixed.** `pnpm run build` prints `Unknown input options: platform`:
+the v1 plugin passes a Rolldown-only key that Vite 7 / Rollup 4 ignores. Non-fatal, and it disappears
+with the Vite 8 track.
+
+**Scope honesty.** The dev check is process-level: it proves Electron loads the real app (renderer and
+GPU children plus DB migrations) and that the main process hot-restarts with a new PID. It does not
+assert rendered-window pixels or GUI interaction.
