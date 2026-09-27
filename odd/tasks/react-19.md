@@ -228,3 +228,8 @@ trusted as behaviourally complete.
   `src/tests/renderer/inputDate.test.tsx`. Gates: **185/185** (183 floor + 2 new), `type-check`, `lint`
   and `build` clean. **A5 stopped being a no-op** — the bump did break something, just not the surface
   the plan predicted. **The smoke test must be re-run on this fixed build**, which is the remainder of A6.
+- 2026-09-27 — **A5's fix is committed as `c0ececd`; the review gate reports `medium` / `under_budget`.**
+  Post-fix assessment over `23b361f..HEAD`: 3 paths, 153 changed lines, `review_due: false`, reason
+  `under_budget`. By the gate's own batching rule this change **stays pending in the slice** until a later
+  commit reaches the ~400-line budget, so it has no separate review yet. The reviewed boundary remains
+  `23b361f`, and the next assessment is measured from there.
