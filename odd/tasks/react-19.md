@@ -66,6 +66,8 @@ So the deferral was recorded; the document it promised was not. This is it.
 | E13 | **The breakage the plan predicted did not happen.** `@types/react@19.3.0` still exports `React.ElementRef` and `React.ComponentPropsWithoutRef`, so all **31 sites were left untouched and `tsc` is clean**. E12 correctly identified the *review surface*, but that surface needed **zero edits** — A2 turned out to be a four-line dependency change. | `npm run type-check` → exit 0 with **0 files changed under `src/**`** (`git status --porcelain` shows only `package.json` + `pnpm-lock.yaml`); `pnpm why react --depth 20` resolves a single `react@19.3.0` for the entire graph |
 | E14 | **The A2/A3 split has exactly one visible cost, and it is the warning E12 predicted as harmless.** pnpm reports `react-flatpickr 3.10.13 → ✕ unmet peer react ">=16, <=18": found 19.3.0`. It is a warning, not an error (no `strict-peer-dependencies`), and E5 establishes the runtime is unaffected — but the declaration now contradicts the installed tree until A3 moves it to v4. Separately, the lockfile keeps a second `@types/react@18.3.23` alive **only** because `@types/react-router-dom@5.3.3` (devDep, already flagged stale in E8) declares `@types/react: "*"`, which pnpm resolved to 18 and not 19. `tsc` is unaffected (`types: ["vite/client","node"]` + `skipLibCheck: true`), and the duplicate disappears with that devDep. | pnpm install output; `pnpm-lock.yaml:1449` and `:5631` (`'@types/react-router-dom@5.3.3' → '@types/react': 18.3.23`) |
 | E15 | **The local `node_modules` had been installed by a different package manager than the one the repo locks.** `pnpm add` reported **54 packages** "installed by a different package manager", moved them to `node_modules/.ignored`, and rebuilt the tree. CI's documented path is unaffected (`pnpm install --frozen-lockfile` exits 0, "Lockfile is up to date"), but "it worked locally" had until now been measured against a tree the lockfile did not describe. Unpruned and unreachable leftovers of the pre-bump tree (`react@18.3.1`, `@types/react@17.0.83`) still sit in `.pnpm`; nothing resolves to them. | pnpm's own move warnings (54 entries); `pnpm install --frozen-lockfile` → exit 0; `require.resolve('react/package.json')` → `.pnpm/react@19.3.0/node_modules/react/package.json` |
+| E16 | **React 19 un-hid the date field's original input, so the form rendered two date rows.** flatpickr's `altInput` mode hides the original input by setting `type="hidden"` imperatively and inserts its own visible alt input; react-flatpickr renders that input with **no `type` prop**, so React 19's rewrite of the `type` attribute on the commit where `value` changes **deletes** the attribute and the original reverts to a visible `text` input (two rows: ISO on top, `altFormat` below). Causality is a controlled A/B — identical source, identical `flatpickr@4.6.13`, identical `react-flatpickr@3.10.13`, identical StrictMode state, React the only variable: installed **React 18.3.1** → `[0] type="hidden"` (one row); installed **React 19.3.0** → `[0] type=null` (two rows). Note the source files are byte-identical across the two runs, because A2 changed only `package.json` + the lockfile. | controlled A/B in a worktree at `892e9d2` (React 18.3.1) vs the working tree (React 19.3.0), same probe file; `flatpickr/dist/esm/index.js:1765-1775` (`setupInputs`: `setAttribute("type", "hidden")`); `node_modules/react-flatpickr/lib/index.js:141-164` (`render` passes props through, so the component never declares `type`) |
+| E17 | **A minimal repro isolated the trigger and validated the fix before any app code was touched.** Matrix over raw react-flatpickr: *static value, no `type`* → original hidden; ***value changes*, no `type`* → **original visible** (this is the trigger, and it is exactly what react-hook-form does when it hydrates the draft); *value changes, `type="hidden"`* → original hidden. The fix is that last row: declare `type="hidden"` so React's model agrees with flatpickr's intent. **Every machine gate was green while the bug was live** (183/183, `type-check`, `lint`, `build`), which is why only a human looking at the app could find it. | throwaway jsdom probe, six cases; the committed regression test `src/tests/renderer/inputDate.test.tsx` pins the same contract; suite went 183 → **185** |
 
 ## Track order, and why this order
 
@@ -121,8 +123,8 @@ tag or publish.
 | A2 | Bump `react`, `react-dom`, `@types/react`, `@types/react-dom` to 19, **leaving `react-flatpickr` at 3.10.13**. It runs correctly on 19 (E5); the only problem is the peer *declaration*, so the bump must not be entangled with a wrapper rewrite | `package.json`, `pnpm-lock.yaml` | direct inline (a dependency edit; the audit removed the unknowns) | [x] — `^19.3.0` on all four; the only install warning is the predicted flatpickr peer one (F6) |
 | A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [ ] |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml` | direct inline | [ ] |
-| A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | n/a — no work was needed | [x] — **no-op**: the predicted surface did not break (E13); **0 source files edited** |
-| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] |
+| A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | direct inline (one component + one regression test) | [x] — the *expected* surface did **not** break (E13); the bump broke something else instead. Real fix: `input-date.tsx` + `src/tests/renderer/inputDate.test.tsx` (E16, E17, F8) |
+| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] — machine gates green; the human smoke test ran and found the date-field regression (E16/F8), which is now fixed. **Re-run pending** on the fixed build, and again after A3 |
 | A7 | Record results, evidence and residue here | this document | direct inline | [ ] |
 
 Task detail is deliberately deferred to A1's result: writing a fix-list before knowing what actually
@@ -150,6 +152,8 @@ breaks would be inventing work.
 | F5 | **The plan's own "expected surface" was a hypothesis, and it was wrong in the safe direction.** E12 predicted the 31 `React.ElementRef` sites as the fix surface; nothing broke (E13). Recorded rather than quietly dropped, because a prediction that never materialises is still a prediction, and the next reader needs to know the difference between "we planned this" and "we measured this". | E13 | A5 closed as a **no-op**. The 31 sites remain a genuine *review* surface if `@types/react` ever drops `ElementRef` — but that is a future, not this upgrade. |
 | F6 | **A2 and A5 turned out to be one four-line change, so the A2/A3 split is doing all the risk-isolation work by itself.** The only thing the split costs is the visible peer warning (E14), and the only thing it buys is that the flatpickr rewrite cannot be confused with the React bump. | `git diff package.json` = 4 changed lines (`react`, `react-dom`, `@types/react`, `@types/react-dom`) | Kept. A3 is still isolated: F3's behavioural question (v4 coerces `value`, wraps `onChange` into `[Date]`, while `input-time.tsx:26-32` passes an array) is unsettled and must not share a commit with the bump. |
 | F7 | **Local install drift, found by accident.** The repo locks with pnpm and CI installs with pnpm, but the working `node_modules` had been produced by a different package manager; pnpm moved 54 packages aside and rebuilt (E15). Nothing in this upgrade required it, and it invalidates nothing — but it is the same class of error as F1: trusting a local artefact instead of the one the record describes. | E15 | Recorded as environment hygiene. `package.json` and `pnpm-lock.yaml` are the artefacts that matter; `node_modules` is gitignored and now matches them. |
+| F8 | **Every machine gate was green on a build with a visible defect, and the human smoke test was the only thing that caught it.** 183/183 tests, `type-check`, `lint` and `build` all passed on React 19 while the date field rendered two rows (E16). This is not a failure of the gates' execution but the ceiling of what they could see: nothing in the suite rendered a flatpickr-backed input, so no test described the contract that broke. The lesson is not "add more tests" in the abstract — it is that **a renderer major moves runtime behaviour, and unit tests only cover it where someone already chose to look.** The plan's extra human step was not ceremony; it was the only instrument that could have found this. | E16, E17; the user's smoke test of the running app | Fixed in `input-date.tsx` with a regression test. **The smoke test must be re-run after the fix** — that is the remainder of A6. |
+| F9 | **The A2 review's R3 warning was a correct prediction, not boilerplate.** It stated, for that exact candidate, that a dependency-only diff carries no assertion that observable behaviour survives the major. It then tested true: the defect lived precisely in the gap between the changed bytes (`package.json` + the lockfile) and the unchanged component runtime. The response was already the right one — route it to A6 — and A6 is where it surfaced. Worth recording that the warning earned its place. | E16, E17; the A2 Review record | No change to process. It is evidence *for* the existing rule that verification of behaviour belongs to a step that can observe behaviour. |
 
 ## Route log
 
@@ -180,6 +184,13 @@ never used. Three non-blocking findings:
 The lesson worth keeping: **a dependency-only candidate cannot carry its own behavioural proof.** Both
 warnings say the same true thing from different angles, and the answer is not a better diff — it is A6.
 
+**Postscript (same day): the prediction tested true.** The A2 candidate was approved, and the human smoke
+test that followed found a real, user-visible regression that this review structurally could not see
+(E16, F8). This is not a defective review. The reviewer inspected the frozen trees it was handed, the
+defect is not in those bytes, and R3 named the gap in advance. It is the boundary of the instrument —
+recorded so the next dependency-only candidate is read with the right expectations instead of being
+trusted as behaviourally complete.
+
 ## Progress
 
 - 2026-09-27 — Track A opened. Inventory and gap measured against the npm registry. The codebase was
@@ -199,10 +210,21 @@ warnings say the same true thing from different angles, and the answer is not a 
   `npm run build` exit 0, `pnpm install --frozen-lockfile` exit 0. The single warning is the predicted
   flatpickr peer one (E14/F6). **Not yet verified: the human smoke test (A6)** — machine gates prove
   compilation and unit behaviour, not that the UI renders.
-- Delivery strategy: `ask-on-risk`. Measured so far: **4 additions + 4 deletions** of authored lines
-  (`package.json`; the lockfile is generated and excluded) — far under the ~400 budget, so no slicing
-  decision is due yet. Re-evaluate at A3 and A4.
+- Delivery strategy: `ask-on-risk`. Measured so far: **88 authored lines** of product change — 8 in
+  `package.json` (4 additions + 4 deletions), 7 in `input-date.tsx` and 73 in the new regression test —
+  with the generated lockfile and this document's own edits excluded. Far under the ~400 budget, so no
+  slicing decision is due. Re-evaluate at A3 and A4.
 - 2026-09-27 — **A2's work unit reviewed and approved** (native RDD, one lens `review-reliability`,
   lineage `review-6f157c82099b9c26`). Authority burned by the exact acknowledgement; no correction opened.
   Three non-blocking findings, all three carried to **A6** rather than patched here — see the Review
   record. Work-unit commit `23b361f` is the reviewed boundary for the next assessment.
+- 2026-09-27 — **The human smoke test found a real A2 regression, and it is fixed.** In `WorkTimeForm` the
+  date field rendered **two rows** on React 19: React deletes the `type` attribute flatpickr had set
+  imperatively on the wrapper's original input, so the input that flatpickr intends to hide becomes a
+  visible second date field (E16). Causality was established by a controlled A/B against React 18.3.1 —
+  identical source, identical library versions, React the only variable — and the fix was validated on a
+  minimal repro **before any app code changed** (E17). Fix: declare `type="hidden"` in `input-date.tsx`
+  so React's model agrees with flatpickr's; regression cover in
+  `src/tests/renderer/inputDate.test.tsx`. Gates: **185/185** (183 floor + 2 new), `type-check`, `lint`
+  and `build` clean. **A5 stopped being a no-op** — the bump did break something, just not the surface
+  the plan predicted. **The smoke test must be re-run on this fixed build**, which is the remainder of A6.
