@@ -1461,3 +1461,84 @@ is therefore **pending in an unreviewed range**, not covered by a receipt. It be
 further work pushes that range past the budget, or on request. Recorded because "committed and
 verified" is a different claim from "reviewed" — and because the S1/S2 slices already sit in exactly
 that state.
+
+## Release — `v1.10.0` published 2026-09-27
+
+The version bump and the publish were taken as the separate decisions this document always reserved
+for them. Version `1.9.0` → **`1.10.0`** (`a9d66a2`, `chore(release): 1.10.0`): a minor, because the
+repo's own cadence is one minor per release (`v1.5.0` … `v1.9.0`), the schema is unchanged by the
+migration, and nothing new is asked of the user. `vite-plugin-electron-renderer` stays on `0.14.x`
+and the tag is annotated (`v1.10.0 — Electron 44`), matching the existing tags.
+
+**Pre-publish local proof** on `a9d66a2`: `pnpm install --frozen-lockfile` with **no lockfile diff**
+(the lockfile does not track the project version), `lint` and `type-check` clean, `vitest` at the known
+baseline (179 passed / 1 failed, the pre-existing Saturday flake), `pnpm run build` clean, and
+`./build-local.ps1` green with the `[afterPack]` probe passing. Version propagation confirmed in the
+packaged `app.asar` (`1.10.0`), the EXE `FileVersion`/`ProductVersion`, `release/latest.yml`
+(`version: 1.10.0`) and the installer name.
+
+`staging` was fast-forwarded to the remote (`3f8a0c7..a9d66a2`) **before** the tag, so the tag points
+at a commit that is reachable from the branch.
+
+### The `--publish always` branch ran for the first time — successfully
+
+Run `36293070682` — https://github.com/Draifor/tw-time-register/actions/runs/36293070682
+Event `push` on tag `v1.10.0`, ref `a9d66a2`, conclusion **success** (3m11s, 04:00:52 → 04:04:03Z).
+
+| Step | Result |
+|---|---|
+| `Install dependencies` | success — CF-01's `--frozen-lockfile` holds in CI |
+| `Build (Vite + Electron)` | success |
+| `Package and publish (tag push)` (`if: push`) | **success** — with `GH_TOKEN` scoped to this step alone |
+| `Package (manual dispatch, no publish)` | **skipped** — the mutually exclusive guard holds |
+| `Upload installer artifact` | **skipped** — dispatch-only, as designed |
+
+| Release | Value |
+|---|---|
+| Tag | `v1.10.0` |
+| Draft / prerelease | `false` / `false` — published immediately, `releaseType: release` |
+| Published at | 2026-09-27T04:03:13Z |
+| Assets | `TW-Time-Register-Setup-1.10.0.exe` (127 237 580 B), `.exe.blockmap` (134 493 B), `latest.yml` (364 B) |
+
+**The published `latest.yml` was fetched back and read**, because it is the file the updater actually
+consumes, not a local artifact:
+
+```yaml
+version: 1.10.0
+files:
+  - url: TW-Time-Register-Setup-1.10.0.exe
+    sha512: 4n4yU1/uEFL+C4gCK3g5G56CrbzynL5u04U56G0Cn0Rk8CXHt1PHgB5Ht/9lKZg/QEdMXAmt7LSpFLZPUXf8hA==
+    size: 127237580
+path: TW-Time-Register-Setup-1.10.0.exe
+sha512: 4n4yU1/…
+releaseDate: '2026-09-27T04:03:17.679Z'
+```
+
+`path` equals the uploaded asset name exactly and `size` matches the asset byte-for-byte, so the
+manifest resolves to a real, correctly-sized file.
+
+**What this closes.** `R4-1` and the sentence this document repeated from slice to slice — *"the tag
+branch (`--publish always`) remains unexecuted"* — is now **closed**. The branch has run on a real
+tag, it published a real release, and the artifact it published came from the build whose `afterPack`
+probe passed. The rehearsal (dispatch) and the publish branch genuinely share their build steps and
+their point of failure; only `--publish never` / `--publish always` differed, which is what the
+rehearsal cannot cover by construction.
+
+**Note, pre-existing and unchanged.** The release asset is hyphenated
+(`TW-Time-Register-Setup-1.10.0.exe`) while the local file has spaces; electron-builder normalises the
+published name, and `latest.yml` agrees with the published name. Not a defect — recorded because it is
+the kind of mismatch that looks like one.
+
+### Still unverified — one item, and it needs a human
+
+**Smoke-test point 6, the auto-update path itself.** Nothing here proves that an installed `1.9.0`
+client on Electron 30 actually detects `1.10.0`, downloads it, installs it, and relaunches. That is
+the highest-consequence path in the whole migration and it is the one thing a machine cannot verify
+from this side: it needs someone at a keyboard with an installed client (or a run of the 1.9.0
+installer) to trigger an update check and watch it through. Everything upstream of it is now proven —
+release published, manifest coherent, asset present, probe gate passed in the publishing build — but
+"proven up to the client" is not the same claim as "proven on the client".
+
+The migration's remaining honest residue is therefore: that one human check; S1/S2 never reviewed with
+no receipt; the S6 range pending under budget; R3-1/R3-2 from the reliability lens; the earlier
+probe-gate review's `R2-003` sentinel; and the absent macOS probe.
