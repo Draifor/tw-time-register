@@ -1542,3 +1542,51 @@ release published, manifest coherent, asset present, probe gate passed in the pu
 The migration's remaining honest residue is therefore: that one human check; S1/S2 never reviewed with
 no receipt; the S6 range pending under budget; R3-1/R3-2 from the reliability lens; the earlier
 probe-gate review's `R2-003` sentinel; and the absent macOS probe.
+
+## Review — the S6 upgrade and the 1.10.0 release — approved 2026-09-27
+
+Transaction: lineage `review-d86794ae1417412d`, base-ref `2e6a3d60` (the `ff5eea2` tree),
+committed-only, projection workspace, tier **medium** (430 lines / 4 paths). One lens was selected
+(`review-reliability`) and it was **admitted**; the review closed **approved** with no correction
+opened, and the acknowledgement burned authority (`gentle-ai review-acknowledged/v1`,
+`authority: burned`, consumed revision `sha256:f6bd2f56…`).
+
+**This review is retrospective, and that is stated plainly rather than glossed.** The range crossed the
+~400-line delivery budget only because this document's own records grew inside it, and by the time the
+budget tripped the candidate had already been published as `v1.10.0`. So the receipt was written after
+the bytes shipped, not before. It still has value — it is the first reliability read on S6 and on the
+`cwd` fix — but it is not, and must not be read as, a pre-release gate.
+
+The candidate was `package.json` (version + the two dependency specifiers), `pnpm-lock.yaml`
+(generated, delivered as metadata with no content hunks), `vite.config.ts` (the `cwd` fix) and this
+document.
+
+### Reviewer result (reliability)
+
+| ID | Location | Severity | Note |
+|---|---|---|---|
+| R3-1 | `vite.config.ts:32-36` | WARNING | The `cwd` pin covers only the **initial** `onstart` spawn. The adopted plugin also re-spawns Electron through its internal startup helper with `cwd` set to Vite's configured root whenever it cannot reuse an already-started app handle — so a reload taken before the child is registered, or after a spawn failure or crash, starts a dev session with a bare main process and no app: **the exact failure this change exists to fix**, and nothing in the candidate guards or asserts that path. Independently confirms the residual recorded in the S6 section above. |
+| R3-2 | `vite.config.ts:35-36` | WARNING | The fix's correctness rests on an **undocumented internal ordering** — caller-supplied spawn options being spread after the plugin's own `cwd` — inside a caret-ranged `^1.1.2` dependency. Nothing pins the plugin beyond the generated lockfile and nothing asserts that ordering, so a later compatible release that reorders those options would silently restore the "Electron never runs the app" regression while `lint`, `type-check`, tests and `build` all stay green. |
+| R3-3 | `package.json:3` | SUGGESTION | Raising the version to `1.10.0` makes this build the auto-update target for installed `1.9.0` clients, but no assertion reachable from the candidate proves a client detects, downloads, installs and relaunches into it. The path is recorded as unverified in this document — so the highest-consequence behaviour of the release is **unproved, not disproved**. |
+
+All three are `informational`: none opened a correction, none reopens the review, and no correction
+transition is offered for this candidate.
+
+**R3-2 is the sharpest of the three and deserves to be quoted as the fix's real weakness.** The
+workaround is one line and it is correct *today*, but its correctness depends on a spread order inside
+a dependency's private code. The durable alternatives, not taken here: pin the dependency exactly, or
+assert the order in a unit test, or upstream the need so the plugin exposes an explicit root instead of
+relying on option precedence.
+
+### Runtime note
+
+Two launches were needed for the single lens: `opencode_task_output_empty` on attempt 1, admitted on
+attempt 2 after a fresh exact-lineage STATUS reoffered the same bound slot. The orchestrator's own
+recorded defect recurred on attempt 1 — the reviewer `prompt` was built as the binding line **plus**
+the materialized context instead of the binding line alone — which is now the fourth time this same
+mistake appears in this document's records.
+
+**Delivery follows ordinary repository policy.** The acknowledgement burned the review authority;
+commit, push, PR and release remain separate human decisions, and this receipt neither authorizes nor
+blocks any of them. The release had already been published before this receipt existed; nothing here
+changes what shipped.
