@@ -71,10 +71,10 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 |---|---|---|
 | **S1 ✅ `ed07d9d`** | Replace `electron-is-dev` with `app.isPackaged` in `index.ts` + `updater.ts`; update the updater test mock. Behaviour-identical. | none |
 | **S2 ✅ `de2af27`** | Fix the E43 dialog regression **before** the bump: track the last-used directory per dialog in `backupService` and pass it as `defaultPath`. Land it so the regression never ships. | low |
-| **S3** | The version bump: electron 44.4.5, better-sqlite3 13.0.3, electron-builder 26.15.3, electron-updater 6.8.9. Two unplanned config changes were required (`npmRebuild: false`, `better-sqlite3` → `ignoredBuiltDependencies`). Code complete and installer built; **the packaged smoke test still needs a human**. | **high** |
+| **S3 ✅ `63c9666`** | The version bump: electron 44.4.5, better-sqlite3 13.0.3, electron-builder 26.15.3, electron-updater 6.8.9. Two unplanned config changes were required (`npmRebuild: false`, `better-sqlite3` → `ignoredBuiltDependencies`). Code complete, installer built, and **both manual checks now confirmed**: the packaged smoke test (2026-09-25) and the client update path (2026-09-27). | **high** |
 | **S4 ✅ `c94f3da`+`649728a`** | Packaging/CI for the E42 lazy binary download; `build-local.ps1` plus the CI-equivalent packaging commands produce a working installer on a clean checkout with **no MSVC**. The workflow has since been executed once (`workflow_dispatch`, run `36263921639`, exit success, nothing published) — see the dry-run section. | medium |
-| **S5** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
-| **S6** | Evaluate `vite-plugin-electron` 1.x as its own slice with its own rollback. | medium |
+| **S5 ✅ `0215900`+`0110625`** | Remove `electron-is-dev` from `package.json`; optional `roundedCorners: false`; record the macOS 13+ / Linux Wayland+GTK4 notes. | low |
+| **S6 ✅ `45f56a1`** | Evaluate `vite-plugin-electron` 1.x as its own slice with its own rollback. Adopted 1.x, which required a dev-spawn `cwd` fix — see the S6 section for the fix and its residual `R3-1`. | medium |
 
 ## S3 smoke-test checklist (the part that actually decides success)
 
@@ -85,8 +85,13 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
 4. Backup export → save dialog; backup import → open dialog.
 5. TeamWork credentials decrypt (`safeStorage`) and a sync round-trip works.
 6. Auto-update check runs; and separately, an already-installed 1.9.0 (Electron 30)
-   client updates to the Electron 44 build and launches.
-7. `dist:win` output installs on a clean machine.
+   client updates to the Electron 44 build and launches. — ✅ **confirmed by the user
+   2026-09-27**: an installed 1.9.0 client detected, downloaded and installed 1.10.0
+   and relaunched into it.
+7. `dist:win` output installs on a clean machine. — **not separately evidenced.** The
+   confirmed update run (point 6) installs over an *existing* installation; a
+   from-scratch install on a machine that never had the app is a different state and has
+   not been recorded.
 
 ## Rollback
 
@@ -176,6 +181,12 @@ path**, and **two app-level behaviour changes** (dialog default path, Linux corn
   must be dry-run again before any publish. — **Settled 2026-09-26**: the fresh dispatch dry
   run was executed against the gated workflow (run `36277299134`); see the dry-run section at
   the end of this document.
+- 2026-09-27 — **Migration closed.** S1–S6 all landed, `v1.10.0` is published, and the last item
+  that required a human — smoke-test point 6, the client update path — was confirmed: an installed
+  `1.9.0` (Electron 30) client detected, downloaded, installed and relaunched into the Electron 44
+  build. See the release, review and verified-update sections below. The single unclosed checklist
+  item is point 7 (clean-machine install), and the remaining residue is listed with it; nothing here
+  is left waiting on a machine-verifiable check.
 
 ## S3 — executed (automated gates green; human smoke test confirmed)
 
@@ -1529,19 +1540,35 @@ rehearsal cannot cover by construction.
 published name, and `latest.yml` agrees with the published name. Not a defect — recorded because it is
 the kind of mismatch that looks like one.
 
-### Still unverified — one item, and it needs a human
+### ~~Still unverified — one item, and it needs a human~~ — closed 2026-09-27
 
-**Smoke-test point 6, the auto-update path itself.** Nothing here proves that an installed `1.9.0`
-client on Electron 30 actually detects `1.10.0`, downloads it, installs it, and relaunches. That is
+**Smoke-test point 6, the auto-update path itself.** ~~Nothing here proves that an installed `1.9.0`
+client on Electron 30 actually detects `1.10.0`, downloads it, installs it, and relaunches.~~ That is
 the highest-consequence path in the whole migration and it is the one thing a machine cannot verify
 from this side: it needs someone at a keyboard with an installed client (or a run of the 1.9.0
 installer) to trigger an update check and watch it through. Everything upstream of it is now proven —
 release published, manifest coherent, asset present, probe gate passed in the publishing build — but
 "proven up to the client" is not the same claim as "proven on the client".
 
-The migration's remaining honest residue is therefore: that one human check; S1/S2 never reviewed with
-no receipt; the S6 range pending under budget; R3-1/R3-2 from the reliability lens; the earlier
-probe-gate review's `R2-003` sentinel; and the absent macOS probe.
+**Confirmed by the user at a keyboard, 2026-09-27.** An installed `1.9.0` client on Electron 30
+detected `1.10.0`, downloaded it, installed it and relaunched into the new build; the update was
+reported as working with no issue. The 14-major jump was delivered to a real installed client and the
+client survived it. This closes smoke-test **point 6**, and with it `R3-3` (the release review's
+finding that flagged this path as unproved) and the "Auto-update is the highest-consequence path" risk
+recorded under `## Known risks`. The claim the document refused to make from this side — "proven on
+the client" — has now been made by the only actor that could make it.
+
+**What this run does not cover.** It exercises the NSIS installer over an **existing** installation,
+plus the relaunch into the Electron 44 build. It is not a from-scratch install on a machine that never
+had the app, so smoke-test **point 7** (`dist:win` output installs on a clean machine) is still not
+separately evidenced. It is recorded here rather than folded into the confirmation above, because
+"the upgrade works" and "a clean install works" are different states and only the first was tested.
+
+The migration's remaining honest residue is therefore: **smoke-test point 7's clean-machine install**;
+S1/S2 never reviewed with no receipt; R3-1/R3-2 from the reliability lens (R3-1 independently
+confirmed as a live residual — see the S6 section); the earlier probe-gate review's `R2-003` sentinel;
+and the absent macOS probe. The S6 range that this paragraph once listed as "pending under budget" was
+subsequently reviewed and approved — see the review section below.
 
 ## Review — the S6 upgrade and the 1.10.0 release — approved 2026-09-27
 
