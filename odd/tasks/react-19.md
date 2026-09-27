@@ -128,7 +128,7 @@ tag or publish.
 | A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [x] — v4 installed; **all three call sites had to be rewritten**, not merely re-verified (E19). Committed `34577dc`; suite 189/189. **The review is blocked, not declined** — see F11 |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml`, `WorkTimeForm.tsx`, `src/tests/renderer/i18nRouter.test.tsx` | direct inline | [x] — all targets installed, gates green **194/194** (E21). The plan's "safe minor bumps" hid one real break (react-hook-form 7.89 `Control` variance, F14) and one mis-classification (`lucide-react` is a major, F15). Committed `005d89e` |
 | A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | direct inline (one component + one regression test) | [x] — the *expected* surface did **not** break (E13); the bump broke something else instead. Real fix: `input-date.tsx` + `src/tests/renderer/inputDate.test.tsx` (E16, E17, F8) |
-| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [x] — machine gates green (**191/191**), and the human smoke test passed **twice**: once on the A2 fix (date field back to one row) and again after A3 + the StrictMode fix (date and duration both show their value when the view opens and after returning to it). **Open:** the router / language-switcher surface A4 added still owes its own smoke test (reviewer finding R3-A6-VERIFICATION-OVERSTATED) — see the Resume block |
+| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [x] — machine gates green (**191/191**), and the human smoke test passed **twice**: once on the A2 fix (date field back to one row) and again after A3 + the StrictMode fix (date and duration both show their value when the view opens and after returning to it). **Open:** the router / language-switcher surface A4 added still owes its own smoke test (reviewer finding R3-A6-VERIFICATION-OVERSTATED) — see the Resume block. — ***Closed 2026-09-27:** the user ran that smoke test and confirmed everything works, which also discharges the reviewer's R3-A6-VERIFICATION-OVERSTATED finding. **Nothing in Track A is outstanding.*** |
 | A7 | Record results, evidence and residue here | this document | direct inline | [x] — recorded incrementally through E1–E21, F1–F15, the Route log, the Delivery plan and both Review records. **What is not recorded as done is not done:** A3 and its remedy are un-reviewed (F11, F12, F13); A4 is done (E21) but its UI surface still owes a human smoke test. |
 
 Task detail is deliberately deferred to A1's result: writing a fix-list before knowing what actually
@@ -367,31 +367,53 @@ trusted as behaviourally complete.
   (`gentle-ai.review-acknowledged/v1`, `consumed_revision` `sha256:6911c7d2…`). Because the candidate spans
   `23b361f..HEAD`, this **supersedes F13**: the A3 rewrite and its remedy are reviewed and approved, not
   accepted-as-risk. See the whole-slice Review record.
+- 2026-09-27 — **Track A closed: the last smoke test passed.** The user ran the router and
+  language-switcher surface A4 added and confirmed everything works, which also discharges the reviewer's
+  R3-A6-VERIFICATION-OVERSTATED finding. **Track A is done:** A1–A7 complete, the whole slice reviewed and
+  approved with authority burned, gates green at **194/194**, and no outstanding item. What remains is
+  other tracks (B–G) and the delivery decision — see the Resume block.
 
 ## Resume — the next session starts here
 
-State at hand-off: Track A is **complete and reviewed**. A4 landed as `005d89e`; the whole slice
-`23b361f..HEAD` was reviewed and **approved** (lineage `review-d556562fce06c2db`, authority burned).
-Branch `staging`, nothing pushed, clean tree, the four gates green at **194/194**, and
-`pnpm install --frozen-lockfile` exits 0. **One item is still open: the human smoke test of the router and
-language-switcher surface A4 added.**
+State at hand-off: **Track A is DONE.** A1–A7 complete; the whole slice `23b361f..HEAD` reviewed and
+**approved** with authority burned (lineage `review-d556562fce06c2db`); and the user's smoke test of the
+router and language-switcher surface passed on 2026-09-27. Branch `staging`, 22 commits ahead of
+`origin/staging`, nothing pushed, clean tree, gates green at **194/194**, and
+`pnpm install --frozen-lockfile` exits 0. **No item in this document is outstanding** — what follows is
+the hand-off to the *next* tracks and to the delivery decision.
 
-1. ~~**Close the A3 review first (F11, F12).**~~ **DONE — and better than the fallback.** The review was
-   obtained in lineage `review-d556562fce06c2db` and **approved**; because its candidate spans
-   `23b361f..HEAD`, it covers the A3 rewrite and its remedy. The earlier accepted-risk record (F13) is
-   **superseded**: those bytes are reviewed and approved, and nothing beyond what the acknowledgement burned
-   is claimed.
-2. ~~**Then A4**~~ **Done (`005d89e`, E21)** and covered by the same approval. One real break appeared that
-   the plan never named (F14), and one "minor bump" was a major (F15).
-3. **Open: the A6-standard human smoke test of the router and language-switcher surface.** No machine gate
-   can see the UI (F8), and the reviewer flagged the A6 row for exactly this
-   (R3-A6-VERIFICATION-OVERSTATED). This is the only thing between Track A and "done".
-4. **Follow-ups, deliberately not patched after the review freeze** (recorded, not fixed):
+1. **Delivery: not started, and it is the user's call.** Three stacked PRs are planned
+   (`chain_strategy: stacked-to-main`): PR 1 = `23b361f` + `c0ececd` (88 authored lines); PR 2 = `34577dc`
+   (421 lines — **needs `size:exception`**, no cohesive split exists); PR 3 = `005d89e` (136 lines).
+   Nothing is pushed and no PR exists. A review outcome is informational and never authorises push, PR or
+   merge.
+2. **Track B — Tailwind 4 — is the next planned track**, and it needs **its own feature document** opened
+   exactly as this one was when the React track was promised. Scope: `tailwindcss` `3.4.18` → `4.3.3`,
+   drop `autoprefixer` and `tailwindcss-animate`, add `tw-animate-css`. E6 records that
+   `tailwindcss-animate` cannot survive Tailwind 4 (its peer is `>=3.0.0 || insiders`). Risk is **high**
+   (new engine) and the failure mode is visual — so the A6-standard human smoke test applies again.
+   **Do not trust this document's "minor bump" labels for the other tracks:** F15 caught `lucide-react`
+   `0.441.0 → 1.48.0`, a major hiding in that group. Re-query the registry per track.
+3. **Tracks C–G are untouched, each needing its own document:** C = Vite 8 / Rolldown +
+   `@vitejs/plugin-react` 6; D = TypeScript 7 (native port — highest uncertainty); E = ESLint 10 +
+   `typescript-eslint`; F = Vitest 5; G = React Compiler, which needs a **measured spike on
+   `WorkTimeForm`** — the compiler bails out on code it cannot analyse, and that can only be established by
+   running it, not by reading docs.
+4. **A decision this track unblocked:** `odd/tasks/performance-fase-0-1.md` deferred Fase 2 (re-renders)
+   partly because doing hand-written memoisation *and then* adding the compiler risks writing code the
+   compiler makes redundant, and manual memo with incomplete dependencies can actively **block** it
+   (`preserve-manual-memoization`). React 19 is now in, so that choice can be taken on measurement
+   (track G) rather than on guessing.
+5. **Follow-ups recorded, deliberately not patched after the review freeze:**
    `input-date.tsx`'s options memo still keys on prop identity where `input-time.tsx` keys on serialised
    content (R3-INPUT-DATE-UNSTABLE-OPTIONS); `input-time.tsx` runs `JSON.stringify` over caller options
-   during render (R3-INPUT-TIME-JSON-OPTIONS); plus two pre-existing picker behaviours the reviewer found in
-   the base — an empty selection is ignored, and the stored ISO date comes from a UTC conversion.
-5. **Engram mirror: resolved** — `mem_doctor` 9/9 and `mem_save` working, so the mirror is re-synchronised.
-6. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
-   publish; English artifacts. **Delivery is the human's call** — a review outcome is informational and
-   never authorizes push, PR or merge. PR 2 still needs `size:exception`.
+   during render (R3-INPUT-TIME-JSON-OPTIONS); plus two pre-existing picker behaviours the reviewer found
+   in the base — an empty selection is ignored, and the stored ISO date comes from a UTC conversion.
+6. **Residue worth knowing:** the review gate reads `receipt-driven development: on (decided by global)`,
+   clone-local unset — so the next source-mutating candidate will require consent again. Lineage
+   `review-eb3e736869e2d2c8` remains open with its authority untouched (the four empty reviewer results);
+   nothing depends on it and no acknowledgement is owed.
+7. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
+   publish; English artifacts; conventional commits with no AI attribution; TDD is **not** enabled in this
+   repo, so verification is ordinary functional checking (suite, `type-check`, `lint`, `build`, plus the
+   human smoke test for renderer changes).
