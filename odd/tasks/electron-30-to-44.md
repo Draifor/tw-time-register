@@ -941,3 +941,69 @@ that the rehearsal and the publish branch now share the build steps *and* their 
 failure (R4-1); only `--publish never` / `--publish always` differs. R2-003 (the probe's
 hardcoded `42` sentinel — visible in the log as the echoed `"roundtrip":42`) is untouched.
 The app version bump and the publish itself remain separate decisions.
+
+## Review — the gated pipeline — approved 2026-09-26
+
+Transaction: lineage `review-5fa63b3f506b9672`, base-ref `25801f52` (the `a5949af` tree),
+committed-only, projection workspace, tier **high** (8 files / 518 lines). Four lenses were
+selected (risk, resilience, readability, reliability); **all four were admitted**; the review
+closed **approved** with no correction opened, and the acknowledgement burned authority
+(`gentle-ai.review-acknowledged/v1`, `authority: burned`, consumed revision
+`sha256:911df82c…`).
+
+Covered candidate: every committed byte from `a5949af` to `83149da` — `deef356` (the hook),
+`3f8a0c7` and `83149da` (the two doc records). That is exactly HEAD, so nothing sits outside
+the receipt. The `--publish always` tag branch remains unexecuted; that is a verification gap,
+not a finding this review could raise from the patch.
+
+**Why a fresh transaction, and the lesson.** The earlier transaction
+`review-d0130dfc222606cf` was frozen on the `3f8a0c7` tree and stuck on the chronically empty
+`review-readability` slot. Adding the dry-run doc record (`83149da`) then changed the candidate
+tree, so the preflight correctly returned `candidates: []` + `fresh_target_ready` and proposed a
+new lineage instead of resuming a binding whose bytes no longer matched. **Committing after a
+review START moves the candidate out from under the frozen binding.** If a doc record must land,
+land it before the START, or accept a fresh transaction for the new bytes.
+
+**Runtime note (honest), and two process defects of the orchestrator's own.** On the first
+4-lens attempt `review-risk` was admitted on its first launch, `review-readability` and
+`review-reliability` returned `opencode_task_output_empty`, and `review-resilience` was
+interrupted mid-flight. The re-offer route then admitted readability and reliability, and a
+final relaunch admitted resilience. The recorder's defect: the reviewer `prompt` must be
+**exactly** `provider_task.prompt` — the short `GENTLE_AI_REVIEW_BINDING {...}` line, which the
+host materializes into binding + context + instruction + schema + patches. Appending the
+materialized context again is a contract violation and was done on the first attempts. The
+chronic `opencode_task_output_empty` condition is separate and real (now 10+ empty lens outputs
+across three transactions in this runtime).
+
+### Reviewer results
+
+- **risk** — 1 WARNING.
+- **resilience** — 2 WARNINGs + 1 SUGGESTION.
+- **readability** — 3 SUGGESTIONs.
+- **reliability** — 1 WARNING + 1 SUGGESTION.
+
+### Advisory findings (non-blocking, informational)
+
+None opened a correction; none reopens this review. They are later work, never a reason to
+re-run the review on this candidate.
+
+| ID | Lens | Location | Severity | Note |
+|---|---|---|---|---|
+| R1-gh-token-child-env | risk | `scripts/probe-after-pack.cjs:60-63` | WARNING | The hook spreads `process.env` into the child, so on a tag push the packaged binary inherits `GH_TOKEN` (`.github/workflows/release.yml:85`). The explicit probe step this replaces ran in its own step with no token in scope. A trust-boundary regression **introduced** by this candidate; no exfiltration is demonstrated, because the invoked script is repository-controlled. Fix: strip `GH_TOKEN` (and any other CI secret) from the child env. |
+| R3-1 / R4-001 | reliability / resilience | `scripts/probe-after-pack.cjs:60-63` | WARNING | `spawnSync` sets **no `timeout`**, so a wedged child — the "GUI app started instead of Node" case the preflight cannot detect — blocks the packing phase with no bound: on CI until the runner limit, locally the developer's shell. The preflight loop proves only that the files exist. Fix: `timeout` + `killSignal`, which turns a wedge into the fast attributed failure this gate exists to produce. |
+| R4-002 / R3-2 | resilience / reliability | `scripts/probe-after-pack.cjs:22-27` | SUGGESTION | The hook fails **open**: a non-win32 platform logs a skip and returns success, so a green job is indistinguishable from a real probe, and `dist:mac` ships with no native-module verification. Fix: a distinct machine-readable marker, or fail on an unexpected platform. |
+| R4-003 | resilience | `build-local.ps1:24-25` | SUGGESTION | The removed probe block was the only place this script turned a probe failure into a script failure. Now only `electron-builder`'s non-zero exit reaches the caller, so the script should assert it fails when the gate fails — otherwise a failed gate may still print "Done!". **Unverified by this candidate:** the gate-failure proof exercised `electron-builder` directly, not the script. |
+| R2-001 | readability | `pnpm-workspace.yaml:11-12` | SUGGESTION | "Electron 42+ … it is inert. Do not re-add it." is the only electron-related text left in the file and sits directly above the **esbuild** entry, so "it" reads as describing esbuild — the load-bearing entry whose install script must still run. A maintainer trusting the position rather than the wording could delete the wrong entry. |
+| R2-002 | readability | `scripts/probe-after-pack.cjs:60` | SUGGESTION | The hook passes a second positional argument (the absolute `better-sqlite3` directory) to the probe, but no comment records that argument contract, while every other non-obvious decision in the file is commented. |
+| R2-003 | readability | `.github/copilot-instructions.md:294` | SUGGESTION | The added bullet says only the native `.node` is unpacked via `asarUnpack`, but both `files` and `asarUnpack` match the whole `better-sqlite3` package subtree (a directory glob, which this document's own packaging record confirms unpacks the package directory). The change set existed to remove exactly this class of drift. |
+
+**Delivery follows ordinary repository policy.** The acknowledgement burned the review
+authority; commit, push, PR and release remain separate human decisions, and this receipt
+neither authorizes nor blocks any of them.
+
+**Remaining residuals after this receipt.** The `--publish always` tag branch is still
+unexecuted; R2-003 of the earlier probe-gate review (the hardcoded `42` sentinel in
+`scripts/probe-packaged-native.cjs`) is untouched; four non-terminal lineages from earlier work
+(`review-17eaa498cf6f9e2f`, `review-44ad33de349f2aaa`, `review-7c1048e2042af3ea`,
+`review-d0130dfc222606cf`) remain in `reviewing` and each need their own `review abandon`; and
+the app version bump plus the publish remain separate decisions.
