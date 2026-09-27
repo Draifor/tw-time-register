@@ -128,7 +128,7 @@ tag or publish.
 | A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [x] — v4 installed; **all three call sites had to be rewritten**, not merely re-verified (E19). Committed `34577dc`; suite 189/189. **The review is blocked, not declined** — see F11 |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml`, `WorkTimeForm.tsx`, `src/tests/renderer/i18nRouter.test.tsx` | direct inline | [x] — all targets installed, gates green **194/194** (E21). The plan's "safe minor bumps" hid one real break (react-hook-form 7.89 `Control` variance, F14) and one mis-classification (`lucide-react` is a major, F15). Committed `005d89e` |
 | A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | direct inline (one component + one regression test) | [x] — the *expected* surface did **not** break (E13); the bump broke something else instead. Real fix: `input-date.tsx` + `src/tests/renderer/inputDate.test.tsx` (E16, E17, F8) |
-| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [x] — machine gates green (**191/191**), and the human smoke test passed **twice**: once on the A2 fix (date field back to one row) and again after A3 + the StrictMode fix (date and duration both show their value when the view opens and after returning to it) |
+| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [x] — machine gates green (**191/191**), and the human smoke test passed **twice**: once on the A2 fix (date field back to one row) and again after A3 + the StrictMode fix (date and duration both show their value when the view opens and after returning to it). **Open:** the router / language-switcher surface A4 added still owes its own smoke test (reviewer finding R3-A6-VERIFICATION-OVERSTATED) — see the Resume block |
 | A7 | Record results, evidence and residue here | this document | direct inline | [x] — recorded incrementally through E1–E21, F1–F15, the Route log, the Delivery plan and both Review records. **What is not recorded as done is not done:** A3 and its remedy are un-reviewed (F11, F12, F13); A4 is done (E21) but its UI surface still owes a human smoke test. |
 
 Task detail is deliberately deferred to A1's result: writing a fix-list before knowing what actually
@@ -161,7 +161,7 @@ breaks would be inventing work.
 | F10 | **A3's scope line said "re-verified, not assumed" — the honest outcome is that the call sites had to be *rewritten*.** The plan framed A3 as a version move with a contract check (F3). That check is what produced the rewrite: v4's instance rebuild is invisible in a diff and only shows itself when a parent re-renders — and this parent re-renders every second. Recorded so the 421-line slice is read as "the migration the library required", not as scope creep. | E18, E19 | Kept as the A3 work unit. Deliberately **not** split: splitting the rewrite across two PRs would land v4 with two of three call sites still on the pattern it breaks. |
 | F11 | **The A3 slice has no review, and that is not because the review declined it.** The gate opened lineage `review-16182467d565e446`, selected one lens (`review-reliability`) and offered the slot. The reviewer actor returned an empty result **twice** (`opencode_task_output_empty`), and after each attempt a fresh target-bound STATUS still reported `collect` / `reviewer_results_required` with the authority untouched. Two attempts is the bounded retry, so it stopped there. **State: un-reviewed with an open lineage** — no capture, no receipt, no acknowledgement, nothing burned. Not a Gentle AI engine failure and not reported as one: the reviewer is a client-runtime actor, and an empty sub-agent result is the runtime's. The honest record is that a dependency-plus-rewrite slice of this kind would ship **without independent review**, which is a residual risk the next session must close or consciously accept. | lineage `review-16182467d565e446`; `gentle-ai review status` after each attempt | Retry in a fresh session while the slot is still offered, or accept the risk explicitly. **Never claim this candidate was reviewed.** |
 | F12 | **The reviewer actor is unavailable in this session, and the bounded retry is now spent on both lineages.** The StrictMode fix (`c3f800f`) changed the candidate, so the gate opened a **fresh** lineage `review-adc411d312248c2a` and offered one `review-reliability` slot; the reviewer actor returned `opencode_task_output_empty` on the first attempt. State after: `state: reviewing`, `generation: 1`, `action: collect`, `reason_code: reviewer_results_required`, authority untouched — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** Three empty reviewer results across two lineages is an actor/session problem, not a candidate one: the *same* actor completed the A2 review earlier in this session, and the failure reproduced both with a hand-authored materialisation and with the bare provider binding alone (which rules out the prompt size I suspected). No further attempts were made. | lineages `review-16182467d565e446` (2 attempts) and `review-adc411d312248c2a` (1 attempt); `gentle-ai review status` after each | Neither the A3 migration nor its remedy carries an independent review. Close it in a fresh session, or accept the residual risk in writing. **Not a Gentle AI engine defect and not reported as one** — an empty sub-agent result belongs to the client runtime. |
-| F13 | **The reviewer actor is unavailable in a fresh session too, so the A3 slice's review is closed as an accepted risk instead of being left open.** The hand-off's entry point was re-run exactly: `gentle-ai review assess --base-ref 23b361f --committed-only` returned `review_due: true` / `slice_budget_reached` (8 paths, 784 changed lines, `medium`), and its `next_transition` opened a **third** lineage `review-eb3e736869e2d2c8` with one `review-reliability` lens and a 200-line correction budget. The consent envelope was relayed verbatim and **granted**; the reviewer actor then returned `opencode_task_output_empty` **four times**. After every attempt the bound target STATUS returned `action: collect` / `reviewer_results_required` with `state: reviewing`, `generation: 1` and the revision unchanged — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** The same failure now spans two sessions and three lineages (F11, F12), and Engram holds an equivalent prior occurrence in the `electron-30-to-44` probe gate (a *readability* lens empty three times), so it is an actor/environment failure and not a property of this candidate. **Disposition: the residual risk is accepted in writing** — the A3 migration and its remedy ship without independent review. This is a recorded risk, never a reviewed candidate. | lineages `review-16182467d565e446` (2 attempts, prior session), `review-adc411d312248c2a` (1, prior session), `review-eb3e736869e2d2c8` (4, this session); `gentle-ai review status` after every attempt; Engram observation on the `electron-30-to-44` probe gate | **Closed as accepted risk.** Never claimed as reviewed. Not reported as a Gentle AI engine defect — an empty sub-agent result belongs to the client runtime. |
+| F13 | **The reviewer actor is unavailable in a fresh session too, so the A3 slice's review is closed as an accepted risk instead of being left open.** The hand-off's entry point was re-run exactly: `gentle-ai review assess --base-ref 23b361f --committed-only` returned `review_due: true` / `slice_budget_reached` (8 paths, 784 changed lines, `medium`), and its `next_transition` opened a **third** lineage `review-eb3e736869e2d2c8` with one `review-reliability` lens and a 200-line correction budget. The consent envelope was relayed verbatim and **granted**; the reviewer actor then returned `opencode_task_output_empty` **four times**. After every attempt the bound target STATUS returned `action: collect` / `reviewer_results_required` with `state: reviewing`, `generation: 1` and the revision unchanged — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** The same failure now spans two sessions and three lineages (F11, F12), and Engram holds an equivalent prior occurrence in the `electron-30-to-44` probe gate (a *readability* lens empty three times), so it is an actor/environment failure and not a property of this candidate. **Disposition: the residual risk is accepted in writing** — the A3 migration and its remedy ship without independent review. This is a recorded risk, never a reviewed candidate. | lineages `review-16182467d565e446` (2 attempts, prior session), `review-adc411d312248c2a` (1, prior session), `review-eb3e736869e2d2c8` (4, this session); `gentle-ai review status` after every attempt; Engram observation on the `electron-30-to-44` probe gate | ~~**Closed as accepted risk.**~~ **Superseded the same day — this is not the final state.** The A3 bytes were later reviewed and **approved** inside lineage `review-d556562fce06c2db` (whole-slice Review record below), because that candidate spans `23b361f..HEAD` and therefore contains the A3 rewrite and its remedy verbatim. The accepted-risk record stands as what was true when it was written; it is no longer the Track A state, so **do not cite F13 as the reason those bytes are un-reviewed.** Not reported as a Gentle AI engine defect — an empty sub-agent result belongs to the client runtime. |
 | F14 | **The bump broke `WorkTimeForm`'s `Control` props — a surface the plan never named.** react-hook-form 7.89 tightened `Control<TFieldValues>` so the concrete `Control<{ entries: WorkTimeEntry[] }>` is no longer accepted by a `Control<any>` prop; `tsc` failed at `WorkTimeForm.tsx:961` (`TotalTimeDay`) and `:1065` (`Textarea`). The file already carried the fix pattern for exactly this — `typedControl = control as unknown as Control<FieldValues>`, used by `InputDate`/`InputTime` — so the repair was two call sites switching to it, with no behaviour change. Recorded because the "safe minor bumps" group is where a type-level break was least expected, and because the fix was **measure-then-repair**, not predicted work. | `npm run type-check` errors at those two lines; the two-line `WorkTimeForm.tsx` diff; `git show --numstat 005d89e` |
 | F15 | **`lucide-react` was labelled a "minor bump" and is not one.** The gap table groups it with the safe minors, but the measured latest is **1.48.0** against an installed **0.441.0** — a major, whose peer range (`^16.5.1 \|\| ^17 \|\| ^18 \|\| ^19`) admits React 19. It came in clean (all 27 import sites resolve; `type-check` and `build` green), but the classification was wrong and the "minor" label should not be trusted for the remaining tracks without a fresh registry query. | `pnpm view lucide-react version` → `1.48.0`; `pnpm view lucide-react@1.48.0 peerDependencies`; clean `type-check`/`build`; the 27 `lucide-react` import sites |
 
@@ -184,14 +184,42 @@ this document.
 
 | PR | Commits | Authored lines | State |
 |---|---|---|---|
-| **1 — React 19** | `23b361f` + `c0ececd` | 88 | The bump **plus the date-field regression it caused**, with its test. They ship together because a PR must not merge a known user-visible regression. Bump reviewed and approved; the fix was assessed `under_budget` and never separately reviewed. |
-| **2 — react-flatpickr 4** | `34577dc` | 421 | The migration and the three call-site rewrites. **Over budget by 21** — see below. **Review closed as accepted risk (F13): it ships without independent review.** |
-| **3 — the coupled renderer versions** | `005d89e` | 136 | `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps, the two `Control` prop fixes (F14) and one new regression test. **Under budget** — 136 authored lines (package.json 39, `WorkTimeForm.tsx` 4, the new test 93), excluding the generated lockfile and this document. |
+| **1 — React 19** | `23b361f` + `c0ececd` | 88 | The bump **plus the date-field regression it caused**, with its test. They ship together because a PR must not merge a known user-visible regression. Bump reviewed and approved; the fix was `under_budget` when assessed and is now **also covered by the whole-slice approval** below. |
+| **2 — react-flatpickr 4** | `34577dc` | 421 | The migration and the three call-site rewrites. **Over budget by 21** — see below. **Reviewed and approved** inside the whole-slice candidate below; only the *size* gate remains, so PR 2 still needs `size:exception`. |
+| **3 — the coupled renderer versions** | `005d89e` | 136 | `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps, the two `Control` prop fixes (F14) and one new regression test. **Under budget** — 136 authored lines (package.json 39, `WorkTimeForm.tsx` 4, the new test 93), excluding the generated lockfile and this document. **Reviewed and approved** inside the whole-slice candidate below. |
 
 **`size:exception` recommended for PR 2.** One honest slicing pass was made, and no cohesive split exists:
 splitting the wrapper rewrite would land v4 with two of the three call sites still on the pattern v4
 breaks, which is a regression, not a slice — so the `chained-pr` gate "each slice can land independently"
 does not hold. Per the skill, the overage is reported rather than shrunk by deleting comments or tests.
+
+## Review record — whole-slice candidate (A3 + A4)
+
+Whole-candidate native review: **one lens** (`review-reliability`, medium risk, tier `medium`), lineage
+`review-d556562fce06c2db`. The candidate was a **base-diff from `23b361f` to HEAD** — 10 paths, **1845
+changed lines** — so it contains the A3 migration, the A5 date-field fix **and** A4, not A4 alone.
+
+**Verdict: approved.** The last admitted capture committed the acknowledgement token; the exact
+acknowledgement burned the authority (`gentle-ai.review-acknowledged/v1`, `authority: burned`,
+`consumed_revision` `sha256:6911c7d2…`). **No correction was opened**, so the frozen 200-line correction
+budget was never used. This is the review the previous two sessions could not obtain (F11, F12, F13) — the
+reviewer actor returned a complete result on the **first** attempt of this lineage, which is the evidence
+that the earlier emptiness was an actor/session failure and not a property of the candidate.
+**Consequence: the A3 slice and its remedy are no longer un-reviewed** — those exact bytes sit inside this
+approved candidate, so F13's accepted-risk disposition is **superseded, not discharged by argument**.
+
+Three advisory findings, all non-blocking:
+
+| ID | Severity | Claim | Disposition |
+|---|---|---|---|
+| R3-INPUT-DATE-UNSTABLE-OPTIONS | WARNING | `input-date.tsx`'s options memo still keys on the raw `options` prop identity (`:91`) while the handlers A3 added live inside it, so an inline `options` prop would rebuild the flatpickr instance on every parent render — exactly the hazard `input-time.tsx` avoids with a serialised key. The date test renders with no `options` prop, so this call site's stability is unproved. | **Valid — a real asymmetry between the two sibling pickers.** Left as follow-up rather than patched: no caller passes `options` to `InputDate` today, so the hazard is latent, not live. Recorded so the next reader does not assume the two pickers are equivalent. |
+| R3-INPUT-TIME-JSON-OPTIONS | SUGGESTION | `input-time.tsx:50` runs `JSON.stringify` over the caller's `options` during render, which would throw on a circular or non-serialisable value and crash the render — a failure mode the previous implementation did not have. | **Valid, low likelihood.** The option sets in use are plain literals. Carried as follow-up, not patched here — a patch would be a source change after the reviewed freeze. |
+| R3-A6-VERIFICATION-OVERSTATED | SUGGESTION | The A6 row read as fully verified while the document itself names the router / language-switcher smoke test as outstanding. | **Accepted and acted on:** A6 now records that smoke test explicitly and it is the single open item in the Resume block. The finding is about the record's completeness, not about a defect. |
+
+Pre-existing, **not** candidate-caused (the reviewer's own causality note): the pickers' change handlers
+still ignore an empty selection, so clearing a picker leaves the form value untouched; and the stored ISO
+date is derived with a UTC conversion, so a date picked at local midnight in a positive-offset timezone can
+store the previous day. Both were present in the base and were carried into the new handler bodies.
 
 ## Review record — A2 candidate
 
@@ -329,26 +357,41 @@ trusted as behaviourally complete.
   `npm test` **194/194**, `type-check`, `lint`, `build` and `pnpm install --frozen-lockfile` all clean.
   `lucide-react` turned out to be a major, not the "minor bump" the gap table implied (F15). **Still owed:
   a human smoke test of the router and language-switcher surface** — machine gates cannot see the UI (F8).
+- 2026-09-27 — **The whole-slice review finally captured, and it approved.** `assess --base-ref 23b361f`
+  reported `slice_budget_reached` and opened lineage `review-d556562fce06c2db`; the consent envelope was
+  relayed verbatim and granted; the reviewer actor returned a complete result on the **first** attempt, so
+  the F11/F12/F13 failure did not reproduce. Advisory findings only — one WARNING (`input-date.tsx`'s
+  options memo keys on prop identity), two SUGGESTIONs (`input-time.tsx`'s `JSON.stringify` over caller
+  options; the A6 row overstating verification) — and **no correction was opened**, so the 200-line
+  correction budget is unspent. The exact acknowledgement burned the authority
+  (`gentle-ai.review-acknowledged/v1`, `consumed_revision` `sha256:6911c7d2…`). Because the candidate spans
+  `23b361f..HEAD`, this **supersedes F13**: the A3 rewrite and its remedy are reviewed and approved, not
+  accepted-as-risk. See the whole-slice Review record.
 
 ## Resume — the next session starts here
 
-State at hand-off: Track A is complete — A4 landed as `005d89e`. Branch `staging`, nothing pushed, the four
-gates green at **194/194**, and `pnpm install --frozen-lockfile` exits 0. Residue: A3 and its remedy ship
-un-reviewed (F13, accepted risk); A4's UI surface still owes a human smoke test.
+State at hand-off: Track A is **complete and reviewed**. A4 landed as `005d89e`; the whole slice
+`23b361f..HEAD` was reviewed and **approved** (lineage `review-d556562fce06c2db`, authority burned).
+Branch `staging`, nothing pushed, clean tree, the four gates green at **194/194**, and
+`pnpm install --frozen-lockfile` exits 0. **One item is still open: the human smoke test of the router and
+language-switcher surface A4 added.**
 
-1. ~~**Close the A3 review first (F11, F12).**~~ **Closed (F13): attempted from a fresh session and
-   impossible there too.** A third lineage (`review-eb3e736869e2d2c8`) was opened, the consent envelope was
-   relayed verbatim and granted, and the reviewer actor returned empty four more times with the authority
-   untouched. The A3 slice and its remedy ship **without independent review**; the residual risk is
-   **accepted in writing, not discharged**. There is no receipt and no acknowledgement, so **never claim
-   either was reviewed**.
-2. ~~**Then A4** — `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps.~~
-   **Done (`005d89e`, E21).** The coupled majors moved together and the E8 hygiene landed. One real break,
-   never predicted (F14), and one mis-classified "minor" (F15). **The remaining item is a human smoke test
-   of the router and language-switcher surface** — the A6 standard applies to this track, and no machine
-   gate can see the UI (F8). The Engram mirror for A4 is written below.
-3. ~~**The Engram mirror is still pending.**~~ **Resolved (2026-09-27, same session).** The write path
-   works again: `mem_doctor` reports 9/9 and `mem_save` is succeeding, so the mirror for this document has
-   been re-synchronised.
-4. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
-   publish; English artifacts; the reviewed boundary is still `23b361f`.
+1. ~~**Close the A3 review first (F11, F12).**~~ **DONE — and better than the fallback.** The review was
+   obtained in lineage `review-d556562fce06c2db` and **approved**; because its candidate spans
+   `23b361f..HEAD`, it covers the A3 rewrite and its remedy. The earlier accepted-risk record (F13) is
+   **superseded**: those bytes are reviewed and approved, and nothing beyond what the acknowledgement burned
+   is claimed.
+2. ~~**Then A4**~~ **Done (`005d89e`, E21)** and covered by the same approval. One real break appeared that
+   the plan never named (F14), and one "minor bump" was a major (F15).
+3. **Open: the A6-standard human smoke test of the router and language-switcher surface.** No machine gate
+   can see the UI (F8), and the reviewer flagged the A6 row for exactly this
+   (R3-A6-VERIFICATION-OVERSTATED). This is the only thing between Track A and "done".
+4. **Follow-ups, deliberately not patched after the review freeze** (recorded, not fixed):
+   `input-date.tsx`'s options memo still keys on prop identity where `input-time.tsx` keys on serialised
+   content (R3-INPUT-DATE-UNSTABLE-OPTIONS); `input-time.tsx` runs `JSON.stringify` over caller options
+   during render (R3-INPUT-TIME-JSON-OPTIONS); plus two pre-existing picker behaviours the reviewer found in
+   the base — an empty selection is ignored, and the stored ISO date comes from a UTC conversion.
+5. **Engram mirror: resolved** — `mem_doctor` 9/9 and `mem_save` working, so the mirror is re-synchronised.
+6. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
+   publish; English artifacts. **Delivery is the human's call** — a review outcome is informational and
+   never authorizes push, PR or merge. PR 2 still needs `size:exception`.
