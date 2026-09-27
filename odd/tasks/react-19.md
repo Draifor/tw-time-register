@@ -63,6 +63,9 @@ So the deferral was recorded; the document it promised was not. This is it.
 | E10 | **The rest of React 19's surface is a non-event for this app**, confirmed by the A1 audit. Absent everywhere in `src/**`: string refs, `createFactory`, `React.Children`, `element.ref`/`props.ref` access, bare `useRef()`, `defaultProps` on function components, runtime `propTypes`, `react-dom/test-utils` imports, and any app-level `createContext`. The only `ReactDOM` use is `createRoot`. | `rg` across `src/**` per the A1 audit |
 | E11 | **Testing is safe, with one masked type-level caveat.** `@testing-library/react@16.3.2` allows React 19 and its `act-compat` prefers `React.act`, falling back to the deprecated shim only if needed. And `react-dom/test-utils` **still exists in React 19.3.0** as a deprecated shim, so the common claim that it was removed is wrong for this version. Caveat: RTL's own types still import that subpath while `@types/react-dom@19` drops it — invisible here only because `tsconfig.json:7` sets `skipLibCheck: true`. | `node_modules/@testing-library/react/{package.json:69,dist/act-compat.js:10,12,types/index.d.ts:10}`; `react-dom@19.3.0` `exports` map; `tsconfig.json:7` |
 | E12 | **The manual type-review surface is 31 sites, and no codemod covers it.** They use the Radix v1 idiom `React.forwardRef<React.ElementRef<typeof X>, React.ComponentPropsWithoutRef<typeof X>>` across 8 `ui/` files (`alert-dialog`, `dialog`, `dropdown-menu`, `label`, `select`, `separator`, `tabs`, `tooltip`). 14 more use `React.HTMLAttributes<T>` (`card`, `table`), and 2 are bespoke (`button.tsx:38`, `input.tsx:5`). The React 19 `types-react-codemod` transforms do **not** cover `React.ElementRef`. Peer problems surface as **warnings**, not errors: neither `.npmrc` nor `pnpm-workspace.yaml` sets `strict-peer-dependencies`. | A1 audit counts; `tsconfig.json:17` `"jsx": "react"`; `.npmrc`, `pnpm-workspace.yaml` |
+| E13 | **The breakage the plan predicted did not happen.** `@types/react@19.3.0` still exports `React.ElementRef` and `React.ComponentPropsWithoutRef`, so all **31 sites were left untouched and `tsc` is clean**. E12 correctly identified the *review surface*, but that surface needed **zero edits** — A2 turned out to be a four-line dependency change. | `npm run type-check` → exit 0 with **0 files changed under `src/**`** (`git status --porcelain` shows only `package.json` + `pnpm-lock.yaml`); `pnpm why react --depth 20` resolves a single `react@19.3.0` for the entire graph |
+| E14 | **The A2/A3 split has exactly one visible cost, and it is the warning E12 predicted as harmless.** pnpm reports `react-flatpickr 3.10.13 → ✕ unmet peer react ">=16, <=18": found 19.3.0`. It is a warning, not an error (no `strict-peer-dependencies`), and E5 establishes the runtime is unaffected — but the declaration now contradicts the installed tree until A3 moves it to v4. Separately, the lockfile keeps a second `@types/react@18.3.23` alive **only** because `@types/react-router-dom@5.3.3` (devDep, already flagged stale in E8) declares `@types/react: "*"`, which pnpm resolved to 18 and not 19. `tsc` is unaffected (`types: ["vite/client","node"]` + `skipLibCheck: true`), and the duplicate disappears with that devDep. | pnpm install output; `pnpm-lock.yaml:1449` and `:5631` (`'@types/react-router-dom@5.3.3' → '@types/react': 18.3.23`) |
+| E15 | **The local `node_modules` had been installed by a different package manager than the one the repo locks.** `pnpm add` reported **54 packages** "installed by a different package manager", moved them to `node_modules/.ignored`, and rebuilt the tree. CI's documented path is unaffected (`pnpm install --frozen-lockfile` exits 0, "Lockfile is up to date"), but "it worked locally" had until now been measured against a tree the lockfile did not describe. Unpruned and unreachable leftovers of the pre-bump tree (`react@18.3.1`, `@types/react@17.0.83`) still sit in `.pnpm`; nothing resolves to them. | pnpm's own move warnings (54 entries); `pnpm install --frozen-lockfile` → exit 0; `require.resolve('react/package.json')` → `.pnpm/react@19.3.0/node_modules/react/package.json` |
 
 ## Track order, and why this order
 
@@ -115,10 +118,10 @@ tag or publish.
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
 | A1 | **Readiness audit before any bump:** whether `react-flatpickr` (v3 installed, v4 latest) is React-19-safe and what v4 changed; and which React 19 changes actually touch this app's code paths | read-only | delegated (explore) | [x] — findings E5, E10, E11, E12 |
-| A2 | Bump `react`, `react-dom`, `@types/react`, `@types/react-dom` to 19, **leaving `react-flatpickr` at 3.10.13**. It runs correctly on 19 (E5); the only problem is the peer *declaration*, so the bump must not be entangled with a wrapper rewrite | `package.json`, `pnpm-lock.yaml` | direct inline (a dependency edit; the audit removed the unknowns) | [ ] |
+| A2 | Bump `react`, `react-dom`, `@types/react`, `@types/react-dom` to 19, **leaving `react-flatpickr` at 3.10.13**. It runs correctly on 19 (E5); the only problem is the peer *declaration*, so the bump must not be entangled with a wrapper rewrite | `package.json`, `pnpm-lock.yaml` | direct inline (a dependency edit; the audit removed the unknowns) | [x] — `^19.3.0` on all four; the only install warning is the predicted flatpickr peer one (F6) |
 | A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [ ] |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml` | direct inline | [ ] |
-| A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | delegated if it exceeds a few files | [ ] |
+| A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | n/a — no work was needed | [x] — **no-op**: the predicted surface did not break (E13); **0 source files edited** |
 | A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] |
 | A7 | Record results, evidence and residue here | this document | direct inline | [ ] |
 
@@ -144,6 +147,9 @@ breaks would be inventing work.
 | F2 | **`react-dom/test-utils` was NOT removed in React 19.3.0** — it survives as a deprecated shim, and `@testing-library/react`'s `act-compat` prefers `React.act` and only falls back to the shim. So the testing path is safe; the widely-repeated "it was removed" framing is wrong for this version. The real residue is **type-level**: RTL's own `.d.ts` still imports the subpath that `@types/react-dom@19` drops, hidden here only by `skipLibCheck: true`. | E11 | Recorded. If `skipLibCheck` is ever turned off, this is the first thing that will break. |
 | F3 | **`react-flatpickr@4` is not a drop-in even though the ref change does not apply here**: the rewrite always renders a coerced `value` and wraps native `onChange` into `[Date]`, while `input-time.tsx:26-32` passes `value={field.value || []}` (an array). Whether v4 changes observable picker behaviour is **not established** — the audit did not install or run v4. | A1 audit, v4 built source | A3 is deliberately isolated so this risk cannot be confused with the React bump. A6's human smoke test is the check that actually settles it. |
 | F4 | **A1's own findings are as valuable as the bump**: the peer ranges of the *installed* tree were never checked before, and one of them was wrong in the direction that matters (a dependency that does not declare support for the new major). | E1, E5 | This is why the audit was a task and not a formality. |
+| F5 | **The plan's own "expected surface" was a hypothesis, and it was wrong in the safe direction.** E12 predicted the 31 `React.ElementRef` sites as the fix surface; nothing broke (E13). Recorded rather than quietly dropped, because a prediction that never materialises is still a prediction, and the next reader needs to know the difference between "we planned this" and "we measured this". | E13 | A5 closed as a **no-op**. The 31 sites remain a genuine *review* surface if `@types/react` ever drops `ElementRef` — but that is a future, not this upgrade. |
+| F6 | **A2 and A5 turned out to be one four-line change, so the A2/A3 split is doing all the risk-isolation work by itself.** The only thing the split costs is the visible peer warning (E14), and the only thing it buys is that the flatpickr rewrite cannot be confused with the React bump. | `git diff package.json` = 4 changed lines (`react`, `react-dom`, `@types/react`, `@types/react-dom`) | Kept. A3 is still isolated: F3's behavioural question (v4 coerces `value`, wraps `onChange` into `[Date]`, while `input-time.tsx:26-32` passes an array) is unsettled and must not share a commit with the bump. |
+| F7 | **Local install drift, found by accident.** The repo locks with pnpm and CI installs with pnpm, but the working `node_modules` had been produced by a different package manager; pnpm moved 54 packages aside and rebuilt (E15). Nothing in this upgrade required it, and it invalidates nothing — but it is the same class of error as F1: trusting a local artefact instead of the one the record describes. | E15 | Recorded as environment hygiene. `package.json` and `pnpm-lock.yaml` are the artefacts that matter; `node_modules` is gitignored and now matches them. |
 
 ## Route log
 
@@ -151,7 +157,28 @@ breaks would be inventing work.
 |---|---|---|
 | Inventory and gap measurement | direct inline | ≤3 files plus registry queries; state gathering, not exploration |
 | A1 | delegated (one narrow read-only audit) | crosses several files and one external package's internals |
-| A2–A6 | pending A1 | — |
+| A2 | direct inline | as planned: one hand-authored file (`package.json`); the audit had already removed the unknowns and A1 had done the cross-file reading |
+| A5 | **no work — the delegation trigger never fired** | the writer rule (2+ non-trivial files) never activated because **zero files needed editing** (E13) |
+
+## Review record — A2 candidate
+
+Whole-candidate native review: **one lens** (`review-reliability`, medium risk, tier `medium`), lineage
+`review-6f157c82099b9c26`. The candidate was the frozen pair `package.json` + the generated
+`pnpm-lock.yaml` (767 changed lines; the lockfile is what crossed the slice budget).
+
+**Verdict: approved.** The last admitted capture committed the acknowledgement token; the exact
+acknowledgement burned the authority (`gentle-ai.review-acknowledged/v1`, `authority: burned`,
+`consumed_revision` `sha256:832c159b…`). **No correction was opened**, so the frozen correction budget was
+never used. Three non-blocking findings:
+
+| ID | Severity | Claim | Disposition |
+|---|---|---|---|
+| R3-REACT19-NO-BEHAVIOR-PROOF | WARNING | The candidate moves a runtime major but contains no assertion that observable behaviour survives it — no re-run or extension of the suite, no smoke render. | **Valid, and structural to the candidate — carried to A6.** The reviewer can only see the diff; the proof (183/183, type-check, lint, build) was executed by the orchestrator and lives outside the frozen trees. That is exactly the gap A6's human smoke test exists to close. Not "fixed" here, and not a reason to re-review this candidate. |
+| R3-TYPES19-UNADAPTED-SOURCES | WARNING | The type packages move in lockstep while no source path is in the candidate, so nothing inside the candidate shows the gate still passes. | **Same disposition.** Measured clean (E13). The reviewer's specific predictions (`React.FC` implicit `children`, bare `useRef()`, the `JSX` namespace) are exactly the surfaces E3/E10 already recorded as **absent** from this codebase. |
+| R3-LOCKFILE-GRAPH-UNVERIFIABLE | SUGGESTION | Lockfile hunks were withheld as generated content, so the resolution of the `^19.3.0` ranges and any unmet-peer warnings cannot be confirmed from the reviewer's view. | **Valid limitation, separately verified.** `pnpm install --frozen-lockfile` exits 0 and `pnpm why react` resolves exactly one `react@19.3.0` (E14, E15). The withheld-content design is deliberate: the check for a lockfile is a frozen install, not a reviewer reading hunks. |
+
+The lesson worth keeping: **a dependency-only candidate cannot carry its own behavioural proof.** Both
+warnings say the same true thing from different angles, and the answer is not a better diff — it is A6.
 
 ## Progress
 
@@ -165,5 +192,17 @@ breaks would be inventing work.
   the expected type surface is the 31 `React.ElementRef` sites (E12); every other React 19 removal is
   absent from this codebase (E10). The audit also caught this document's own error (F1). A2–A7 are now
   defined, and A3 was deliberately isolated so the wrapper rewrite cannot be confused with the bump.
-- Delivery strategy: `ask-on-risk`. Forecast: unknown until A1 lands; if the React track exceeds the
-  ~400 authored-line budget it gets sliced then, not pre-emptively.
+- 2026-09-27 — **A2 complete, A5 closed as a no-op** (direct inline as planned). `react`, `react-dom`,
+  `@types/react`, `@types/react-dom` → `^19.3.0`; `react-flatpickr` deliberately left at `3.10.13`.
+  **Four lines** in `package.json`; lockfile regenerated; **zero source files edited** (E13). Gates on
+  React 19: `npm test` **183/183** (18 files), `npm run type-check` clean, `npm run lint` clean,
+  `npm run build` exit 0, `pnpm install --frozen-lockfile` exit 0. The single warning is the predicted
+  flatpickr peer one (E14/F6). **Not yet verified: the human smoke test (A6)** — machine gates prove
+  compilation and unit behaviour, not that the UI renders.
+- Delivery strategy: `ask-on-risk`. Measured so far: **4 additions + 4 deletions** of authored lines
+  (`package.json`; the lockfile is generated and excluded) — far under the ~400 budget, so no slicing
+  decision is due yet. Re-evaluate at A3 and A4.
+- 2026-09-27 — **A2's work unit reviewed and approved** (native RDD, one lens `review-reliability`,
+  lineage `review-6f157c82099b9c26`). Authority burned by the exact acknowledgement; no correction opened.
+  Three non-blocking findings, all three carried to **A6** rather than patched here — see the Review
+  record. Work-unit commit `23b361f` is the reviewed boundary for the next assessment.
