@@ -1007,3 +1007,122 @@ unexecuted; R2-003 of the earlier probe-gate review (the hardcoded `42` sentinel
 (`review-17eaa498cf6f9e2f`, `review-44ad33de349f2aaa`, `review-7c1048e2042af3ea`,
 `review-d0130dfc222606cf`) remain in `reviewing` and each need their own `review abandon`; and
 the app version bump plus the publish remain separate decisions.
+
+## Hook hardening — the three actionable findings from the gated-pipeline review (execution)
+
+Task list created 2026-09-26 **before the first source write**, per the ODD tracking rule.
+Scope is exactly the three findings the user selected out of the approved review; the other six
+advisory findings stay recorded above and open.
+
+| ID | Task | Files | Status |
+|---|---|---|---|
+| HK-01 | Stop handing CI credentials to the packaged binary: build the child environment explicitly instead of spreading `process.env` wholesale, stripping known and secret-shaped names, and log the removed **names** (never values) | `scripts/probe-after-pack.cjs` | done |
+| HK-02 | Bound the child: `timeout` + `killSignal` on `spawnSync`, with an attributed error that distinguishes a timeout from a non-zero exit | `scripts/probe-after-pack.cjs` | done |
+| HK-03 | Stop failing open: a non-win32 packaging run must no longer produce a green result indistinguishable from a real probe | `scripts/probe-after-pack.cjs` | done |
+| HK-04 | Verify: prove (a) secret stripping, (b) the timeout fires on a wedged child, (c) non-win32 is not silently green; plus `lint`, `type-check`, `build-local.ps1` end to end and the broken-package failure path | — | done |
+
+**Design decisions.**
+
+**HK-01 — denylist by name and by shape, not an environment allowlist.** The child's real
+requirement set on `windows-2022` is not documented anywhere, so an allowlist that is wrong
+fails the release gate for the wrong reason, while the finding is specifically about
+credentials. So the hook keeps the inherited environment and removes credentials: the explicit
+names this pipeline can carry (`GH_TOKEN`, `GITHUB_TOKEN`, `NPM_TOKEN`, `NODE_AUTH_TOKEN`) plus
+any name whose **tail** matches `TOKEN`, `SECRET(S)`, `PASSWORD`, `PASSWD`, `CREDENTIAL(S)`,
+`APIKEY`, `API_KEY`, `ACCESS_KEY` or `PRIVATE_KEY`. The removed **names** are logged, so the
+behaviour is observable in CI without ever printing a value.
+
+**HK-02 — 120 s, `SIGKILL`.** The probe round-trips an in-memory SQLite row in well under a
+second locally; the slow part is the packaged executable's cold start under
+`ELECTRON_RUN_AS_NODE`. 120 s sits far above the observed cost and far below the 6-hour job
+limit, so a wedged child becomes a fast, attributed failure instead of an unbounded hang — the
+exact failure mode this session hit and had to be interrupted out of.
+
+**HK-03 — fail closed in CI, loud marker locally.** Throwing unconditionally would break
+`dist:mac`, a capability this document still lists, and skipping silently is the finding. So on
+a non-win32 platform the hook **throws when `CI` is set** — an unprobed artifact must never be
+certified or uploaded — and otherwise prints a machine-greppable
+`[afterPack] NOT VERIFIED: …` line and returns. Both branches emit the same marker, so a green
+log no longer reads like a passing probe.
+
+**Route.** Direct inline — one non-trivial file (`scripts/probe-after-pack.cjs`), design resolved
+above, no research required.
+
+**Deliberate deferral — no automated test for the timeout.** The hook's behaviour is only
+observable by spawning the packaged executable, and the repo has no `scripts/` test harness;
+HK-02 is therefore proved by the reproducible harness recorded in the results below (a
+byte-identical hook copy paired with a deliberately wedged probe, launching the real packaged
+binary) rather than by a unit test. Recorded, not silently skipped.
+
+### HK results (2026-09-26)
+
+Commit `0137e4d` — `fix(build): harden the afterPack probe gate` (2 files, +196/−7: the hook and
+its new unit test). Route: delegated direct, one bounded writer; the expensive end-to-end proof
+and the wedge harness were run by the parent.
+
+**HK-01 — credentials no longer reach the packaged binary.** `buildChildEnv(sourceEnv = process.env)`
+copies the environment into a fresh object and deletes every name in `SECRET_ENV_NAMES`
+(`GH_TOKEN`, `GITHUB_TOKEN`, `NPM_TOKEN`, `NODE_AUTH_TOKEN`) or whose tail matches `SECRET_ENV_TAIL`
+(`TOKEN`, `SECRET(S)`, `PASSWORD`, `PASSWD`, `CREDENTIAL(S)`, `APIKEY`, `API_KEY`, `ACCESS_KEY`,
+`PRIVATE_KEY`). The removed **names** are logged, sorted, once. Proven live rather than by
+inspection: with a synthetic `GH_TOKEN` set in the shell, both a real `build-local.ps1` run and
+the wedge harness printed
+
+```
+[afterPack] Removed credential variable(s) from the probe child env: GH_TOKEN, OPENCODE_CONSOLE_TOKEN
+```
+
+— names only, no values, and the tail pattern independently caught an unrelated runtime token the
+exact-name set would have missed.
+
+**HK-02 — the child is bounded, and the bound was proved against a real wedge.** `spawnSync` now
+carries `timeout: CHILD_TIMEOUT_MS` (120 000) and `killSignal: 'SIGKILL'`, and a `result.error` is
+attributed: `ETIMEDOUT` reports `timed out after 120000 ms without exiting`, anything else reports
+`could not be started: <message>`. The harness runs **outside** the repository: a byte-identical
+copy of the hook (`HOOK_SHA_MATCH=True`) placed next to a probe that never exits, called with a
+real electron-builder-shaped context whose `appOutDir` is the real `release/win-unpacked`, so the
+**real packaged binary** was launched against a wedged child.
+
+```
+HARNESS_ELAPSED_MS=120017
+HARNESS_RESULT=threw
+HARNESS_MESSAGE=[afterPack] Packaged native module probe timed out after 120000 ms without exiting.
+```
+
+The `ETIMEDOUT` branch fired, so the attribution — not just the kill — is real, and the elapsed
+time confirms the bound rather than an early exit. This is the exact failure mode this session had
+to be interrupted out of.
+
+**HK-03 — no more green-on-skip.** A non-win32 context builds one marker,
+`[afterPack] NOT VERIFIED: the packaged native probe is win32-only and this packaging run targets <platform>`,
+then throws when `process.env.CI` is set and otherwise warns the same marker and returns.
+`process.env.CI` is read at call time so both branches are testable. Consequence accepted: a
+**macOS packaging run under CI now fails**, because an unprobed artifact must never be certified or
+uploaded; locally `dist:mac` still works and says loudly that the native module was not checked.
+No CI job in this repo packages macOS, so nothing in the current pipeline regresses.
+
+**Verification.**
+
+| Check | Result |
+|---|---|
+| `pnpm exec vitest run src/tests/main/scripts/probeAfterPack.test.ts` | **6/6 passed** — re-run independently by the parent as a spot check |
+| `pnpm exec vitest run` | 179 passed / 1 failed — the single failure is the known pre-existing Saturday flake `timeEntriesService.test.ts:339` (`expected '2026-09-28' to be '2026-09-26'`), not a regression |
+| `pnpm run lint` | exit 0 |
+| `pnpm run type-check` | exit 0 |
+| `./build-local.ps1` with a synthetic `GH_TOKEN` | exit 0; hook fired; `{"ok":true,"roundtrip":42,"electron":"44.4.5","node":"24.21.0","abi":"149","napi":"10"}`; the credential-stripping line printed; no `node-gyp` / MSVC lines |
+| Wedge harness | `HARNESS_ELAPSED_MS=120017`, attributed timeout, as quoted above |
+| Gate proof — deliberately broken package | `electron-builder --win --publish never` exited **1**, `release\*.exe` count **0**; the hook surfaced `[afterPack] Packaged native module probe failed (status=1, signal=null). failedTask=build`; `PREBUILD_RESTORED=True`, `BAK_LEFT=False` |
+| `release/win-unpacked` after the proof | rebuilt clean (`build-local.ps1` exit 0, probe passed), so the tree is not left holding the deliberately broken package |
+
+**Tests, honestly.** The three pure seams — `buildChildEnv` and both non-win32 branches — now have
+permanent unit coverage that never spawns a process and needs neither the packaged app nor the
+current date. The spawn timeout itself stays on the reproducible harness above, because the hook's
+behaviour is only observable by launching the packaged executable and the repo has no `scripts/`
+test harness; the harness is one byte-identical copy plus a wedged probe, so a future session can
+re-run it from this record.
+
+**Still open from this review** — the six findings not in scope: `R4-003` (`build-local.ps1` should
+assert it fails when the gate fails), `R2-001` (the `pnpm-workspace.yaml` comment sits above the
+esbuild entry), `R2-002` (the probe's second positional argument is undocumented), `R2-003` (the
+`copilot-instructions.md` asar claim overstates what unpacks). `R4-002` / `R3-2`'s fail-open half is
+now closed, but there is still **no macOS probe** — a macOS artifact is refused rather than verified.
