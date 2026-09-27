@@ -160,7 +160,7 @@ worktime_drafts (draft_key, payload, updated_at)
 - **NavBar** — badge de sesión TW activa, badge de auto-updater
 - **i18n** — ES/EN completo en todos los componentes y páginas
 - **Seguridad** — credenciales TW cifradas con `safeStorage` (DPAPI en Windows)
-- **Auto-updater** — descarga en segundo plano, toasts de estado, botón "Buscar actualizaciones"
+- **Auto-updater** — descarga en segundo plano, toasts de estado, botón "Buscar actualizaciones", e instalación silenciosa (sin asistente NSIS) al pulsar "Instalar" o al cerrar la app
 - **108 tests** — modelos, servicios core (encryption, settings, timeEntries, api, sync, history), timeUtils
 
 ---
@@ -286,6 +286,10 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 ### v1.11.0 — Distribución & Actualizaciones
 
 - [ ] **Actualizaciones silenciosas estilo VS Code**: instalar sin el asistente NSIS (`/S`) al pulsar "Actualizar" o al cerrar la app, con relanzado automático
+  - Implementado en código (`src/main/updater.ts`); pendiente la release `1.11.0` y la verificación en un build empaquetado. Detalle y evidencia en `odd/tasks/silent-updates.md`.
+  - Pulsar "Instalar" → `/S --force-run`: instala en silencio y **relanza** la app en la versión nueva.
+  - Cerrar la app con una actualización ya descargada → `/S` sin `--force-run`: instala en silencio y **no** relanza. Relanzar una app que el usuario acaba de cerrar sería intrusivo, así que ese comportamiento se deja como lo entrega `electron-updater`.
+  - El upgrade silencioso respeta la carpeta elegida en la instalación original: el instalador lee `InstallLocation` del registro y la reutiliza.
 
 ### v2.0.0 — Multi-plataforma
 

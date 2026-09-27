@@ -31,7 +31,13 @@ function registerUpdaterIpcHandlers(): void {
   // without getting "No handler registered" errors.
 
   ipcMain.handle('install-update', () => {
-    if (!isDev) autoUpdater.quitAndInstall();
+    // `quitAndInstall(isSilent, isForceRunAfter)` is positional in electron-updater 6.
+    // `isSilent` passes `/S`, so the assisted NSIS installer runs without showing its
+    // wizard; `isForceRunAfter` passes `--force-run`, which is the only thing that makes
+    // it relaunch the app. With `oneClick: false` the relaunch happens only when BOTH
+    // flags are set, and `isForceRunAfter` is ignored entirely when `isSilent` is false.
+    // Evidence: odd/tasks/silent-updates.md (E1-E3, E7).
+    if (!isDev) autoUpdater.quitAndInstall(true, true);
   });
 
   ipcMain.handle('check-for-updates', async () => {
