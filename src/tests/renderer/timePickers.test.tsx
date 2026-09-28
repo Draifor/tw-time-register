@@ -71,6 +71,21 @@ function TimeForm({ initial = [] as Date[] }: { initial?: Date[] }) {
   );
 }
 
+function RequiredTimeForm() {
+  const { control, handleSubmit } = useForm<FieldValues>({ defaultValues: { t: [] } });
+  return (
+    <form onSubmit={handleSubmit(() => undefined)} noValidate>
+      <InputTime
+        name="t"
+        control={control}
+        rules={{ required: 'required' }}
+        options={{ enableTime: true, noCalendar: true, dateFormat: 'H:i' }}
+      />
+      <button type="submit">submit</button>
+    </form>
+  );
+}
+
 function TimePickerHarness({ onEmit }: { onEmit?: (value: string) => void }) {
   const [tick, setTick] = React.useState(0);
   const [value, setValue] = React.useState('09:00');
@@ -131,6 +146,22 @@ describe('InputTime under react-flatpickr v4', () => {
     // v4's native-input onChange path fed a time string to `new Date`.
     fireEvent.change(container.querySelector('input') as HTMLInputElement, { target: { value: '14:30' } });
     expect(getByTestId('value').textContent).toBe('09:30');
+  });
+
+  it('focuses the picker input when a required field fails validation', async () => {
+    const { container, getByRole } = render(
+      <Strict>
+        <RequiredTimeForm />
+      </Strict>
+    );
+    const input = container.querySelector('input') as HTMLInputElement;
+    expect(document.activeElement).not.toBe(input);
+
+    await act(async () => {
+      fireEvent.click(getByRole('button'));
+    });
+
+    expect(document.activeElement).toBe(input);
   });
 });
 

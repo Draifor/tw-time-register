@@ -19,6 +19,8 @@ interface InputDateProps {
 
 interface FlatpickrInstance {
   setDate: (date: unknown, triggerChange?: boolean) => void;
+  element?: HTMLInputElement;
+  altInput?: HTMLInputElement | null;
 }
 
 /** Normalise the form's value to the ISO `Y-m-d` string flatpickr expects. */
@@ -103,6 +105,14 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
     if (!instance) return;
     instance.setDate(isoValue || null, false);
   }, [instance, isoValue]);
+
+  // Register the picker's real input with RHF — see the note in input-time.tsx.
+  // flatpickr's `altInput` mode keeps the ISO value on a hidden original and the
+  // formatted one on `altInput`, which is the node RHF should focus on error.
+  useEffect(() => {
+    if (!instance) return;
+    fieldRef.current.ref(instance.altInput ?? instance.element ?? null);
+  }, [instance]);
 
   return (
     <div className="w-full">
