@@ -69,7 +69,7 @@ So the deferral was recorded; the document it promised was not. This is it.
 | E16 | **React 19 un-hid the date field's original input, so the form rendered two date rows.** flatpickr's `altInput` mode hides the original input by setting `type="hidden"` imperatively and inserts its own visible alt input; react-flatpickr renders that input with **no `type` prop**, so React 19's rewrite of the `type` attribute on the commit where `value` changes **deletes** the attribute and the original reverts to a visible `text` input (two rows: ISO on top, `altFormat` below). Causality is a controlled A/B — identical source, identical `flatpickr@4.6.13`, identical `react-flatpickr@3.10.13`, identical StrictMode state, React the only variable: installed **React 18.3.1** → `[0] type="hidden"` (one row); installed **React 19.3.0** → `[0] type=null` (two rows). Note the source files are byte-identical across the two runs, because A2 changed only `package.json` + the lockfile. | controlled A/B in a worktree at `892e9d2` (React 18.3.1) vs the working tree (React 19.3.0), same probe file; `flatpickr/dist/esm/index.js:1765-1775` (`setupInputs`: `setAttribute("type", "hidden")`); `node_modules/react-flatpickr/lib/index.js:141-164` (`render` passes props through, so the component never declares `type`) |
 | E17 | **A minimal repro isolated the trigger and validated the fix before any app code was touched.** Matrix over raw react-flatpickr: *static value, no `type`* → original hidden; ***value changes*, no `type`* → **original visible** (this is the trigger, and it is exactly what react-hook-form does when it hydrates the draft); *value changes, `type="hidden"`* → original hidden. The fix is that last row: declare `type="hidden"` so React's model agrees with flatpickr's intent. **Every machine gate was green while the bug was live** (183/183, `type-check`, `lint`, `build`), which is why only a human looking at the app could find it. | throwaway jsdom probe, six cases; the committed regression test `src/tests/renderer/inputDate.test.tsx` pins the same contract; suite went 183 → **185** |
 | E18 | **What `react-flatpickr@4.0.11` actually does — read from the installed package, not the registry (F1's rule).** v4 is a hooks function component with ESM output plus a CJS fallback; it drops `prop-types`, ships its own declarations through its `exports` map, and its peer range is `react: ">= 16 <= 19"` (which is why the v3 peer warning above disappears). Behaviourally: the input is rendered **controlled** to `value.toString()`; `setDate` runs only when the prop differs from the input's current value; the native change event is wrapped into `[new Date(value)]`; the ref API is a `DateTimePickerHandle`; and — the part that decided this task — **it mutates the options object it is handed** to move top-level hook props inside it, then **destroys and recreates the flatpickr instance whenever the merged options identity changes**. | `node_modules/react-flatpickr/package.json` (`version`, `exports`, `type`, `dependencies`, `peerDependencies`); `node_modules/react-flatpickr/build/react-flatpickr.js` (imports, imperative handle, options merge, create effect, setDate guard, native-event onChange, render spread); `build/react-flatpickr.d.ts` |
-| E19 | **That instance-rebuild is why A3 was a rewrite and not a version bump.** The old call-site pattern — handlers as top-level props plus inline or memoized `options` — is broken under v4: **inline options rebuild the instance on every parent render** (an open picker closes), and **memoized options accumulate one extra `onChange` entry per render**. `WorkTimeForm` re-renders every second while the live timer runs, so both were reproduced rather than theorised. All three call sites now build a stable options object, register the change handler inside `options`, read the latest handler through a ref, leave the input uncontrolled and drive flatpickr with `setDate`. `time-picker.tsx` additionally stopped emitting `NaN:NaN`, which was v4's native-event path feeding `"HH:mm"` to `new Date`. | `git diff --numstat`: `input-date.tsx` +68/−25, `input-time.tsx` +77/−15, `time-picker.tsx` +63/−27; pinned by `src/tests/renderer/timePickers.test.tsx` (new, 136 lines) |
+| E19 | **That instance-rebuild is why A3 was a rewrite and not a version bump.** The old call-site pattern — handlers as top-level props plus inline or memoized `options` — is broken under v4: **inline options rebuild the instance on every parent render** (an open picker closes), and **memoized options accumulate one extra `onChange` entry per render**. `WorkTimeForm` re-renders every second while the live timer runs, so both were reproduced rather than theorised. All three call sites now build a stable options object, register the change handler inside `options`, read the latest handler through a ref, leave the input uncontrolled and drive flatpickr with `setDate`. `time-picker.tsx` additionally stopped emitting `NaN:NaN`, which was v4's native-event path feeding `"HH:mm"` to `new Date`. | `git diff --numstat`: `input-date.tsx` +68/−32, `input-time.tsx` +77/−15, `time-picker.tsx` +63/−27; pinned by `src/tests/renderer/timePickers.test.tsx` (new, 136 lines) |
 | E20 | **`type="hidden"` had to stay, and `@types/react-flatpickr` had to go.** v4 still renders its input from a spread without declaring `type`, so React 19 still deletes flatpickr's imperative `hidden` — a controlled A/B against the installed v4 gave two visible inputs without the declaration and one with it. Separately, `@types/react-flatpickr` is now redundant: v4's `exports.types` resolves under `strict`, and removing it leaves `tsc` at exit 0. | `git diff package.json` (exactly two lines: `react-flatpickr` → `^4.0.11`, `@types/react-flatpickr` removed); `node_modules/react-flatpickr/package.json` `exports` |
 | E21 | **A4 landed with one real break, and it was a type surface the plan did not name.** Installed before → after: `i18next` `23.16.0 → 26.4.2`, `react-i18next` `14.1.3 → 17.0.15`, `react-router-dom` `6.30.2 → 7.18.4`, `react-hook-form` `7.68.0 → 7.89.0`, `@tanstack/react-query` `5.90.12 → 5.104.0`, `lucide-react` `0.441.0 → 1.48.0`, `sonner` `2.0.7 → 2.0.8`, `axios` `1.7.7 → 1.20.0`, `date-fns` `4.1.0 → 4.4.0`, plus the nine Radix packages (`alert-dialog`/`dialog` `1.1.23`, `dropdown-menu` `2.1.24`, `label` `2.1.15`, `select` `2.3.7`, `separator` `1.1.15`, `slot` `1.3.3`, `tabs` `1.1.21`, `tooltip` `1.2.16`). E14's prediction held exactly: removing `@types/react-router-dom` dropped the duplicate `@types/react@18.3.23` — `rg 18.3.23 pnpm-lock.yaml` now returns nothing and `pnpm why @types/react` resolves a single `19.3.0`. The old flatpickr peer warning is gone as well (v4's range admits 19). Gates: `npm test` **194/194** (191 floor + 3 new), `type-check`, `lint`, `build` and `pnpm install --frozen-lockfile` all exit 0. | `pnpm install` before/after lines; `pnpm why @types/react --depth 20`; `rg 18.3.23 pnpm-lock.yaml` (no hits); the five gate runs |
 
@@ -175,23 +175,47 @@ breaks would be inventing work.
 | A5 | **no work — the delegation trigger never fired** | the writer rule (2+ non-trivial files) never activated because **zero files needed editing** (E13) |
 | A3 | delegated (one writer) | the writer rule fired as planned: three non-trivial call sites plus a behavioural contract. The extra finding is that the contract check *produced* a rewrite rather than confirming one (F10) |
 
-## Delivery plan (decided 2026-09-27)
+## Delivery plan and outcome (decided 2026-09-27; corrected 2026-09-27, after the merges)
 
 `delivery_strategy: ask-on-risk` → **`chain_strategy: stacked-to-main`** (each PR merges to main in order).
 Trigger: the running authored count crossed the ~400 budget at A3, so the `chained-pr` and
 `work-unit-commits` skills were loaded before slicing. Authored counts exclude the generated lockfile and
 this document.
 
-| PR | Commits | Authored lines | State |
-|---|---|---|---|
-| **1 — React 19** | `23b361f` + `c0ececd` | 88 | The bump **plus the date-field regression it caused**, with its test. They ship together because a PR must not merge a known user-visible regression. Bump reviewed and approved; the fix was `under_budget` when assessed and is now **also covered by the whole-slice approval** below. |
-| **2 — react-flatpickr 4** | `34577dc` | 421 | The migration and the three call-site rewrites. **Over budget by 21** — see below. **Reviewed and approved** inside the whole-slice candidate below; only the *size* gate remains, so PR 2 still needs `size:exception`. |
-| **3 — the coupled renderer versions** | `005d89e` | 136 | `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps, the two `Control` prop fixes (F14) and one new regression test. **Under budget** — 136 authored lines (package.json 39, `WorkTimeForm.tsx` 4, the new test 93), excluding the generated lockfile and this document. **Reviewed and approved** inside the whole-slice candidate below. |
+**Actual delivery: four stacked PRs plus one follow-up, all MERGED into `main` on 2026-09-28.** The PR
+numbers are GitHub's; the original version of this section numbered only three and opened at the React bump.
 
-**`size:exception` recommended for PR 2.** One honest slicing pass was made, and no cohesive split exists:
-splitting the wrapper rewrite would land v4 with two of the three call sites still on the pattern v4
-breaks, which is a regression, not a slice — so the `chained-pr` gate "each slice can land independently"
-does not hold. Per the skill, the overage is reported rather than shrunk by deleting comments or tests.
+| GitHub PR | Branch | Commits | Authored lines | Outcome |
+|---|---|---|---|---|
+| **#1** — silent updates | `pr1-silent-updates` | `e84042e` + `8ea759e` | 154 | The predecessor work the first draft of this section left out, and the omission that matters structurally: it is an **ancestor of every React commit**, so the stacked chain starts here, not at the bump. Its own record belongs to `odd/tasks/silent-updates.md`, which never captured its PR. **MERGED** `8143705`. |
+| **#2** — React 19 | `pr2-react19` | `23b361f` + `c0ececd` | 88 | The bump **plus the date-field regression it caused**, with its test. They ship together because a PR must not merge a known user-visible regression. The bump was approved by its own review; the fix is covered by the whole-slice approval below. **MERGED** `d55c640`. |
+| **#3** — react-flatpickr 4 | `pr3-react-flatpickr4` | `34577dc` + `c3f800f` (+ `ed04a98`) | 652 (+5) | The migration, the three call-site rewrites **and the StrictMode remedy they required** (the pickers rendered empty under `React.StrictMode` until `c3f800f`). **Over budget by 252** → shipped under **`size:exception`**, recorded in the PR's own title. `ed04a98` is a 5-line type-only autofix that entered this PR during review. **MERGED** `b85ff39`. |
+| **#4** — the coupled renderer versions | `pr4-react19-coupled-deps` | `005d89e` | 136 | `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps, the two `Control` prop fixes (F14) and one new regression test. **Under budget** — 136 authored lines (package.json 39, `WorkTimeForm.tsx` 4, the new test 93). **MERGED** `cd2e4e1`. |
+| **#5** — picker `field.ref` (follow-up) | `fix/picker-rhf-ref` | `0060f55` | 86 | Outside the plan: v4's `ref` resolves to a `DateTimePickerHandle` whose `flatpickr` getter is still `undefined` when the ref is attached, so react-hook-form's focus-on-error silently no-opped. Fix plus regression cover in both picker test files. **MERGED** `ca51de9`. |
+
+**Correction (2026-09-27, after the merges): the original plan said "three PRs", and two of its figures were
+wrong.** It opened at the React bump, so it **omitted PR #1** (`pr1-silent-updates`) — which precedes every
+React commit on the branch, and is therefore where the stacked chain actually starts. And its flatpickr row
+listed `34577dc` alone at 421 lines / "over budget by 21": that row was written at `bb425eb`, *before* the
+StrictMode regression was found and fixed in `c3f800f`, and was never updated afterwards. The remedy is
+inseparable from the migration it repairs, for the same reason the three call-site rewrites cannot be split
+— so it belongs in that PR, and its inclusion is what took the overage from 21 to **252** and made
+`size:exception` the real ask. Evidence: `gh pr list --state all`; `git show --numstat` per commit, authored
+lines with the generated lockfile excluded — `23b361f` 8, `c0ececd` 80, `34577dc` 421 (`package.json` 3,
+`input-date.tsx` 100, `input-time.tsx` 92, `time-picker.tsx` 90, `timePickers.test.tsx` 136), `c3f800f` 231
+(`input-date.tsx` 44, `input-time.tsx` 51, `time-picker.tsx` 46, `inputDate.test.tsx` 21,
+`timePickers.test.tsx` 69), `ed04a98` 5, `005d89e` 136, `0060f55` 86.
+
+**`size:exception` — recommended, asked, and granted — for PR #3.** One honest slicing pass was made, and no
+cohesive split exists: splitting the wrapper rewrite would land v4 with two of the three call sites still
+on the pattern v4 breaks, and splitting the remedy from the migration would land a build whose pickers
+render empty — both are regressions, not slices — so the `chained-pr` gate "each slice can land
+independently" does not hold. Per the skill, the overage was reported rather than shrunk by deleting
+comments or tests.
+
+**Review coverage note:** the whole-slice approval recorded below freezes at `ac7addf`'s history, so it
+covers the product commits of PRs #2–#4, and **not** `ed04a98` (type-only, 5 lines) or `0060f55` (86
+lines) — both landed after that candidate, and neither is covered by a review recorded in this document.
 
 ## Review record — whole-slice candidate (A3 + A4)
 
@@ -313,6 +337,7 @@ trusted as behaviourally complete.
 - 2026-09-27 — **Delivery plan agreed: `stacked-to-main`**, three PRs (see the Delivery plan). A3 is the
   authored-line trigger: **421 lines for A3 and ~509 for the slice**, against a ~400 budget. PR 2 carries a
   reported overage of 21 lines and a **`size:exception` recommendation**, because no cohesive split exists.
+  — ***Superseded (2026-09-27):*** the PR 2 figure omitted `c3f800f`; see the Delivery plan's correction.
 - 2026-09-27 — **A3's review is blocked, not declined (F11).** The gate opened lineage
   `review-16182467d565e446` and offered one `review-reliability` slot; the reviewer actor returned an empty
   result twice and the target-bound STATUS still reports the slot offered with the authority untouched.
@@ -370,23 +395,34 @@ trusted as behaviourally complete.
 - 2026-09-27 — **Track A closed: the last smoke test passed.** The user ran the router and
   language-switcher surface A4 added and confirmed everything works, which also discharges the reviewer's
   R3-A6-VERIFICATION-OVERSTATED finding. **Track A is done:** A1–A7 complete, the whole slice reviewed and
-  approved with authority burned, gates green at **194/194**, and no outstanding item. What remains is
-  other tracks (B–G) and the delivery decision — see the Resume block.
+   approved with authority burned, gates green at **194/194**, and no outstanding item. What remains is
+   other tracks (B–G) and the delivery decision — see the Resume block.
+- 2026-09-27 — **The Delivery plan was corrected against the real, merged delivery.** The section said
+  "three PRs"; the delivery was **four stacked PRs plus one follow-up, all MERGED into `main` on
+  2026-09-28**. Two defects were corrected: it opened at the React bump and so **omitted PR #1**
+  (`pr1-silent-updates`), an ancestor of every React commit; and its flatpickr row listed `34577dc` alone
+  (421 lines, "over budget by 21"), written at `bb425eb` before the StrictMode regression was fixed in
+  `c3f800f` — including the remedy takes that PR to **652** authored lines (**over by 252**), which is the
+  `size:exception` that was actually granted. The Resume block was aligned the same way. Evidence:
+  `gh pr list --state all`; `git show --numstat` per commit, generated lockfile excluded. Fixed in passing:
+  E19's `input-date.tsx` deletion count read `−25`; that commit's numstat is `+68/−32` (the authored total
+  was always right at 421, which is what surfaced the typo).
 
 ## Resume — the next session starts here
 
-State at hand-off: **Track A is DONE.** A1–A7 complete; the whole slice `23b361f..HEAD` reviewed and
-**approved** with authority burned (lineage `review-d556562fce06c2db`); and the user's smoke test of the
-router and language-switcher surface passed on 2026-09-27. Branch `staging`, 22 commits ahead of
-`origin/staging`, nothing pushed, clean tree, gates green at **194/194**, and
-`pnpm install --frozen-lockfile` exits 0. **No item in this document is outstanding** — what follows is
-the hand-off to the *next* tracks and to the delivery decision.
+State at hand-off: **Track A is DONE and DELIVERED.** A1–A7 complete; the whole slice `23b361f..HEAD`
+reviewed and **approved** with authority burned (lineage `review-d556562fce06c2db`); the user's smoke test
+of the router and language-switcher surface passed on 2026-09-27; and **all five PRs are MERGED into
+`main`** (PR #1 `8143705`, #2 `d55c640`, #3 `b85ff39`, #4 `cd2e4e1`, #5 `ca51de9`). Local `main` is behind
+`origin/main` and local `staging` still carries the 23 unpushed commits the PRs were sliced from, so
+neither local ref reflects the merge — **`origin/main` is the reference**. Gates were green at **194/194**
+and `pnpm install --frozen-lockfile` exits 0.
 
-1. **Delivery: not started, and it is the user's call.** Three stacked PRs are planned
-   (`chain_strategy: stacked-to-main`): PR 1 = `23b361f` + `c0ececd` (88 authored lines); PR 2 = `34577dc`
-   (421 lines — **needs `size:exception`**, no cohesive split exists); PR 3 = `005d89e` (136 lines).
-   Nothing is pushed and no PR exists. A review outcome is informational and never authorises push, PR or
-   merge.
+1. **Delivery: DONE, by the user.** Four stacked PRs plus one follow-up were opened, reviewed on GitHub and
+   merged into `main` on 2026-09-28 — mapping and per-PR authored counts in the Delivery plan above. The
+   `size:exception` PR #3 required was granted, as its title records. Nothing about the merges changes the
+   constraints below, and a review outcome is informational and never authorises push, PR or merge. **Record
+   gap:** `odd/tasks/silent-updates.md` still never captured that its work shipped as PR #1.
 2. **Track B — Tailwind 4 — is the next planned track**, and it needs **its own feature document** opened
    exactly as this one was when the React track was promised. Scope: `tailwindcss` `3.4.18` → `4.3.3`,
    drop `autoprefixer` and `tailwindcss-animate`, add `tw-animate-css`. E6 records that
