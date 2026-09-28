@@ -68,6 +68,9 @@ So the deferral was recorded; the document it promised was not. This is it.
 | E15 | **The local `node_modules` had been installed by a different package manager than the one the repo locks.** `pnpm add` reported **54 packages** "installed by a different package manager", moved them to `node_modules/.ignored`, and rebuilt the tree. CI's documented path is unaffected (`pnpm install --frozen-lockfile` exits 0, "Lockfile is up to date"), but "it worked locally" had until now been measured against a tree the lockfile did not describe. Unpruned and unreachable leftovers of the pre-bump tree (`react@18.3.1`, `@types/react@17.0.83`) still sit in `.pnpm`; nothing resolves to them. | pnpm's own move warnings (54 entries); `pnpm install --frozen-lockfile` → exit 0; `require.resolve('react/package.json')` → `.pnpm/react@19.3.0/node_modules/react/package.json` |
 | E16 | **React 19 un-hid the date field's original input, so the form rendered two date rows.** flatpickr's `altInput` mode hides the original input by setting `type="hidden"` imperatively and inserts its own visible alt input; react-flatpickr renders that input with **no `type` prop**, so React 19's rewrite of the `type` attribute on the commit where `value` changes **deletes** the attribute and the original reverts to a visible `text` input (two rows: ISO on top, `altFormat` below). Causality is a controlled A/B — identical source, identical `flatpickr@4.6.13`, identical `react-flatpickr@3.10.13`, identical StrictMode state, React the only variable: installed **React 18.3.1** → `[0] type="hidden"` (one row); installed **React 19.3.0** → `[0] type=null` (two rows). Note the source files are byte-identical across the two runs, because A2 changed only `package.json` + the lockfile. | controlled A/B in a worktree at `892e9d2` (React 18.3.1) vs the working tree (React 19.3.0), same probe file; `flatpickr/dist/esm/index.js:1765-1775` (`setupInputs`: `setAttribute("type", "hidden")`); `node_modules/react-flatpickr/lib/index.js:141-164` (`render` passes props through, so the component never declares `type`) |
 | E17 | **A minimal repro isolated the trigger and validated the fix before any app code was touched.** Matrix over raw react-flatpickr: *static value, no `type`* → original hidden; ***value changes*, no `type`* → **original visible** (this is the trigger, and it is exactly what react-hook-form does when it hydrates the draft); *value changes, `type="hidden"`* → original hidden. The fix is that last row: declare `type="hidden"` so React's model agrees with flatpickr's intent. **Every machine gate was green while the bug was live** (183/183, `type-check`, `lint`, `build`), which is why only a human looking at the app could find it. | throwaway jsdom probe, six cases; the committed regression test `src/tests/renderer/inputDate.test.tsx` pins the same contract; suite went 183 → **185** |
+| E18 | **What `react-flatpickr@4.0.11` actually does — read from the installed package, not the registry (F1's rule).** v4 is a hooks function component with ESM output plus a CJS fallback; it drops `prop-types`, ships its own declarations through its `exports` map, and its peer range is `react: ">= 16 <= 19"` (which is why the v3 peer warning above disappears). Behaviourally: the input is rendered **controlled** to `value.toString()`; `setDate` runs only when the prop differs from the input's current value; the native change event is wrapped into `[new Date(value)]`; the ref API is a `DateTimePickerHandle`; and — the part that decided this task — **it mutates the options object it is handed** to move top-level hook props inside it, then **destroys and recreates the flatpickr instance whenever the merged options identity changes**. | `node_modules/react-flatpickr/package.json` (`version`, `exports`, `type`, `dependencies`, `peerDependencies`); `node_modules/react-flatpickr/build/react-flatpickr.js` (imports, imperative handle, options merge, create effect, setDate guard, native-event onChange, render spread); `build/react-flatpickr.d.ts` |
+| E19 | **That instance-rebuild is why A3 was a rewrite and not a version bump.** The old call-site pattern — handlers as top-level props plus inline or memoized `options` — is broken under v4: **inline options rebuild the instance on every parent render** (an open picker closes), and **memoized options accumulate one extra `onChange` entry per render**. `WorkTimeForm` re-renders every second while the live timer runs, so both were reproduced rather than theorised. All three call sites now build a stable options object, register the change handler inside `options`, read the latest handler through a ref, leave the input uncontrolled and drive flatpickr with `setDate`. `time-picker.tsx` additionally stopped emitting `NaN:NaN`, which was v4's native-event path feeding `"HH:mm"` to `new Date`. | `git diff --numstat`: `input-date.tsx` +68/−25, `input-time.tsx` +77/−15, `time-picker.tsx` +63/−27; pinned by `src/tests/renderer/timePickers.test.tsx` (new, 136 lines) |
+| E20 | **`type="hidden"` had to stay, and `@types/react-flatpickr` had to go.** v4 still renders its input from a spread without declaring `type`, so React 19 still deletes flatpickr's imperative `hidden` — a controlled A/B against the installed v4 gave two visible inputs without the declaration and one with it. Separately, `@types/react-flatpickr` is now redundant: v4's `exports.types` resolves under `strict`, and removing it leaves `tsc` at exit 0. | `git diff package.json` (exactly two lines: `react-flatpickr` → `^4.0.11`, `@types/react-flatpickr` removed); `node_modules/react-flatpickr/package.json` `exports` |
 
 ## Track order, and why this order
 
@@ -121,11 +124,11 @@ tag or publish.
 |---|---|---|---|---|
 | A1 | **Readiness audit before any bump:** whether `react-flatpickr` (v3 installed, v4 latest) is React-19-safe and what v4 changed; and which React 19 changes actually touch this app's code paths | read-only | delegated (explore) | [x] — findings E5, E10, E11, E12 |
 | A2 | Bump `react`, `react-dom`, `@types/react`, `@types/react-dom` to 19, **leaving `react-flatpickr` at 3.10.13**. It runs correctly on 19 (E5); the only problem is the peer *declaration*, so the bump must not be entangled with a wrapper rewrite | `package.json`, `pnpm-lock.yaml` | direct inline (a dependency edit; the audit removed the unknowns) | [x] — `^19.3.0` on all four; the only install warning is the predicted flatpickr peer one (F6) |
-| A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [ ] |
+| A3 | Move `react-flatpickr` to **4.0.11** as its **own isolated step**, after A2 is green. v4 is a hooks rewrite that always coerces `value` and wraps `onChange`, so the three call sites' contract must be re-verified, not assumed | `package.json`, `ui/input-date.tsx`, `ui/input-time.tsx`, `ui/time-picker.tsx` | delegated (one writer) — three call sites plus a behavioural contract | [x] — v4 installed; **all three call sites had to be rewritten**, not merely re-verified (E19). Committed `34577dc`; suite 189/189. **The review is blocked, not declined** — see F11 |
 | A4 | Move the renderer versions coupled to React 19: `i18next` 26 + `react-i18next` 17 (E7), `react-router-dom` 7, and the safe minor bumps | `package.json`, `pnpm-lock.yaml` | direct inline | [ ] |
 | A5 | Fix what the bump breaks — the 31 `React.ElementRef` sites are the expected surface (E12) | `src/**` | direct inline (one component + one regression test) | [x] — the *expected* surface did **not** break (E13); the bump broke something else instead. Real fix: `input-date.tsx` + `src/tests/renderer/inputDate.test.tsx` (E16, E17, F8) |
-| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [ ] — machine gates green on React 19, and the **fixed** build passed the human smoke test (date field is one row again). **Remaining: the post-A3 pass over the date/time pickers**, since A3 rewrites the same wrapper |
-| A7 | Record results, evidence and residue here | this document | direct inline | [ ] |
+| A6 | Verify: suite, `type-check`, `lint`, `build`, and a **human smoke test of the packaged app**. The date/time pickers are the highest-risk surface (A3) | — | per-action workers | [x] — machine gates green (**191/191**), and the human smoke test passed **twice**: once on the A2 fix (date field back to one row) and again after A3 + the StrictMode fix (date and duration both show their value when the view opens and after returning to it) |
+| A7 | Record results, evidence and residue here | this document | direct inline | [x] — recorded incrementally through E1–E20, F1–F12, the Route log, the Delivery plan and both Review records. **What is not recorded as done is not done:** A3 and its remedy are un-reviewed (F11, F12), and A4 is untouched. |
 
 Task detail is deliberately deferred to A1's result: writing a fix-list before knowing what actually
 breaks would be inventing work.
@@ -154,6 +157,10 @@ breaks would be inventing work.
 | F7 | **Local install drift, found by accident.** The repo locks with pnpm and CI installs with pnpm, but the working `node_modules` had been produced by a different package manager; pnpm moved 54 packages aside and rebuilt (E15). Nothing in this upgrade required it, and it invalidates nothing — but it is the same class of error as F1: trusting a local artefact instead of the one the record describes. | E15 | Recorded as environment hygiene. `package.json` and `pnpm-lock.yaml` are the artefacts that matter; `node_modules` is gitignored and now matches them. |
 | F8 | **Every machine gate was green on a build with a visible defect, and the human smoke test was the only thing that caught it.** 183/183 tests, `type-check`, `lint` and `build` all passed on React 19 while the date field rendered two rows (E16). This is not a failure of the gates' execution but the ceiling of what they could see: nothing in the suite rendered a flatpickr-backed input, so no test described the contract that broke. The lesson is not "add more tests" in the abstract — it is that **a renderer major moves runtime behaviour, and unit tests only cover it where someone already chose to look.** The plan's extra human step was not ceremony; it was the only instrument that could have found this. | E16, E17; the user's smoke test of the running app | Fixed in `input-date.tsx` with a regression test. **The smoke test must be re-run after the fix** — that is the remainder of A6. |
 | F9 | **The A2 review's R3 warning was a correct prediction, not boilerplate.** It stated, for that exact candidate, that a dependency-only diff carries no assertion that observable behaviour survives the major. It then tested true: the defect lived precisely in the gap between the changed bytes (`package.json` + the lockfile) and the unchanged component runtime. The response was already the right one — route it to A6 — and A6 is where it surfaced. Worth recording that the warning earned its place. | E16, E17; the A2 Review record | No change to process. It is evidence *for* the existing rule that verification of behaviour belongs to a step that can observe behaviour. |
+| F10 | **A3's scope line said "re-verified, not assumed" — the honest outcome is that the call sites had to be *rewritten*.** The plan framed A3 as a version move with a contract check (F3). That check is what produced the rewrite: v4's instance rebuild is invisible in a diff and only shows itself when a parent re-renders — and this parent re-renders every second. Recorded so the 421-line slice is read as "the migration the library required", not as scope creep. | E18, E19 | Kept as the A3 work unit. Deliberately **not** split: splitting the rewrite across two PRs would land v4 with two of three call sites still on the pattern it breaks. |
+| F11 | **The A3 slice has no review, and that is not because the review declined it.** The gate opened lineage `review-16182467d565e446`, selected one lens (`review-reliability`) and offered the slot. The reviewer actor returned an empty result **twice** (`opencode_task_output_empty`), and after each attempt a fresh target-bound STATUS still reported `collect` / `reviewer_results_required` with the authority untouched. Two attempts is the bounded retry, so it stopped there. **State: un-reviewed with an open lineage** — no capture, no receipt, no acknowledgement, nothing burned. Not a Gentle AI engine failure and not reported as one: the reviewer is a client-runtime actor, and an empty sub-agent result is the runtime's. The honest record is that a dependency-plus-rewrite slice of this kind would ship **without independent review**, which is a residual risk the next session must close or consciously accept. | lineage `review-16182467d565e446`; `gentle-ai review status` after each attempt | Retry in a fresh session while the slot is still offered, or accept the risk explicitly. **Never claim this candidate was reviewed.** |
+| F12 | **The reviewer actor is unavailable in this session, and the bounded retry is now spent on both lineages.** The StrictMode fix (`c3f800f`) changed the candidate, so the gate opened a **fresh** lineage `review-adc411d312248c2a` and offered one `review-reliability` slot; the reviewer actor returned `opencode_task_output_empty` on the first attempt. State after: `state: reviewing`, `generation: 1`, `action: collect`, `reason_code: reviewer_results_required`, authority untouched — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** Three empty reviewer results across two lineages is an actor/session problem, not a candidate one: the *same* actor completed the A2 review earlier in this session, and the failure reproduced both with a hand-authored materialisation and with the bare provider binding alone (which rules out the prompt size I suspected). No further attempts were made. | lineages `review-16182467d565e446` (2 attempts) and `review-adc411d312248c2a` (1 attempt); `gentle-ai review status` after each | Neither the A3 migration nor its remedy carries an independent review. Close it in a fresh session, or accept the residual risk in writing. **Not a Gentle AI engine defect and not reported as one** — an empty sub-agent result belongs to the client runtime. |
+| F13 | **The reviewer actor is unavailable in a fresh session too, so the A3 slice's review is closed as an accepted risk instead of being left open.** The hand-off's entry point was re-run exactly: `gentle-ai review assess --base-ref 23b361f --committed-only` returned `review_due: true` / `slice_budget_reached` (8 paths, 784 changed lines, `medium`), and its `next_transition` opened a **third** lineage `review-eb3e736869e2d2c8` with one `review-reliability` lens and a 200-line correction budget. The consent envelope was relayed verbatim and **granted**; the reviewer actor then returned `opencode_task_output_empty` **four times**. After every attempt the bound target STATUS returned `action: collect` / `reviewer_results_required` with `state: reviewing`, `generation: 1` and the revision unchanged — **no capture, no receipt, no acknowledgement, nothing burned, no result invented.** The same failure now spans two sessions and three lineages (F11, F12), and Engram holds an equivalent prior occurrence in the `electron-30-to-44` probe gate (a *readability* lens empty three times), so it is an actor/environment failure and not a property of this candidate. **Disposition: the residual risk is accepted in writing** — the A3 migration and its remedy ship without independent review. This is a recorded risk, never a reviewed candidate. | lineages `review-16182467d565e446` (2 attempts, prior session), `review-adc411d312248c2a` (1, prior session), `review-eb3e736869e2d2c8` (4, this session); `gentle-ai review status` after every attempt; Engram observation on the `electron-30-to-44` probe gate | **Closed as accepted risk.** Never claimed as reviewed. Not reported as a Gentle AI engine defect — an empty sub-agent result belongs to the client runtime. |
 
 ## Route log
 
@@ -163,6 +170,25 @@ breaks would be inventing work.
 | A1 | delegated (one narrow read-only audit) | crosses several files and one external package's internals |
 | A2 | direct inline | as planned: one hand-authored file (`package.json`); the audit had already removed the unknowns and A1 had done the cross-file reading |
 | A5 | **no work — the delegation trigger never fired** | the writer rule (2+ non-trivial files) never activated because **zero files needed editing** (E13) |
+| A3 | delegated (one writer) | the writer rule fired as planned: three non-trivial call sites plus a behavioural contract. The extra finding is that the contract check *produced* a rewrite rather than confirming one (F10) |
+
+## Delivery plan (decided 2026-09-27)
+
+`delivery_strategy: ask-on-risk` → **`chain_strategy: stacked-to-main`** (each PR merges to main in order).
+Trigger: the running authored count crossed the ~400 budget at A3, so the `chained-pr` and
+`work-unit-commits` skills were loaded before slicing. Authored counts exclude the generated lockfile and
+this document.
+
+| PR | Commits | Authored lines | State |
+|---|---|---|---|
+| **1 — React 19** | `23b361f` + `c0ececd` | 88 | The bump **plus the date-field regression it caused**, with its test. They ship together because a PR must not merge a known user-visible regression. Bump reviewed and approved; the fix was assessed `under_budget` and never separately reviewed. |
+| **2 — react-flatpickr 4** | `34577dc` | 421 | The migration and the three call-site rewrites. **Over budget by 21** — see below. **Review closed as accepted risk (F13): it ships without independent review.** |
+| **3 — the coupled renderer versions** | — (A4, not started) | unknown | `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps. |
+
+**`size:exception` recommended for PR 2.** One honest slicing pass was made, and no cohesive split exists:
+splitting the wrapper rewrite would land v4 with two of the three call sites still on the pattern v4
+breaks, which is a regression, not a slice — so the `chained-pr` gate "each slice can land independently"
+does not hold. Per the skill, the overage is reported rather than shrunk by deleting comments or tests.
 
 ## Review record — A2 candidate
 
@@ -213,7 +239,8 @@ trusted as behaviourally complete.
 - Delivery strategy: `ask-on-risk`. Measured so far: **88 authored lines** of product change — 8 in
   `package.json` (4 additions + 4 deletions), 7 in `input-date.tsx` and 73 in the new regression test —
   with the generated lockfile and this document's own edits excluded. Far under the ~400 budget, so no
-  slicing decision is due. Re-evaluate at A3 and A4.
+  slicing decision is due. Re-evaluate at A3 and A4. — ***Superseded:** A3 crossed the budget; see the
+  Delivery plan.*
 - 2026-09-27 — **A2's work unit reviewed and approved** (native RDD, one lens `review-reliability`,
   lineage `review-6f157c82099b9c26`). Authority burned by the exact acknowledgement; no correction opened.
   Three non-blocking findings, all three carried to **A6** rather than patched here — see the Review
@@ -245,3 +272,66 @@ trusted as behaviourally complete.
   under the temp dir). Inspected before removal: all three were detached HEADs on commits already
   reachable from `main`, `staging`, `origin/*` and tag `v1.10.0`, with **no uncommitted changes, no
   stashes and no unique commits**. Nothing was lost; only the registrations went.
+- 2026-09-27 — **A3 complete, committed `34577dc`.** `react-flatpickr` `3.10.13` → `^4.0.11`, and the
+  three call sites were **rewritten**, not re-verified: v4 mutates the options object and rebuilds the
+  instance whenever its identity changes (E18), so the old top-level-hook-props pattern closes an open
+  picker on every parent render and accumulates a duplicate `onChange` per render (E19). Gates:
+  `npm test` **189/189** (185 floor + 4 new), `type-check`, `lint`, `build` and
+  `pnpm install --frozen-lockfile` all clean — the parent independently re-ran `npm test` as a spot check.
+  `type="hidden"` retained after a controlled A/B against v4; `@types/react-flatpickr` removed (E20).
+- 2026-09-27 — **Delivery plan agreed: `stacked-to-main`**, three PRs (see the Delivery plan). A3 is the
+  authored-line trigger: **421 lines for A3 and ~509 for the slice**, against a ~400 budget. PR 2 carries a
+  reported overage of 21 lines and a **`size:exception` recommendation**, because no cohesive split exists.
+- 2026-09-27 — **A3's review is blocked, not declined (F11).** The gate opened lineage
+  `review-16182467d565e446` and offered one `review-reliability` slot; the reviewer actor returned an empty
+  result twice and the target-bound STATUS still reports the slot offered with the authority untouched.
+  **No capture, no receipt, no acknowledgement, nothing burned, and no result has been invented.** The
+  candidate is **un-reviewed with an open lineage**, and that is the state the next session inherits.
+- 2026-09-27 — **The Engram mirror is still PENDING.** Two more `mem_save` attempts failed the same way
+  (`gentle-engram could not confirm Engram session registration`), including one from the delegated writer.
+  This document remains the authoritative record.
+- 2026-09-27 — **The smoke test found a second, deeper A3 regression, and it is fixed (`c3f800f`).** After
+  A3 the date and duration fields showed **empty** whenever `WorkTimeForm` mounted, while the value stayed
+  intact in the form the whole time — a display bug, not data loss, confirmed by watching the form value
+  rather than the DOM. Cause: under `React.StrictMode` (which the app uses, `main.tsx:10`) v4 renders
+  twice with the *same* props object, so its props-copy memo returns the copy it already mutated by
+  deleting `onCreate` (`build/react-flatpickr.js:22-23`); `onCreate` becomes `undefined`, which is also in
+  the create effect's dependency list (`:34-46`), so the instance is destroyed and rebuilt and the
+  replacement is never published — the live instance sat at `selected=0`. **Fix:** all three pickers
+  publish the instance *and* apply the current value from flatpickr's own `onReady`, which lives inside
+  `options` (untouched by v4) and fires at the end of every init
+  (`flatpickr/dist/esm/index.js:88`); the instance is held in state so a replacement re-runs the sync
+  effect. **Coverage gap closed:** both picker test files now render under `React.StrictMode` — they did
+  not, and that is why 189 tests were green on a visibly broken app. Gates: **191/191**, `type-check`,
+  `lint`, `build` clean.
+- 2026-09-27 — **This candidate's review is blocked too (F12).** Fresh lineage
+  `review-adc411d312248c2a`, reviewer actor returned empty on the first attempt, authority untouched. The
+  bounded retry is spent; no further attempts. **The A3 slice and its remedy are un-reviewed.**
+- 2026-09-27 — **The A3 review was re-attempted from a fresh session and still could not be captured
+  (F13), so the residual risk is accepted in writing.** `assess --base-ref 23b361f --committed-only`
+  returned `review_due: true` / `slice_budget_reached`; its transition opened fresh lineage
+  `review-eb3e736869e2d2c8`; the consent envelope was relayed verbatim and **granted**; the reviewer actor
+  returned empty **four times** and the bound STATUS kept reporting `collect` /
+  `reviewer_results_required` with the revision unchanged. **No capture, no receipt, no acknowledgement,
+  nothing burned, no result invented.** The A3 slice and its remedy ship **without independent review** —
+  recorded as an accepted risk, never as a reviewed candidate.
+
+## Resume — the next session starts here
+
+State at hand-off: Track A is functionally complete **except A4**. Branch `staging`, 17 commits ahead of
+`origin/staging`, nothing pushed, working tree clean, all four gates green at **191/191**.
+
+1. ~~**Close the A3 review first (F11, F12).**~~ **Closed (F13): attempted from a fresh session and
+   impossible there too.** A third lineage (`review-eb3e736869e2d2c8`) was opened, the consent envelope was
+   relayed verbatim and granted, and the reviewer actor returned empty four more times with the authority
+   untouched. The A3 slice and its remedy ship **without independent review**; the residual risk is
+   **accepted in writing, not discharged**. There is no receipt and no acknowledgement, so **never claim
+   either was reviewed**.
+2. **Then A4** — `i18next` 26 + `react-i18next` 17 + `react-router-dom` 7 + the safe minor bumps. It is the
+   last task in Track A. It will push the delivery slice further past the budget, so re-read the Delivery
+   plan before the first commit and keep `stacked-to-main`.
+3. ~~**The Engram mirror is still pending.**~~ **Resolved (2026-09-27, same session).** The write path
+   works again: `mem_doctor` reports 9/9 and `mem_save` is succeeding, so the mirror for this document has
+   been re-synchronised.
+4. **Constraints unchanged:** no Node bump (22.17.0 satisfies every target), no version bump, tag or
+   publish; English artifacts; the reviewed boundary is still `23b361f`.
