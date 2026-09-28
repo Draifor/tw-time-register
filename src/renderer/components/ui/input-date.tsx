@@ -17,8 +17,9 @@ interface InputDateProps {
   options?: any;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FlatpickrInstance = any;
+interface FlatpickrInstance {
+  setDate: (date: unknown, triggerChange?: boolean) => void;
+}
 
 /** Normalise the form's value to the ISO `Y-m-d` string flatpickr expects. */
 function toIsoDate(value: unknown): string {
