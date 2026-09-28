@@ -958,7 +958,7 @@ export default function WorkTimeForm() {
           <h1 className="text-2xl font-bold tracking-tight">{t('workTimeForm.title')}</h1>
           <p className="text-muted-foreground">{t('workTimeForm.subtitle')}</p>
         </div>
-        <TotalTimeDay control={control} />
+        <TotalTimeDay control={typedControl} />
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-1">
@@ -1062,7 +1062,7 @@ export default function WorkTimeForm() {
                     placeholder={t('workTimeForm.descPlaceholder')}
                     className="w-full"
                     name={`entries.${index}.description`}
-                    control={control}
+                    control={typedControl}
                     rules={{ required: 'Description is required' }}
                   />
                 </div>
