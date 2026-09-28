@@ -95,7 +95,7 @@ This is that document.
 
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
-| B1 | **Settle the E1/E2 disposition before any bump:** wiring `@custom-variant dark` correctly activates 67 utilities that have never rendered. Fix them into effect, or preserve the current look | — | orchestrator + user (product decision) | [ ] **blocked on the decision** |
+| B1 | **Settle the E1/E2 disposition before any bump:** wiring `@custom-variant dark` correctly activates 67 utilities that have never rendered. Fix them into effect, or preserve the current look | — | orchestrator + user (product decision) | [x] — **decided 2026-09-28: fix it.** The user's call: *"arreglemos lo que sea necesario para que todo funcione como debería funcionar"*. The dark variant gets wired the documented way and the 67 utilities start applying. The smoke test must therefore compare the status colours **in dark mode** explicitly (see Verification mode) — this is an intended change, not a regression, and the only way to tell them apart is to have looked first. |
 | B2 | Choose the integration path: `@tailwindcss/vite` + `@import "tailwindcss"` (recommended, E4/E12) or `@tailwindcss/postcss` keeping the PostCSS pipeline | `vite.config.ts`, `postcss.config.js`, `package.json` | direct inline | [ ] |
 | B3 | Port the token layer to `@theme inline`: the 20 shadcn colours (E6), `borderRadius` (`:53-57`), and the Inter stack that E3 shows has never applied | `src/renderer/index.css`, `tailwind.config.js` | delegated (one writer) | [ ] |
 | B4 | Replace `tailwindcss-animate` with `tw-animate-css` and re-verify the 10 animation lines in 7 files (E10) | `package.json`, CSS entry, 7 component files | delegated (one writer) | [ ] |
@@ -117,8 +117,7 @@ the dark variant is wired correctly.
 
 ## Open questions
 
-1. **E1/E2** — fix the dark variant (67 utilities start applying) or preserve today's look? This is the
-   blocking product decision (B1).
+1. ~~**E1/E2** — fix the dark variant or preserve today's look?~~ **Resolved 2026-09-28: fix it** (B1). The 67 utilities will start applying; the visual comparison is what proves the result is the intended one rather than a regression.
 2. **The full rename table** — the upgrade guide renames the `*-sm` end of the shadow scale (verified). The
    equivalents for `rounded-sm` (**6**), `blur-sm` (**1**) and `outline-none` (**41**) must be read off the
    guide's table before those sites are touched. Currently **UNVERIFIED by this document**.
@@ -128,7 +127,12 @@ the dark variant is wired correctly.
 ## Delivery plan (not yet decided)
 
 `delivery_strategy: ask-on-risk` (the repo default). No slice decision is due yet: the changed-line forecast
-does not exist until B1 is settled. Re-evaluate after B3–B5 are scoped.
+does not exist until B3–B5 are scoped. Re-evaluate after they are.
+
+**Adjacent and still open, but not part of this track:** the content merged into `main` since the last tag
+(`v1.10.0`; the diff is 16 files, **+2293 −804**) is **unreleased**. It carries the silent updater, the
+React 19 major and the flatpickr 4 rewrite. Whether `1.11.0` ships before or after this track is a separate
+human decision, and nothing in this document depends on it.
 
 ## Progress
 
@@ -139,3 +143,8 @@ does not exist until B1 is settled. Re-evaluate after B3–B5 are scoped.
   sits under a v2-era `variants` key, so it has never generated anything). B1 was created to settle E1/E2
   before any version bump, because a correct v4 dark variant would activate those 67 utilities for the
   first time — a visual change no machine gate can see.
+- 2026-09-28 — **B1 decided: fix it.** The user chose to wire the dark variant correctly, accepting that the
+  67 `dark:` utilities start applying for the first time (E1/E2). Recorded in this form on purpose: the
+  intended dark-mode colours appearing and a regression are **indistinguishable without a before/after
+  comparison**, so the smoke test is the only instrument that tells them apart. No dependency has moved and
+  no version has been bumped; the next task is **B2** (integration path).
