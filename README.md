@@ -286,7 +286,7 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 ### v1.11.0 — Distribución & Actualizaciones
 
 - [ ] **Actualizaciones silenciosas estilo VS Code**: instalar sin el asistente NSIS (`/S`) al pulsar "Actualizar" o al cerrar la app, con relanzado automático
-  - Implementado en código (`src/main/updater.ts`); pendiente la release `1.11.0` y la verificación en un build empaquetado. Detalle y evidencia en `odd/tasks/silent-updates.md`.
+  - Publicado en la release `1.11.0` (`src/main/updater.ts`); **pendiente la verificación en un build empaquetado**: un cliente `1.10.0` que reciba `1.11.0` todavía corre el updater viejo, así que el instalado silencioso recién se observa con un cliente ya en `1.11.0` recibiendo una versión posterior (verificación programada). Detalle y evidencia en `odd/tasks/silent-updates.md`.
   - Pulsar "Instalar" → `/S --force-run`: instala en silencio y **relanza** la app en la versión nueva.
   - Cerrar la app con una actualización ya descargada → `/S` sin `--force-run`: instala en silencio y **no** relanza. Relanzar una app que el usuario acaba de cerrar sería intrusivo, así que ese comportamiento se deja como lo entrega `electron-updater`.
   - El upgrade silencioso respeta la carpeta elegida en la instalación original: el instalador lee `InstallLocation` del registro y la reutiliza.
