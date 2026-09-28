@@ -17,7 +17,7 @@
  */
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 // The real i18n instance: InputDate derives its flatpickr locale from
 // `i18n.language`, so initialising it exercises the same path the app uses
@@ -42,6 +42,16 @@ function DateForm({ initialDate = ISO_DATE }: { initialDate?: string }) {
       </button>
       <InputDate name="d" control={control} />
     </div>
+  );
+}
+
+function RequiredDateForm() {
+  const { control, handleSubmit } = useForm<{ d: string }>({ defaultValues: { d: '' } });
+  return (
+    <form onSubmit={handleSubmit(() => undefined)} noValidate>
+      <InputDate name="d" control={control} rules={{ required: 'required' }} />
+      <button type="submit">submit</button>
+    </form>
   );
 }
 
@@ -86,5 +96,21 @@ describe('InputDate dual-input contract', () => {
     expect(visibleInputs(container)).toHaveLength(1);
     expect(originalInput(container)?.getAttribute('type')).toBe('hidden');
     expect(visibleInputs(container)[0].value).toBe('Mon-05-Oct-2026');
+  });
+
+  it('focuses the visible picker input when a required field fails validation', async () => {
+    const { container, getByRole } = render(
+      <Strict>
+        <RequiredDateForm />
+      </Strict>
+    );
+    const visible = visibleInputs(container)[0];
+    expect(document.activeElement).not.toBe(visible);
+
+    await act(async () => {
+      fireEvent.click(getByRole('button'));
+    });
+
+    expect(document.activeElement).toBe(visible);
   });
 });

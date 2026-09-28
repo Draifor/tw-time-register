@@ -14,6 +14,8 @@ interface InputTimeProps {
 
 interface FlatpickrInstance {
   setDate: (date: unknown, triggerChange?: boolean) => void;
+  element?: HTMLInputElement;
+  altInput?: HTMLInputElement | null;
 }
 
 function InputTime({ className, control, name, rules, options }: InputTimeProps) {
@@ -92,10 +94,24 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
     instance.setDate(pickerValue, false);
   }, [instance, pickerValue]);
 
+  // Register the picker's real input with RHF. In react-flatpickr v4 a `ref`
+  // resolves to `DateTimePickerHandle` (`{ flatpickr?: Instance }`, set through
+  // useImperativeHandle), whose `flatpickr` getter is still `undefined` when the
+  // ref is attached — the instance is created in a later effect — so a ref
+  // forwarded straight through never points at an input, and RHF's
+  // `shouldFocusError` (it wraps `ref.focus` behind a `typeof === 'function'`
+  // guard) becomes a silent no-op. The live instance is only known here; register
+  // its visible node (`altInput` in alt-input mode, `element` otherwise).
+  useEffect(() => {
+    if (!instance) return;
+    fieldRef.current.ref(instance.altInput ?? instance.element ?? null);
+  }, [instance]);
+
   // field.onChange and field.value are wired through `options` and the setDate
   // effect above; leaving them off the DOM input keeps it uncontrolled so React
-  // does not overwrite what flatpickr writes.
-  const fieldProps = { ...field, onChange: undefined, value: undefined };
+  // does not overwrite what flatpickr writes. `ref` is stripped from the spread
+  // too — it is re-pointed at the real input by the effect above.
+  const fieldProps = { ...field, onChange: undefined, value: undefined, ref: undefined };
 
   return <DateTimePickerAny {...fieldProps} className={`${baseStyles} ${className || ''}`} options={stableOptions} />;
 }
