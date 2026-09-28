@@ -75,7 +75,37 @@ Pre-publish local proof on `6b5d14c`: `pnpm install --frozen-lockfile` exit 0 wi
 
 ## Progress
 
-- 2026-09-28 — **`v1.11.0` published from `main` and repaired.** The release commit, tag, CI run and
-  verification are above. The duplicate-release defect (D1–D5) was found *because* the release was checked
-  against the URLs the updater uses rather than against the asset list — which is exactly what R4 proposes to
-  automate.
+- 2026-09-28 — **`v1.11.0` published from `main` and repaired.** The release commit, tag, CI run, the defect
+  (D1–D5) and the verification are above. The defect was found *because* the release was checked against the
+  URLs the updater actually uses rather than against the asset list the API reports — which is exactly what
+  R4 proposes to automate.
+
+## Resume — the next session starts here
+
+State at hand-off (2026-09-28): `main` = `origin/main` = `staging` = `origin/staging` = `2f3b9b2`, working
+tree clean, `v1.11.0` published **and repaired** (all three updater URLs return 200). **Nothing is
+outstanding from the release itself** — what follows is the next work, in order.
+
+1. **R3 — establish why two publisher configs are resolved from a single `build.publish`.** Start from the two
+   verified facts in *Root cause*: `PublishManager.getOrCreatePublisher` caches by
+   `safeStringifyJson(publishConfig)` (so two `publishing` lines mean two structurally **different** configs),
+   while `getPublishConfigs` resolves target → platform → top-level and should yield exactly one. The way to
+   settle it is to compare the configs the run actually resolved (`DEBUG=electron-builder` around a dry
+   publish, or a read of `getResolvedPublishConfig`/`expandPublishConfig`). **Do not assert a cause before
+   that comparison** — the current record deliberately leaves it UNVERIFIED.
+2. **R4 — add the post-publish gate** to `.github/workflows/release.yml` (see *Proposed durable fix*): fail
+   when more than one release exists for the pushed tag, or when `latest.yml`, the installer or the blockmap
+   is not 200 through `https://github.com/Draifor/tw-time-register/releases/download/<tag>/<file>`.
+   **Do not trigger a real publish to test it.** The gate can be exercised without publishing anything:
+   `v1.11.0` is healthy (all three URLs 200) and `v1.10.0` still has its duplicate pair in place — though
+   *which* of `v1.10.0`'s assets resolve has not been tested, so measure it before relying on it as the
+   negative case.
+3. **Then Track B** — `odd/tasks/tailwind-4.md`, on the **local** branch `feat/tailwind-4` (`7dbe5cc`: the
+   opening inventory plus the B1 decision *fix the dark variant*). B1 is settled; the next open task is **B2**
+   (choose the integration path). That branch has not been pushed — pushing it and opening its PR are still
+   the user's decisions.
+
+**Do not repeat:** the repair steps in this document were one-off surgery on a published release. The durable
+answer is R4, and the duplicate-release defect is pre-existing — assume it will happen again until the gate
+exists.
+
