@@ -189,3 +189,9 @@ true)`), and this document says so instead of leaving it implied.
 - 2026-09-27 — **Residue.** The packaged behaviour ("press install → no wizard → app comes back on the
   new version") is **not yet observed**; it needs a `1.11.0` release and a human at a keyboard, the same
   way the `1.10.0` update path needed one. `F3` and `F5` are recorded, not fixed.
+- 2026-09-28 — **`1.11.0` is released** (`6b5d14c`, published from `main`; the release and the pipeline
+  defect it exposed are recorded in `odd/tasks/release-duplicate-release.md`). That discharges the release
+  half of the residue above, and it sharpens the remaining half: the packaged behaviour is still **not
+  observed**, and the mechanical reason is now explicit — the app that installs silently is the one running
+  the new code, so a `1.10.0` client receiving `1.11.0` still runs the old updater. The observation needs a
+  client already on `1.11.0` receiving a **later** version.
