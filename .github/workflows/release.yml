@@ -85,6 +85,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm exec electron-builder --win --publish always
 
+      # The afterPack probe above certifies the packaged bytes; this gate
+      # certifies the *release* those bytes were published to. electron-builder
+      # can create two GitHub releases for a single tag because its publisher
+      # cache is not atomic under the concurrently-queued blockmap and .exe
+      # artifact tasks. The assets then split across the duplicate copies, and
+      # GitHub resolves releases/download/<tag>/<asset> to only one of them, so
+      # latest.yml and the installer can 404 even though the run is green.
+      #
+      # The gate asserts exactly one release per tag and fetches the three
+      # updater URLs, failing on any non-200 or size mismatch. It is
+      # deliberately cause-independent: it must catch a duplicate release
+      # whatever produced it. It is read-only and never re-publishes, so it only
+      # runs on a tag push (a manual dispatch publishes nothing).
+      - name: Verify release assets (tag push)
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/verify-release-assets.ps1
+
       - name: Package (manual dispatch, no publish)
         if: github.event_name == 'workflow_dispatch'
         run: pnpm exec electron-builder --win --publish never

@@ -103,7 +103,7 @@ That is cause-independent, cheap, and it turns "the release silently reaches nob
 | R1 | Repair `v1.11.0`: delete the blockmap-only duplicate, re-upload the blockmap, verify all three tag URLs | — | direct inline | [x] — done and verified |
 | R2 | Record the release and the defect with its evidence | this document | direct inline | [x] |
 | R3 | Establish why two publisher configs are resolved from one `build.publish` | `node_modules/app-builder-lib` (read-only) | delegated (one reader) | [x] — premise falsified: configs never diverge; it is a non-atomic publisher-cache race (see *Root cause*) |
-| R4 | Add the post-publish gate to the workflow | `.github/workflows/release.yml` | delegated (one writer) | [ ] |
+| R4 | Add the post-publish gate to the workflow | `.github/workflows/release.yml` + `scripts/verify-release-assets.ps1` (the script was added so the gate is exercisable without publishing) | delegated (one writer) | [x] — implemented and verified against the live API; **no review receipt** (see *Review outcome*) |
 | R5 | Repair `v1.10.0`'s duplicate the same way (optional) | — | direct inline | [ ] |
 
 ## Evidence that the release content itself is correct
@@ -126,29 +126,57 @@ Pre-publish local proof on `6b5d14c`: `pnpm install --frozen-lockfile` exit 0 wi
   `.exe`). No dry publish was run: it cannot exercise the race (`isPublish` is false, so publishers are never
   created) and the configs are provably identical. See *Root cause* for the full chain and the explicit
   inference boundary.
+- 2026-09-28 — **R4 implemented and functionally verified.** `scripts/verify-release-assets.ps1` asserts exactly
+  one release per tag (listing releases and filtering by `tag_name`, *never* `GET /releases/tags/{tag}`, which
+  returns one arbitrary release) and `HEAD`s `latest.yml`, the installer and the `.exe.blockmap` through the
+  updater's own tag URLs, failing on any non-200 or `Content-Length` mismatch against the release asset.
+  `release.yml` runs it after the publish step, on tag push only. Verified by direct execution against the
+  live public API: **`v1.11.0` → exit 0** (all three URLs 200 with matching sizes) and **`v1.10.0` → exit 1**
+  (two releases for the tag). I reproduced both runs myself after the writer's own report.
+
+## Review outcome — R4 candidate (2026-09-28)
+
+The candidate was submitted to the native review (RDD is on). Tier **high**, four lenses, correction budget
+110. **Three of the four lens slots were captured and admitted** (`review-resilience`, `review-readability`,
+`review-reliability`, all `admission_decision: completed`). The **`review-risk` slot (order 0) never produced
+a capturable result** across three attempts; the last one returned the typed
+`opencode_review_transport_completion_safety_bound_exceeded` — the host-controlled completion bound that
+fires when the host Task is silently dead. The lineage is stopped at the provider's documented
+`unachievable_lens_slot`, state `reviewing`, candidate bytes unchanged, **no receipt and no acknowledgement**.
+
+Read this honestly: **R4 was delivered without a review receipt.** The review is stopped, not approved. The
+functional verification above is what actually certifies the gate; the review added partial adversarial
+coverage (3 lenses) and no receipt.
+
+This is a known upstream defect class, not a local one. It was reported with observable evidence only, as one
+occurrence comment on the existing automated tracker:
+https://github.com/Gentleman-Programming/gentle-ai/issues/4873#issuecomment-5938398167
+(the canonical closed issue is #3477; the class is "a selected lens slot never yields a capturable result
+while sibling lenses of the same candidate are admitted"). No labels were changed and nothing was reopened.
 
 ## Resume — the next session starts here
 
-State at hand-off (2026-09-28): `main` = `origin/main` = `staging` = `origin/staging` = `91d10d6`, working
-tree clean, `v1.11.0` published **and repaired** (all three updater URLs return 200). **Nothing is
-outstanding from the release itself** — what follows is the next work, in order.
+State at hand-off (2026-09-28): `main` carries the **R4 work-unit commit** (the gate plus this document),
+working tree clean, `v1.11.0` published **and repaired** (all three updater URLs return 200). The release
+itself has nothing outstanding; what follows is the next work, in order.
 
-1. **R4 — add the post-publish gate** to `.github/workflows/release.yml` (see *Proposed durable fix*): fail
-   when more than one release exists for the pushed tag, or when `latest.yml`, the installer or the blockmap
-   is not 200 through `https://github.com/Draifor/tw-time-register/releases/download/<tag>/<file>`.
-   **Do not trigger a real publish to test it.** The gate can be exercised without publishing anything:
-   `v1.11.0` is healthy (all three URLs 200) and `v1.10.0` still has its duplicate pair in place — though
-   *which* of `v1.10.0`'s assets resolve has not been tested, so measure it before relying on it as the
-   negative case. R3's result makes the *cause-independent* design deliberate: the gate must catch any
-   duplicate release, whatever put it there.
-2. **R5 (optional)** — repair `v1.10.0`'s duplicate the same way R1 repaired `v1.11.0`.
-3. **Then Track B** — `odd/tasks/tailwind-4.md`, on the **local** branch `feat/tailwind-4` (`7dbe5cc`: the
+1. **R5 (optional)** — repair `v1.10.0`'s duplicate the same way R1 repaired `v1.11.0`. **Measured now, so the
+   open question is closed:** for `v1.10.0` the tag URLs resolve to `latest.yml` (200, 364 B) and the `.exe`
+   (200, 127,237,580 B) while the `.exe.blockmap` returns **404** — GitHub picked the duplicate that holds the
+   exe, which is why an installed 1.10.0 client can still update. Repair = download the blockmap from the tag
+   URL, delete the blockmap-only duplicate, re-upload the blockmap to the surviving release, then re-run the
+   gate for `v1.10.0` and watch it turn green (it is the built-in negative case today).
+2. **Then Track B** — `odd/tasks/tailwind-4.md`, on the **local** branch `feat/tailwind-4` (`7dbe5cc`: the
    opening inventory plus the B1 decision *fix the dark variant*). B1 is settled; the next open task is **B2**
    (choose the integration path). That branch has not been pushed — pushing it and opening its PR are still
    the user's decisions.
 
 **Do not repeat:** the repair steps in this document were one-off surgery on a published release. The durable
-answer is R4, and the defect is pre-existing — assume it will happen again until the gate exists. **Do not
-re-open R3:** the cause is settled by source, and the earlier "two different configs" inference is
-falsified; a dry publish cannot settle it further because it cannot exercise the race.
+answer is R4, and the defect is pre-existing — the publisher-cache race will happen again, which is exactly
+what the gate catches. **Do not re-open R3:** the cause is settled by source, and the earlier "two different
+configs" inference is falsified; a dry publish cannot settle it further because it cannot exercise the race.
+**Do not re-litigate the R4 review:** the candidate is stopped at a documented provider stop
+(`unachievable_lens_slot`) because one lens slot cannot complete in this runtime. That is an upstream defect
+class already reported; retrying the same slot produced the same typed bound three times. A new review of
+*these* bytes is not the fix — the bytes are already verified, and a re-run would restart the same coin flip.
 
