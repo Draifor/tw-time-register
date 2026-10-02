@@ -96,7 +96,7 @@ This is that document.
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
 | B1 | **Settle the E1/E2 disposition before any bump:** wiring `@custom-variant dark` correctly activates 67 utilities that have never rendered. Fix them into effect, or preserve the current look | — | orchestrator + user (product decision) | [x] — **decided 2026-09-28: fix it.** The user's call: *"arreglemos lo que sea necesario para que todo funcione como debería funcionar"*. The dark variant gets wired the documented way and the 67 utilities start applying. The smoke test must therefore compare the status colours **in dark mode** explicitly (see Verification mode) — this is an intended change, not a regression, and the only way to tell them apart is to have looked first. |
-| B2 | Choose the integration path: `@tailwindcss/vite` + `@import "tailwindcss"` (recommended, E4/E12) or `@tailwindcss/postcss` keeping the PostCSS pipeline | `vite.config.ts`, `postcss.config.js`, `package.json` | direct inline | [ ] |
+| B2 | Choose the integration path: `@tailwindcss/vite` + `@import "tailwindcss"` (recommended, E4/E12) or `@tailwindcss/postcss` keeping the PostCSS pipeline | `vite.config.ts`, `postcss.config.js`, `package.json`, `src/renderer/index.css`, `tailwind.config.js` | delegated (one writer) | [x] — **done 2026-10-02, commit `8be00df`.** Chose `@tailwindcss/vite` + `@import "tailwindcss"` (E4/E12), bridging the legacy JS config through `@config`. `postcss.config.js` deleted (v4 no longer ships the PostCSS plugin in core), `autoprefixer` dropped, `tailwindcss-animate` kept for B4. `@custom-variant dark (&:where(.dark, .dark *))` added and the dead `darkMode: ['class','class']` line removed — this lands **B1's wiring**. All gates green: frozen-lockfile, `npm test` **196 passed** (floor 194), `type-check`, `lint`, `build`. Built CSS: `prefers-color-scheme` **0** vs `:where(.dark` **37** and `.dark\:` **35**. |
 | B3 | Port the token layer to `@theme inline`: the 20 shadcn colours (E6), `borderRadius` (`:53-57`), and the Inter stack that E3 shows has never applied | `src/renderer/index.css`, `tailwind.config.js` | delegated (one writer) | [ ] |
 | B4 | Replace `tailwindcss-animate` with `tw-animate-css` and re-verify the 10 animation lines in 7 files (E10) | `package.json`, CSS entry, 7 component files | delegated (one writer) | [ ] |
 | B5 | Apply the E8 class-level renames, after confirming the full rename table against the upgrade guide | `src/**` | delegated (one writer) | [ ] |
@@ -148,3 +148,14 @@ human decision, and nothing in this document depends on it.
   intended dark-mode colours appearing and a regression are **indistinguishable without a before/after
   comparison**, so the smoke test is the only instrument that tells them apart. No dependency has moved and
   no version has been bumped; the next task is **B2** (integration path).
+- 2026-10-02 — **B2 done (commit `8be00df`): the engine moved to the v4 Vite plugin.** Chose
+  `@tailwindcss/vite` + `@import "tailwindcss"` over keeping PostCSS (E4/E12). The legacy
+  `tailwind.config.js` is bridged with `@config` for this step, `postcss.config.js` is deleted and
+  `autoprefixer` dropped, and the dark variant is now class-based: `@custom-variant dark
+  (&:where(.dark, .dark *))` replaced the dead `darkMode: ['class','class']` — so **B1's wiring landed
+  here**. Green: frozen-lockfile install, **196 tests passed** (floor 194), `type-check`, `lint`,
+  `build`. An independent check of the built stylesheet shows `prefers-color-scheme` **0**,
+  `:where(.dark` **37**, `.dark\:` **35**, `.bg-background` **5** — the variant is bound to the `.dark`
+  class, not the media query. `pnpm` reported the known local install drift and rebuilt ~60 packages
+  from `.ignored`; the `MODULE_TYPELESS_PACKAGE_JSON` warning from the ESM-looking `tailwind.config.js`
+  is benign. Next: **B3** (port the tokens to `@theme inline`).
