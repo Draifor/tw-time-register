@@ -100,7 +100,7 @@ This is that document.
 | B3 | Port the token layer to `@theme inline`: the 20 shadcn colours (E6), `borderRadius` (`:53-57`), and the Inter stack that E3 shows has never applied | `src/renderer/index.css`, `tailwind.config.js` | delegated (one writer) | [ ] |
 | B4 | Replace `tailwindcss-animate` with `tw-animate-css` and re-verify the 10 animation lines in 7 files (E10) | `package.json`, CSS entry, 7 component files | delegated (one writer) | [ ] |
 | B5 | Apply the E8 class-level renames, after confirming the full rename table against the upgrade guide | `src/**` | delegated (one writer) | [ ] |
-| B6 | Verify: suite, `type-check`, `lint`, `build`, the visual comparison against B1's baseline, and the human smoke test | — | per-action workers | [ ] |
+| B6 | Verify: suite, `type-check`, `lint`, `build`, the visual comparison against B1's baseline, and the human smoke test — plus a cheap build-output assertion that the generated stylesheet contains the token layer and the class-bound dark variant (review finding `R3-no-build-output-assertion`) | — | per-action workers | [ ] |
 | B7 | Record results, evidence and residue here | this document | direct inline | [ ] |
 
 Task detail for B3–B5 is deliberately deferred to B1's outcome: the token port's shape depends on whether
@@ -159,3 +159,12 @@ human decision, and nothing in this document depends on it.
   class, not the media query. `pnpm` reported the known local install drift and rebuilt ~60 packages
   from `.ignored`; the `MODULE_TYPELESS_PACKAGE_JSON` warning from the ESM-looking `tailwind.config.js`
   is benign. Next: **B3** (port the tokens to `@theme inline`).
+- 2026-10-02 — **B2 reviewed and approved** (lineage `review-0c65487840411dd9`, lens `review-reliability`,
+  tier medium, candidate `c221ec2..d1c27e5`, 7 paths / 991 changed lines), **authority burned**. The
+  consolidated review returned **4 advisory (non-blocking) findings** and opened no correction:
+  (a) `R3-dark-variant-activation` — the dark variant now renders but has no automated assertion;
+  (b) `R3-v4-utility-default-shift` — v4's ring/shadow/rounded/blur/outline defaults render differently
+  until B5 renames them; (c) `R3-legacy-plugin-bridge` — `tailwindcss-animate` is still loaded through the
+  legacy `@config` bridge until B4; (d) `R3-no-build-output-assertion` — a cheap generated-CSS assertion
+  would prove the result at a lower cost than the B6 smoke test (now folded into B6). (a)–(c) are the
+  track's own planned work; none is a reason to re-run the review on this candidate.
