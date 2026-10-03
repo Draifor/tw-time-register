@@ -7,7 +7,7 @@
 - **Branch:** `feat/performance-fase-3` (off `staging` @ `8025e6d`, the R-7 close)
 - **Created:** 2026-10-03
 - **Source:** `docs/PERFORMANCE-ROADMAP.md` §Fase 3 (PERF-301, PERF-302), re-verified on disk on 2026-10-03
-- **Status:** IMPLEMENTATION COMPLETE — native review + delivery pending (user-owned)
+- **Status:** IMPLEMENTATION COMPLETE + REVIEW APPROVED — human smoke pass and delivery pending (user-owned)
 
 ## Objective
 
@@ -139,6 +139,24 @@ dependency changes. No push, no PR, no merge (the user owns those).
   virtualization test scaffold was written before the implementation (it failed until wired),
   which is a weak RED, not a TDD RED.
 
+## Review outcome
+
+- Native RDD review (medium risk, lineage `review-3209c08a012e4396`, single lens
+  `review-reliability`, 674 changed lines) → **approved**; the exact acknowledgement burned the
+  authority. No correction was opened. Three non-blocking advisory findings, recorded as
+  separate later work (they do not reopen this candidate):
+  - **R3-1 (WARNING)** `src/tests/renderer/timeLogsTableVirtual.test.tsx:31-57` — the only
+    automated cover replaces `@tanstack/react-virtual` with a hand-written mock, so the real
+    hook (scroll binding, `measureElement`, overscan, scroll-driven re-windowing) is never
+    exercised and real windowing has no executed proof until the human smoke pass. This is the
+    same gap the Honest limitations section records — it is now independently confirmed.
+  - **R3-2 (SUGGESTION)** `src/renderer/hooks/useIncrementalRows.ts:37-40` — the window re-caps
+    only when the numeric `total` changes; a different list with the same length would keep a
+    previously revealed window. Deriving the reset key from list identity would be stricter.
+  - **R3-3 (SUGGESTION)** `package.json:53` — the new runtime dependency resolves by caret range
+    with no tracked lockfile (a pre-existing repo condition), so its exact tree is not
+    reproducible from the repository alone.
+
 ## Route log
 
 | Task group | Route | Trigger evidence |
@@ -169,3 +187,7 @@ dependency changes. No push, no PR, no merge (the user owns those).
   `ask-on-risk` delivery-strategy question raised with the user. The "Show more" label uses the
   new `reports.showMore` locale key (en/es); `package-lock.json` is NOT tracked by this repo,
   so it was intentionally left uncommitted.
+- 2026-10-03 — **Native RDD review approved** (medium, lineage `review-3209c08a012e4396`, lens
+  `review-reliability`, 674 lines); the exact acknowledgement burned authority. 3 non-blocking
+  advisories recorded (see Review outcome). The human smoke pass (large dataset + Profiler) is
+  still outstanding.
