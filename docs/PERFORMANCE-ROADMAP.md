@@ -211,12 +211,12 @@ Estos son bugs funcionales (no solo lentitud) y conviene resolverlos temprano.
 ---
 
 ### Fase 3 — Tablas grandes
-- [ ] **PERF-301 · 🔴 Virtualizar `TimeLogsTable`**
+- [x] **PERF-301 · 🔴 Virtualizar `TimeLogsTable`**
   - **Ubicación:** `src/renderer/components/TimeLogsTable.tsx:422`
   - **Problema:** renderiza todo el historial con múltiples `TooltipProvider` por fila.
   - **Acción:** `@tanstack/react-virtual` o `react-window`; alternativa: paginación por IPC.
 
-- [ ] **PERF-302 · 🟡 Virtualizar/reducir tablas de `ReportsPage`**
+- [x] **PERF-302 · 🟡 Virtualizar/reducir tablas de `ReportsPage`**
   - **Ubicación:** `src/renderer/pages/ReportsPage.tsx:318` (`byTask`), `:455` (`byDay`)
   - **Acción:** virtualizar o limitar; memoizar el `Map` de tareas (PERF-203).
 

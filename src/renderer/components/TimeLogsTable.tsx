@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
@@ -64,7 +65,19 @@ export interface TimeLogRowProps {
   onSyncOne: (entry: TimeEntry) => void;
   onRequestDelete: (entry: TimeEntry) => void;
   onOpenExternal: (link: string) => void;
+  /** Absolute index in the filtered list; consumed by the virtualizer's measurement. */
+  dataIndex?: number;
+  /** react-virtual measurement callback; attached to the row element when windowed. */
+  measureRef?: (element: Element | null) => void;
 }
+
+/** Default row height before react-virtual measures the real rendered height. */
+const ROW_ESTIMATE_HEIGHT = 48;
+
+const estimateRowHeight = () => ROW_ESTIMATE_HEIGHT;
+
+/** Stable no-op ref so an un-windowed row keeps `React.memo` referential equality. */
+const NOOP_MEASURE_REF = () => {};
 
 // Extracted out of the table body so a row can skip re-rendering when only
 // unrelated rows or parent state change. Every prop is referentially stable or
@@ -81,7 +94,9 @@ export const TimeLogRow = React.memo(function TimeLogRow({
   onDuplicate,
   onSyncOne,
   onRequestDelete,
-  onOpenExternal
+  onOpenExternal,
+  dataIndex,
+  measureRef = NOOP_MEASURE_REF
 }: TimeLogRowProps) {
   const { t } = useTranslation();
   const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
@@ -91,6 +106,8 @@ export const TimeLogRow = React.memo(function TimeLogRow({
 
   return (
     <tr
+      ref={measureRef}
+      data-index={dataIndex}
       className={`border-b last:border-0 transition-colors ${
         idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'
       } hover:bg-accent/30`}
@@ -340,6 +357,31 @@ function TimeLogsTable() {
   }, [tasks]);
 
   const hasActiveFilters = search || filterTask || filterDateFrom || filterDateTo;
+
+  // Windowing: only the visible slice of `filteredData` is mounted. The real
+  // <table> markup is kept — the virtualizer only tells us which absolute row
+  // indexes to render, and the off-window range is represented by top/bottom
+  // spacer rows so scroll height and row parity stay correct.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredData.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: estimateRowHeight,
+    overscan: 8,
+    getItemKey: (index) => filteredData[index]?.entryId ?? index
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const firstVirtualItem = virtualItems[0];
+  const lastVirtualItem = virtualItems[virtualItems.length - 1];
+  const topSpacerHeight = firstVirtualItem ? firstVirtualItem.start : 0;
+  const totalSize = rowVirtualizer.getTotalSize();
+  const bottomSpacerHeight = lastVirtualItem ? Math.max(0, totalSize - lastVirtualItem.end) : 0;
+
+  // A new filter re-orders/shrinks the list; bring the window back to the top.
+  useEffect(() => {
+    rowVirtualizer.scrollToOffset(0);
+  }, [search, filterTask, filterDateFrom, filterDateTo, rowVirtualizer]);
 
   function clearFilters() {
     setSearch('');
@@ -631,9 +673,9 @@ function TimeLogsTable() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border overflow-auto">
+      <div ref={scrollRef} className="rounded-md border overflow-auto" style={{ maxHeight: '70vh' }}>
         <table className="w-full min-w-[960px] text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-muted/50">
             <tr className="border-b bg-muted/50">
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colTask')}</th>
@@ -654,12 +696,25 @@ function TimeLogsTable() {
                 </td>
               </tr>
             )}
-            {filteredData.map((entry, idx) => {
+            {/* Top spacer: keeps the rows below the window at their real offset. */}
+            {topSpacerHeight > 0 && (
+              <tr data-virtual-spacer="top" aria-hidden="true">
+                <td colSpan={9} style={{ height: `${topSpacerHeight}px`, padding: 0 }} />
+              </tr>
+            )}
+            {virtualItems.map((virtualItem) => {
+              const entry = filteredData[virtualItem.index];
+              if (!entry) return null;
               // --- EDITING ROW ---
               if (editingId === entry.entryId) {
                 const editDuration = parseDuration(editData.startTime, editData.endTime);
                 return (
-                  <tr key={entry.entryId} className="border-b last:border-0 bg-accent/40">
+                  <tr
+                    key={entry.entryId}
+                    ref={rowVirtualizer.measureElement}
+                    data-index={virtualItem.index}
+                    className="border-b last:border-0 bg-accent/40"
+                  >
                     {/* Date */}
                     <td className="px-2 py-2">
                       <input
@@ -808,7 +863,9 @@ function TimeLogsTable() {
                 <TimeLogRow
                   key={entry.entryId}
                   entry={entry}
-                  idx={idx}
+                  idx={virtualItem.index}
+                  dataIndex={virtualItem.index}
+                  measureRef={rowVirtualizer.measureElement}
                   isSyncing={syncingIds.has(entry.entryId)}
                   isRowLocked={editingId !== null}
                   isDuplicating={duplicatingId === entry.entryId}
@@ -822,6 +879,12 @@ function TimeLogsTable() {
                 />
               );
             })}
+            {/* Bottom spacer: completes the scroll height down to the last row. */}
+            {bottomSpacerHeight > 0 && (
+              <tr data-virtual-spacer="bottom" aria-hidden="true">
+                <td colSpan={9} style={{ height: `${bottomSpacerHeight}px`, padding: 0 }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
