@@ -127,7 +127,7 @@ bounded and reviewable.
 | E4 | **Tune to green:** run `npm run lint`, triage every finding, adopt/justify each `@eslint-react` rule; fix only what belongs in scope, record the rest as follow-ups | `eslint.config.mjs` | direct inline (design/measure loop) | [x] — **done 2026-10-03; the user chose to adopt the full preset.** `pnpm exec eslint .` exits **0** with **0 errors and 83 warnings** across 29 files. No rule was disabled. The warnings are recorded as a deliberate baseline and as follow-ups (see Residue); none is fatal and none belongs to a lint-tooling track. |
 | E5 | **ESLint 9 → 10 major:** `eslint` → `^10.12.0`, `@eslint/js` → `^10.0.1`; re-run lint and resolve any ESLint-10-specific findings | `package.json`, `pnpm-lock.yaml`, `eslint.config.mjs` | direct inline (version bump + measured follow-up) | [x] — **done 2026-10-03.** `pnpm install` exit 0 (`+44 -43`); `eslint` **10.12.0**, `@eslint/js` **10.0.1**. `pnpm exec eslint --version` → **v10.12.0**; `eslint .` exits **0** with the **same 0 errors / 83 warnings** — no ESLint-10-specific finding, no config change needed. Only the pre-existing `electron-builder` peer mismatch is printed. |
 | E6 | **Full gates:** `pnpm install --frozen-lockfile`, `lint`, `type-check`, `npm test` (≥196), `build`; confirm no peer warnings and a single `typescript` | — | per-action worker (read-only verification) | [x] — **done 2026-10-03, VERDICT PASS.** `pnpm install --frozen-lockfile` exit 0 with **no peer warnings**; `pnpm exec eslint --version` **v10.12.0**; `npm run lint` exit 0 (**0 errors / 83 warnings**, all `@eslint-react/*`); `type-check` 0; `npm test` **196/196** across 21 files; `npm run build` 0. Neither legacy plugin is in `package.json` or the lockfile, and `typescript@5.8.3` is absent. Bundle sizes and the +8 B delta are recorded in Residue. |
-| E7 | **Record results, evidence and residue here**, run the native review of the scoped candidate, then close the track | this document | direct inline | [ ] |
+| E7 | **Record results, evidence and residue here**, run the native review of the scoped candidate, then close the track | this document | direct inline | [x] — **done 2026-10-03.** Native review **approved**, authority **burned** (lineage `review-1e551d07dc0db568`, one `review-reliability` lens, medium, **no correction opened**); the two advisory findings are recorded in the Review record. This closing commit is the last work unit. Push and PR remain the user's decision. |
 
 ## Acceptance criteria
 
@@ -160,6 +160,21 @@ bounded and reviewable.
   baseline, and no non-comment main-process source changed — so the earlier figure is unreproducible, not a
   regression. `preload.js` is unchanged at **7,396 B**. The artifact is gitignored and not part of the PR.
 - _(further residue recorded as the track advances)_
+
+## Review record
+
+Native review of the scoped candidate (9 paths, 3,028 changed lines including the generated lockfile, tier
+**medium**), lineage `review-1e551d07dc0db568`, one lens `review-reliability`, correction budget 200 — **no
+correction opened**. Consent was relayed and **granted** by the user; the reviewer captured on the **first**
+attempt; the exact acknowledgement burned the authority (`gentle-ai.review-acknowledged/v1`,
+`consumed_revision` `sha256:fdf1c2fd…`).
+
+Two non-blocking advisory findings, recorded as follow-ups (never a reason to re-review this candidate):
+
+| ID | Severity | Claim | Disposition |
+|---|---|---|---|
+| R3-1 | WARNING | Dropping `eslint-plugin-react` silently lowers the machine gate: `react/jsx-filename-extension` (**error**) and `react/function-component-definition` (warn) have no `@eslint-react` equivalent, and the candidate records the loss as residue without a follow-up task to restore an equivalent. | **Valid and honest — already recorded in Residue as a coverage loss.** `@eslint-react` offers the component-definition rule only through the extra `@eslint-react/kit` package and has no equivalent for the filename-extension rule at all; the codebase conforms to both today. Restoring an equivalent (custom rule or a lint test) is a **candidate follow-up**, not part of a lint-tooling migration. Not patched here — a source change after the review freeze would need a new candidate. |
+| R3-2 | SUGGESTION | The seven re-pointed inline disables only work while a rule named exactly `@eslint-react/rules-of-hooks` / `@eslint-react/exhaustive-deps` exists; a future rename would turn them into silent no-ops with nothing to fail. | **Valid.** The candidate proves the rule ids only indirectly (lint exit code and the 83-warning inventory). The cheap close — enable `--report-unused-disable-directives` (or add an assertion) so a renamed rule fails the gate — is a **candidate follow-up**; on the current candidate the directives are demonstrably consumed (the inventory matches the pre-migration 83 warnings). |
 
 ## Delivery plan
 
@@ -203,3 +218,10 @@ which carries Tracks C and D) and a single PR to `staging`.** Push and PR remain
   `preload.ts`) still yields **547,019 B**, and the build tools and `electron-updater` are byte-identical
   versions — so the delta is **not** Track E's source change; it is an unreproducible baseline figure. **Next:
   E7 — record, review, close.**
+- 2026-10-03 — **E7 complete; Track E is CLOSED.** Native review **approved** with authority **burned**
+  (lineage `review-1e551d07dc0db568`, one `review-reliability` lens, medium, no correction opened); the two
+  advisory findings and their dispositions are recorded in the Review record. Work units: `1cb3be6`
+  (`build(lint): bump eslint to 9.39.5 and typescript-eslint to 8.71.0`), `05d6128` (`build(lint): migrate
+  React linting to @eslint-react`), `93bbc9f` (`build(lint): upgrade eslint to 10.12.0 and @eslint/js to
+  10.0.1`), `503056a` (`docs(odd): record the ESLint 10 track gates`) plus this closing commit. **E1–E7
+  complete.** Push and PR remain the user's decision.
