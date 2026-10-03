@@ -14,6 +14,9 @@ import type { SyncHistory, SyncHistoryDB, SyncHistoryInput } from '../database/m
 
 export type { SyncHistory, SyncAction } from '../database/models/History';
 
+/** Max entry ids per `IN (?, ...)` clause — keeps the statement under SQLite's bound-variable limit. */
+const BATCH_CHUNK_SIZE = 500;
+
 function mapRow(row: SyncHistoryDB): SyncHistory {
   return {
     historyId: row.history_id,
@@ -48,6 +51,39 @@ export async function recordSync(input: SyncHistoryInput): Promise<number> {
     ]
   );
   return result.lastID ?? 0;
+}
+
+/**
+ * Record many sync events in ONE transaction.
+ *
+ * better-sqlite3 transactions require a synchronous callback, so the inserts
+ * use `db.runSync` INSIDE the callback: a synchronous SQLite error propagates to
+ * the transaction controller and rolls the whole batch back. `recordSync` is
+ * kept for single-row callers.
+ */
+export async function recordSyncBatch(inputs: SyncHistoryInput[]): Promise<void> {
+  if (inputs.length === 0) {
+    return;
+  }
+
+  const db = await openDb();
+  const sql = `INSERT INTO ${columnsDB.TABLE_NAME}
+       (${columnsDB.ENTRY_ID}, ${columnsDB.ACTION}, ${columnsDB.TW_TIME_ENTRY_ID},
+        ${columnsDB.TW_TASK_ID}, ${columnsDB.SUCCESS}, ${columnsDB.ERROR_MESSAGE})
+     VALUES (?, ?, ?, ?, ?, ?)`;
+
+  db.transaction(() => {
+    for (const input of inputs) {
+      db.runSync(sql, [
+        input.entryId,
+        input.action,
+        input.twTimeEntryId ?? null,
+        input.twTaskId ?? null,
+        input.success ? 1 : 0,
+        input.errorMessage ?? null
+      ]);
+    }
+  });
 }
 
 /**
@@ -129,4 +165,44 @@ export async function getLastSuccessfulSync(entryId: number): Promise<SyncHistor
     [entryId]
   );
   return row ? mapRow(row) : null;
+}
+
+/**
+ * Return the last successful sync for each of the given entries using ONE
+ * windowed query per chunk instead of one query per entry (eliminates the N+1).
+ *
+ * Semantics match {@link getLastSuccessfulSync}: only `success = 1` rows, newest
+ * by `synced_at DESC`, tie-broken by `history_id DESC`. Entry ids are chunked to
+ * respect SQLite's bound-variable limit and the per-chunk maps are merged. An
+ * empty input returns an empty Map without touching the database.
+ */
+export async function getLastSuccessfulSyncBatch(entryIds: number[]): Promise<Map<number, SyncHistory>> {
+  const byEntry = new Map<number, SyncHistory>();
+  const uniqueIds = [...new Set(entryIds)];
+  if (uniqueIds.length === 0) {
+    return byEntry;
+  }
+
+  const db = await openDb();
+  for (let start = 0; start < uniqueIds.length; start += BATCH_CHUNK_SIZE) {
+    const chunk = uniqueIds.slice(start, start + BATCH_CHUNK_SIZE);
+    const placeholders = chunk.map(() => '?').join(',');
+    const rows = await db.all<SyncHistoryDB>(
+      `SELECT * FROM (
+         SELECT *,
+                ROW_NUMBER() OVER (
+                  PARTITION BY ${columnsDB.ENTRY_ID}
+                  ORDER BY ${columnsDB.SYNCED_AT} DESC, ${columnsDB.ID} DESC
+                ) AS rn
+         FROM ${columnsDB.TABLE_NAME}
+         WHERE ${columnsDB.ENTRY_ID} IN (${placeholders}) AND ${columnsDB.SUCCESS} = 1
+       )
+       WHERE rn = 1`,
+      chunk
+    );
+    for (const row of rows) {
+      byEntry.set(row.entry_id, mapRow(row));
+    }
+  }
+  return byEntry;
 }

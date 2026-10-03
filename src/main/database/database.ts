@@ -62,14 +62,39 @@ class DatabaseWrapper {
   }
 
   /**
+   * Synchronous counterparts of `run`/`get`/`all`.
+   *
+   * Use these ONLY inside a `transaction` callback. The async methods execute
+   * their SQL synchronously too, but an `async` function converts a thrown
+   * SQLite error into a rejected promise — so a failure would never reach the
+   * transaction controller and better-sqlite3 would COMMIT partial work. These
+   * methods let a thrown error propagate synchronously, which makes the
+   * transaction roll back.
+   */
+  runSync(sql: string, params?: unknown[]): RunResult {
+    const result = this.prepare(sql).run(...(params ?? []));
+    return { lastID: Number(result.lastInsertRowid), changes: result.changes };
+  }
+
+  getSync<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | undefined {
+    return this.prepare(sql).get(...(params ?? [])) as T | undefined;
+  }
+
+  allSync<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[] {
+    return this.prepare(sql).all(...(params ?? [])) as T[];
+  }
+
+  /**
    * Run `fn` inside a SQLite transaction backed by better-sqlite3.
    *
    * `fn` MUST be synchronous: better-sqlite3 rejects a callback that returns a
-   * promise, so awaited work cannot happen inside it. The wrapper's `run`,
-   * `get` and `all` execute their SQL synchronously, so they can be invoked
-   * (without awaiting) inside the callback and still be part of the
-   * transaction. The synchronous return value `T` can still be awaited by
-   * callers without changing behaviour.
+   * promise, so awaited work cannot happen inside it. Callbacks MUST use the
+   * synchronous `runSync`/`getSync`/`allSync` methods (NOT the async
+   * `run`/`get`/`all`): only a synchronous throw reaches the transaction
+   * controller and triggers `ROLLBACK`. Awaiting an async method inside the
+   * callback would let the SQL run but hide any error, committing partial work.
+   * The synchronous return value `T` can still be awaited by callers without
+   * changing behaviour.
    */
   transaction<T>(fn: () => T): T {
     return this.db.transaction(fn)();

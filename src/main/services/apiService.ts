@@ -1,5 +1,13 @@
 import axios from 'axios';
-import { getTWCredentials } from './settingsService';
+import { getTWCredentials, type TWCredentials } from './settingsService';
+import { withRetry } from '../utils/httpRetry';
+import { mapWithConcurrency } from '../utils/concurrency';
+
+/** TeamWork page size for the paginated time-entries endpoint. */
+const PAGE_SIZE = 500;
+
+/** Safety cap for pagination loops; exceeding it fails loudly instead of looping forever. */
+const MAX_PAGES = 100;
 
 // Build Basic Auth header from username and password
 function buildAuthHeader(username: string, password: string): string {
@@ -26,13 +34,17 @@ export async function testTWConnection(): Promise<{
   }
 
   try {
-    const response = await axios.get(`https://${domain}.teamwork.com/me.json`, {
-      headers: {
-        Authorization: buildAuthHeader(username, password),
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/me.json`, {
+          headers: {
+            Authorization: buildAuthHeader(username, password),
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }),
+      { method: 'GET' }
+    );
     const person = response.data?.person;
     const name = `${person?.['first-name'] || ''} ${person?.['last-name'] || ''}`.trim();
     const userId = String(person?.id || '');
@@ -56,35 +68,40 @@ export interface SendTimeEntryInput {
 
 // Send a single time entry to TeamWork
 export async function sendTimeEntryToTW(
-  entry: SendTimeEntryInput
+  entry: SendTimeEntryInput,
+  credentials?: TWCredentials
 ): Promise<{ success: boolean; twEntryId?: number; message?: string }> {
-  const { domain, username, password, userId } = await getTWCredentials();
+  const { domain, username, password, userId } = credentials ?? (await getTWCredentials());
 
   if (!domain || !username || !password) {
     return { success: false, message: 'TeamWork credentials not configured' };
   }
 
   try {
-    const response = await axios.post(
-      `https://${domain}.teamwork.com/tasks/${entry.twTaskId}/time_entries.json`,
-      {
-        'time-entry': {
-          description: entry.description,
-          date: entry.date.replace(/-/g, ''), // YYYY-MM-DD → YYYYMMDD
-          time: entry.startTime,
-          hours: entry.hours,
-          minutes: entry.minutes,
-          isbillable: entry.isBillable,
-          ...(userId ? { 'person-id': userId } : {})
-        }
-      },
-      {
-        headers: {
-          Authorization: buildAuthHeader(username, password),
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      }
+    const response = await withRetry(
+      () =>
+        axios.post(
+          `https://${domain}.teamwork.com/tasks/${entry.twTaskId}/time_entries.json`,
+          {
+            'time-entry': {
+              description: entry.description,
+              date: entry.date.replace(/-/g, ''), // YYYY-MM-DD → YYYYMMDD
+              time: entry.startTime,
+              hours: entry.hours,
+              minutes: entry.minutes,
+              isbillable: entry.isBillable,
+              ...(userId ? { 'person-id': userId } : {})
+            }
+          },
+          {
+            headers: {
+              Authorization: buildAuthHeader(username, password),
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000
+          }
+        ),
+      { method: 'POST' }
     );
     // TW API v1 returns the new entry id as `timeLogEntryId`; fallback to `id`
     const rawId = response.data?.timeLogEntryId ?? response.data?.id;
@@ -122,10 +139,14 @@ export async function fetchTWSubtasks(parentTaskLink: string): Promise<{
   const headers = { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' };
 
   try {
-    const response = await axios.get(`https://${domain}.teamwork.com/tasks/${taskId}/subtasks.json`, {
-      headers,
-      timeout: 15000
-    });
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/tasks/${taskId}/subtasks.json`, {
+          headers,
+          timeout: 15000
+        }),
+      { method: 'GET' }
+    );
 
     // TW API v1 returns "tasks", v2 may return "todo-items"
     const raw: Record<string, unknown>[] =
@@ -171,10 +192,14 @@ export async function debugTWSubtasks(parentTaskLink: string): Promise<{
   const headers = { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' };
 
   try {
-    const response = await axios.get(`https://${domain}.teamwork.com/tasks/${taskId}/subtasks.json`, {
-      headers,
-      timeout: 15000
-    });
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/tasks/${taskId}/subtasks.json`, {
+          headers,
+          timeout: 15000
+        }),
+      { method: 'GET' }
+    );
     return { success: true, raw: response.data };
   } catch (error) {
     const axiosError = error as { response?: { data?: unknown; status?: number }; message?: string };
@@ -208,9 +233,10 @@ export interface TWTimeEntry {
 export async function fetchUserTimeEntriesForTask(
   twTaskId: string,
   userId: string,
-  options?: { fromDate?: string; toDate?: string }
+  options?: { fromDate?: string; toDate?: string },
+  credentials?: TWCredentials
 ): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
-  const { domain, username, password } = await getTWCredentials();
+  const { domain, username, password } = credentials ?? (await getTWCredentials());
   if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
 
   const toYYYYMMDD = (iso: string) => iso.replace(/-/g, '');
@@ -219,14 +245,18 @@ export async function fetchUserTimeEntriesForTask(
   if (options?.toDate) params.toDate = toYYYYMMDD(options.toDate);
 
   try {
-    const response = await axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}/time_entries.json`, {
-      params,
-      headers: {
-        Authorization: buildAuthHeader(username, password),
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}/time_entries.json`, {
+          params,
+          headers: {
+            Authorization: buildAuthHeader(username, password),
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }),
+      { method: 'GET' }
+    );
 
     const raw: Record<string, unknown>[] = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
 
@@ -264,32 +294,37 @@ export async function fetchUserTimeEntriesForTask(
  */
 export async function updateTimeEntryInTW(
   twEntryId: string,
-  entry: SendTimeEntryInput
+  entry: SendTimeEntryInput,
+  credentials?: TWCredentials
 ): Promise<{ success: boolean; message?: string }> {
-  const { domain, username, password, userId } = await getTWCredentials();
+  const { domain, username, password, userId } = credentials ?? (await getTWCredentials());
   if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
 
   try {
-    await axios.put(
-      `https://${domain}.teamwork.com/time_entries/${twEntryId}.json`,
-      {
-        'time-entry': {
-          description: entry.description,
-          date: entry.date.replace(/-/g, ''),
-          time: entry.startTime,
-          hours: entry.hours,
-          minutes: entry.minutes,
-          isbillable: entry.isBillable,
-          ...(userId ? { 'person-id': userId } : {})
-        }
-      },
-      {
-        headers: {
-          Authorization: buildAuthHeader(username, password),
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      }
+    await withRetry(
+      () =>
+        axios.put(
+          `https://${domain}.teamwork.com/time_entries/${twEntryId}.json`,
+          {
+            'time-entry': {
+              description: entry.description,
+              date: entry.date.replace(/-/g, ''),
+              time: entry.startTime,
+              hours: entry.hours,
+              minutes: entry.minutes,
+              isbillable: entry.isBillable,
+              ...(userId ? { 'person-id': userId } : {})
+            }
+          },
+          {
+            headers: {
+              Authorization: buildAuthHeader(username, password),
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000
+          }
+        ),
+      { method: 'PUT' }
     );
     return { success: true };
   } catch (error) {
@@ -327,48 +362,50 @@ export async function fetchTWTaskDetails(
     'Content-Type': 'application/json'
   };
 
-  const results = await Promise.all(
-    twTaskIds.map(async (id): Promise<TWTaskDetail | null> => {
-      try {
-        const response = await axios.get(`https://${domain}.teamwork.com/tasks/${id}.json`, {
-          headers,
-          timeout: 10000
-        });
-        const item =
-          (response.data?.['todo-item'] as Record<string, unknown>) ??
-          (response.data?.task as Record<string, unknown>) ??
-          {};
+  const results = await mapWithConcurrency(twTaskIds, 5, async (id): Promise<TWTaskDetail | null> => {
+    try {
+      const response = await withRetry(
+        () =>
+          axios.get(`https://${domain}.teamwork.com/tasks/${id}.json`, {
+            headers,
+            timeout: 10000
+          }),
+        { method: 'GET' }
+      );
+      const item =
+        (response.data?.['todo-item'] as Record<string, unknown>) ??
+        (response.data?.task as Record<string, unknown>) ??
+        {};
 
-        const name = String(item.content ?? item.name ?? item.title ?? `Task ${id}`);
+      const name = String(item.content ?? item.name ?? item.title ?? `Task ${id}`);
 
-        // Build parent context: prefer parent task name, fall back to list name, then project name
-        // Note: 'parent-task' is an object { id, content } in TW API — extract .content
-        const parentTaskObj = item['parent-task'] ?? item.parentTask;
-        const parentTaskName = (
-          typeof parentTaskObj === 'object' && parentTaskObj !== null
-            ? String((parentTaskObj as Record<string, unknown>).content ?? '')
-            : String(parentTaskObj ?? '')
-        ).trim();
-        const listName = String(item['todo-list-name'] ?? item.todoListName ?? '').trim();
-        const projectName = String(item['project-name'] ?? item.projectName ?? '').trim();
-        const parentName = parentTaskName || listName || projectName || '';
+      // Build parent context: prefer parent task name, fall back to list name, then project name
+      // Note: 'parent-task' is an object { id, content } in TW API — extract .content
+      const parentTaskObj = item['parent-task'] ?? item.parentTask;
+      const parentTaskName = (
+        typeof parentTaskObj === 'object' && parentTaskObj !== null
+          ? String((parentTaskObj as Record<string, unknown>).content ?? '')
+          : String(parentTaskObj ?? '')
+      ).trim();
+      const listName = String(item['todo-list-name'] ?? item.todoListName ?? '').trim();
+      const projectName = String(item['project-name'] ?? item.projectName ?? '').trim();
+      const parentName = parentTaskName || listName || projectName || '';
 
-        return {
-          twTaskId: id,
-          name,
-          parentName,
-          taskLink: `https://${domain}.teamwork.com/app/tasks/${id}`
-        };
-      } catch {
-        return {
-          twTaskId: id,
-          name: `Task ${id}`,
-          parentName: '',
-          taskLink: `https://${domain}.teamwork.com/app/tasks/${id}`
-        };
-      }
-    })
-  );
+      return {
+        twTaskId: id,
+        name,
+        parentName,
+        taskLink: `https://${domain}.teamwork.com/app/tasks/${id}`
+      };
+    } catch {
+      return {
+        twTaskId: id,
+        name: `Task ${id}`,
+        parentName: '',
+        taskLink: `https://${domain}.teamwork.com/app/tasks/${id}`
+      };
+    }
+  });
 
   return { success: true, tasks: results.filter((t): t is TWTaskDetail => t !== null) };
 }
@@ -378,11 +415,14 @@ export async function fetchTWTaskDetails(
  * Supports an optional date range (fromDate / toDate in YYYY-MM-DD format).
  * Paginates automatically until all pages are retrieved.
  */
-export async function fetchUserTimeEntriesInRange(options: {
-  fromDate?: string; // YYYY-MM-DD, optional
-  toDate?: string; // YYYY-MM-DD, optional
-}): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
-  const { domain, username, password, userId } = await getTWCredentials();
+export async function fetchUserTimeEntriesInRange(
+  options: {
+    fromDate?: string; // YYYY-MM-DD, optional
+    toDate?: string; // YYYY-MM-DD, optional
+  },
+  credentials?: TWCredentials
+): Promise<{ success: boolean; entries?: TWTimeEntry[]; message?: string }> {
+  const { domain, username, password, userId } = credentials ?? (await getTWCredentials());
   if (!domain || !username || !password || !userId) {
     return { success: false, message: 'TeamWork credentials not configured or missing userId' };
   }
@@ -396,7 +436,7 @@ export async function fetchUserTimeEntriesInRange(options: {
 
   const params: Record<string, string | number> = {
     userId,
-    pageSize: 500,
+    pageSize: PAGE_SIZE,
     page: 1
   };
   if (options.fromDate) params.fromDate = toYYYYMMDD(options.fromDate);
@@ -409,12 +449,22 @@ export async function fetchUserTimeEntriesInRange(options: {
     let hasMore = true;
 
     while (hasMore) {
+      if (page > MAX_PAGES) {
+        return {
+          success: false,
+          message: `Pagination exceeded ${MAX_PAGES} pages — aborting to avoid an infinite loop`
+        };
+      }
       params.page = page;
-      const response = await axios.get(`https://${domain}.teamwork.com/time_entries.json`, {
-        params,
-        headers,
-        timeout: 20000
-      });
+      const response = await withRetry(
+        () =>
+          axios.get(`https://${domain}.teamwork.com/time_entries.json`, {
+            params,
+            headers,
+            timeout: 20000
+          }),
+        { method: 'GET' }
+      );
 
       const raw: Record<string, unknown>[] = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
 
@@ -440,7 +490,7 @@ export async function fetchUserTimeEntriesInRange(options: {
       allEntries.push(...entries);
 
       // TW returns less than pageSize when it's the last page
-      hasMore = raw.length === 500;
+      hasMore = raw.length === PAGE_SIZE;
       page++;
     }
 
@@ -474,11 +524,15 @@ export async function debugRawTWEntries(options: {
   if (options.toDate) params.toDate = toYYYYMMDD(options.toDate);
 
   try {
-    const response = await axios.get(`https://${domain}.teamwork.com/time_entries.json`, {
-      params,
-      headers: { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' },
-      timeout: 15000
-    });
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/time_entries.json`, {
+          params,
+          headers: { Authorization: buildAuthHeader(username, password), 'Content-Type': 'application/json' },
+          timeout: 15000
+        }),
+      { method: 'GET' }
+    );
     const raw = (response.data?.['time-entries'] as Record<string, unknown>[]) ?? [];
     return { success: true, raw };
   } catch (error) {
@@ -495,13 +549,17 @@ export async function deleteTimeEntryFromTW(twEntryId: string): Promise<{ succes
   if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
 
   try {
-    await axios.delete(`https://${domain}.teamwork.com/time_entries/${twEntryId}.json`, {
-      headers: {
-        Authorization: buildAuthHeader(username, password),
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
+    await withRetry(
+      () =>
+        axios.delete(`https://${domain}.teamwork.com/time_entries/${twEntryId}.json`, {
+          headers: {
+            Authorization: buildAuthHeader(username, password),
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }),
+      { method: 'DELETE' }
+    );
     return { success: true };
   } catch (error) {
     const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
@@ -545,12 +603,16 @@ export async function uploadPendingFileToTW(
     const blob = new Blob([fileBuffer]);
     formData.append('file', blob, fileName);
 
-    const response = await axios.post(`https://${domain}.teamwork.com/pendingfiles.json`, formData, {
-      headers: {
-        Authorization: buildAuthHeader(username, password)
-      },
-      timeout: 30000
-    });
+    const response = await withRetry(
+      () =>
+        axios.post(`https://${domain}.teamwork.com/pendingfiles.json`, formData, {
+          headers: {
+            Authorization: buildAuthHeader(username, password)
+          },
+          timeout: 30000
+        }),
+      { method: 'POST' }
+    );
 
     if (response.data?.pendingFile?.ref) {
       return { success: true, ref: response.data.pendingFile.ref };
@@ -592,10 +654,14 @@ export async function fetchTWPeopleForTask(twTaskId: string): Promise<{
 
   try {
     // Step 1: resolve project-id from task
-    const taskResp = await axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}.json`, {
-      headers,
-      timeout: 10000
-    });
+    const taskResp = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}.json`, {
+          headers,
+          timeout: 10000
+        }),
+      { method: 'GET' }
+    );
     const item =
       (taskResp.data?.['todo-item'] as Record<string, unknown>) ??
       (taskResp.data?.task as Record<string, unknown>) ??
@@ -604,10 +670,14 @@ export async function fetchTWPeopleForTask(twTaskId: string): Promise<{
     if (!projectId) return { success: true, people: [] };
 
     // Step 2: fetch project members
-    const peopleResp = await axios.get(`https://${domain}.teamwork.com/projects/${projectId}/people.json`, {
-      headers,
-      timeout: 10000
-    });
+    const peopleResp = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/projects/${projectId}/people.json`, {
+          headers,
+          timeout: 10000
+        }),
+      { method: 'GET' }
+    );
     const raw: Record<string, unknown>[] = (peopleResp.data?.people as Record<string, unknown>[]) ?? [];
     const people = raw.map((p) => ({
       id: String(p.id),
@@ -647,13 +717,17 @@ export async function addCommentToTWTask(
       }
     };
 
-    const response = await axios.post(`https://${domain}.teamwork.com/tasks/${twTaskId}/comments.json`, payload, {
-      headers: {
-        Authorization: buildAuthHeader(username, password),
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
+    const response = await withRetry(
+      () =>
+        axios.post(`https://${domain}.teamwork.com/tasks/${twTaskId}/comments.json`, payload, {
+          headers: {
+            Authorization: buildAuthHeader(username, password),
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }),
+      { method: 'POST' }
+    );
 
     return {
       success: true,

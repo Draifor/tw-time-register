@@ -21,12 +21,17 @@ import {
   fetchUserTimeEntriesInRange,
   fetchUserTimeEntriesForTask
 } from './apiService';
-import { recordSync, getLastSuccessfulSync } from './historyService';
-import { markEntryAsSent } from './timeLogService';
+import { recordSyncBatch, getLastSuccessfulSyncBatch } from './historyService';
+import type { SyncHistoryInput } from '../database/models/History';
+import { markEntriesAsSent } from './timeLogService';
 import { getTWCredentials } from './settingsService';
+import { mapWithConcurrency } from '../utils/concurrency';
 import openDb from '../database/database';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+/** Maximum number of TeamWork requests in flight during a sync (PERF-401). */
+const SYNC_CONCURRENCY = 5;
 
 export interface SyncEntryResult {
   entryId: number;
@@ -41,6 +46,17 @@ export interface SmartSyncResult {
   succeeded: number;
   failed: number;
   results: SyncEntryResult[];
+}
+
+/**
+ * Per-entry outcome produced inside the bounded pool. The history write and the
+ * sent-flag update are deferred so they can be batched/transactional after the
+ * pool drains (PERF-401/403).
+ */
+interface SyncEntryOutcome {
+  result: SyncEntryResult;
+  historyInput?: SyncHistoryInput;
+  markSent: boolean;
 }
 
 // ── Local helpers ──────────────────────────────────────────────────────────────
@@ -107,9 +123,9 @@ export function calcDuration(startTime: string, endTime: string): { hours: numbe
  * @param entryIds  Local `entry_id` values to sync (skips entries without a task_link)
  */
 export async function smartSyncEntries(entryIds: number[]): Promise<SmartSyncResult> {
-  const { userId } = await getTWCredentials();
+  const credentials = await getTWCredentials();
 
-  if (!userId) {
+  if (!credentials.userId) {
     const skipped: SyncEntryResult[] = entryIds.map((id) => ({
       entryId: id,
       success: false,
@@ -120,77 +136,119 @@ export async function smartSyncEntries(entryIds: number[]): Promise<SmartSyncRes
   }
 
   const entries = await getLocalEntries(entryIds);
-  const results: SyncEntryResult[] = [];
 
-  for (const entry of entries) {
-    const twTaskId = extractTwTaskId(entry.taskLink);
+  // PERF-403: ONE batched lookup for every entry instead of N per-entry queries.
+  const lastSyncByEntry = await getLastSuccessfulSyncBatch(entries.map((entry) => entry.entryId));
 
-    if (!twTaskId) {
-      results.push({
+  // PERF-401: bounded pool — at most SYNC_CONCURRENCY HTTP operations in flight.
+  const outcomes = await mapWithConcurrency(entries, SYNC_CONCURRENCY, async (entry): Promise<SyncEntryOutcome> => {
+    let twTaskId: string | null = null;
+    let action: 'created' | 'updated' = 'created';
+
+    try {
+      twTaskId = extractTwTaskId(entry.taskLink);
+
+      if (!twTaskId) {
+        return {
+          result: {
+            entryId: entry.entryId,
+            success: false,
+            action: 'skipped',
+            message: `Task has no valid TeamWork link (task_id=${entry.taskId})`
+          },
+          markSent: false
+        };
+      }
+
+      const { hours, minutes } = calcDuration(entry.startTime, entry.endTime);
+      const entryPayload = {
+        twTaskId,
+        description: entry.description,
+        date: entry.date,
+        startTime: entry.startTime,
+        hours,
+        minutes,
+        isBillable: entry.isBillable
+      };
+
+      const existingTwId = lastSyncByEntry.get(entry.entryId)?.twTimeEntryId ?? null;
+
+      let apiResult: { success: boolean; twEntryId?: number; message?: string };
+
+      if (existingTwId) {
+        // ── UPDATE existing TW entry (PUT) ────────────────────────────
+        const putResult = await updateTimeEntryInTW(existingTwId, entryPayload, credentials);
+        apiResult = { success: putResult.success, message: putResult.message };
+        action = 'updated';
+      } else {
+        // ── CREATE new TW entry (POST) ────────────────────────────────
+        apiResult = await sendTimeEntryToTW(entryPayload, credentials);
+        action = 'created';
+      }
+
+      const twEntryId = existingTwId ?? String(apiResult.twEntryId ?? '');
+
+      // History is always recorded (success or failure), but written in one
+      // batch after the pool drains.
+      const historyInput: SyncHistoryInput = {
         entryId: entry.entryId,
-        success: false,
-        action: 'skipped',
-        message: `Task has no valid TeamWork link (task_id=${entry.taskId})`
-      });
-      continue;
-    }
-
-    const { hours, minutes } = calcDuration(entry.startTime, entry.endTime);
-    const entryPayload = {
-      twTaskId,
-      description: entry.description,
-      date: entry.date,
-      startTime: entry.startTime,
-      hours,
-      minutes,
-      isBillable: entry.isBillable
-    };
-
-    // Check if we already have a TW entry ID for this local entry
-    const lastSync = await getLastSuccessfulSync(entry.entryId);
-    const existingTwId = lastSync?.twTimeEntryId ?? null;
-
-    let apiResult: { success: boolean; twEntryId?: number; message?: string };
-    let action: 'created' | 'updated';
-
-    if (existingTwId) {
-      // ── UPDATE existing TW entry (PUT) ────────────────────────────
-      const putResult = await updateTimeEntryInTW(existingTwId, entryPayload);
-      apiResult = { success: putResult.success, message: putResult.message };
-      action = 'updated';
-    } else {
-      // ── CREATE new TW entry (POST) ────────────────────────────────
-      apiResult = await sendTimeEntryToTW(entryPayload);
-      action = 'created';
-    }
-
-    const twEntryId = existingTwId ?? String(apiResult.twEntryId ?? '');
-
-    // Record in sync_history regardless of outcome
-    await recordSync({
-      entryId: entry.entryId,
-      action,
-      twTimeEntryId: twEntryId || null,
-      twTaskId,
-      success: apiResult.success,
-      errorMessage: apiResult.success ? null : (apiResult.message ?? null)
-    });
-
-    if (apiResult.success) {
-      await markEntryAsSent(entry.entryId);
-      results.push({ entryId: entry.entryId, success: true, action, twEntryId: twEntryId || undefined });
-    } else {
-      results.push({
-        entryId: entry.entryId,
-        success: false,
         action,
-        twEntryId: twEntryId || undefined,
-        message: apiResult.message
-      });
+        twTimeEntryId: twEntryId || null,
+        twTaskId,
+        success: apiResult.success,
+        errorMessage: apiResult.success ? null : (apiResult.message ?? null)
+      };
+
+      return {
+        result: {
+          entryId: entry.entryId,
+          success: apiResult.success,
+          action,
+          twEntryId: twEntryId || undefined,
+          message: apiResult.success ? undefined : apiResult.message
+        },
+        historyInput,
+        markSent: apiResult.success
+      };
+    } catch (error) {
+      // An unexpected throw must isolate to this entry, never abort the pool.
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        result: {
+          entryId: entry.entryId,
+          success: false,
+          action: twTaskId ? action : 'skipped',
+          message
+        },
+        historyInput: twTaskId
+          ? {
+              entryId: entry.entryId,
+              action,
+              twTimeEntryId: null,
+              twTaskId,
+              success: false,
+              errorMessage: message
+            }
+          : undefined,
+        markSent: false
+      };
     }
+  });
+
+  const historyInputs = outcomes
+    .map((outcome) => outcome.historyInput)
+    .filter((input): input is SyncHistoryInput => input !== undefined);
+  if (historyInputs.length > 0) {
+    await recordSyncBatch(historyInputs);
   }
 
-  const succeeded = results.filter((r) => r.success).length;
+  const sentEntryIds = outcomes.filter((outcome) => outcome.markSent).map((outcome) => outcome.result.entryId);
+  if (sentEntryIds.length > 0) {
+    await markEntriesAsSent(sentEntryIds);
+  }
+
+  const results = outcomes.map((outcome) => outcome.result);
+  const succeeded = results.filter((result) => result.success).length;
   return {
     total: entries.length,
     succeeded,
@@ -330,54 +388,59 @@ export async function pullEntriesFromTW(options: {
   );
   const knownTwIds = new Set(knownRows.map((r) => r.tw_time_entry_id));
 
-  // 4. Process each TW entry
+  // 4. Process each TW entry in ONE transaction (PERF-402).
   const results: PullEntryResult[] = [];
   const missingTaskIds = new Set<string>();
 
-  for (const entry of twEntries) {
-    // Already in local DB — skip
-    if (knownTwIds.has(entry.id)) {
-      results.push({ twEntryId: entry.id, localEntryId: null, status: 'skipped_existing' });
-      continue;
+  // better-sqlite3 transactions require a synchronous callback. The SQL is run
+  // with the synchronous `runSync` so a failure throws inside the callback and
+  // rolls the whole pull back; `lastID` is available directly from the result.
+  db.transaction(() => {
+    for (const entry of twEntries) {
+      // Already in local DB — skip
+      if (knownTwIds.has(entry.id)) {
+        results.push({ twEntryId: entry.id, localEntryId: null, status: 'skipped_existing' });
+        continue;
+      }
+
+      // No matching local task — skip
+      const localTaskId = twTaskIdToLocalId.get(entry.taskId);
+      if (!localTaskId) {
+        results.push({
+          twEntryId: entry.id,
+          localEntryId: null,
+          status: 'skipped_no_task',
+          message: `No local task matched TW task_id=${entry.taskId}`
+        });
+        missingTaskIds.add(entry.taskId);
+        continue;
+      }
+
+      const isoDate = twDateToISO(entry.date);
+      const startTime = parseTWTime(entry.time);
+      const durationMinutes = entry.hours * 60 + entry.minutes;
+      const endTime = startTime ? addMinutesToTime(startTime, durationMinutes) : '';
+
+      // INSERT into time_entries
+      const insertResult = db.runSync(
+        `INSERT INTO time_entries
+           (task_id, description, entry_date, hora_inicio, hora_fin, facturable, send)
+         VALUES (?, ?, ?, ?, ?, ?, 1)`,
+        [localTaskId, entry.description, isoDate, startTime, endTime, entry.isBillable ? 1 : 0]
+      );
+      const newEntryId = insertResult.lastID;
+
+      // Record in sync_history so future edits do a PUT
+      db.runSync(
+        `INSERT INTO sync_history
+           (entry_id, action, tw_time_entry_id, tw_task_id, success)
+         VALUES (?, 'created', ?, ?, 1)`,
+        [newEntryId, entry.id, entry.taskId]
+      );
+
+      results.push({ twEntryId: entry.id, localEntryId: newEntryId, status: 'imported' });
     }
-
-    // No matching local task — skip
-    const localTaskId = twTaskIdToLocalId.get(entry.taskId);
-    if (!localTaskId) {
-      results.push({
-        twEntryId: entry.id,
-        localEntryId: null,
-        status: 'skipped_no_task',
-        message: `No local task matched TW task_id=${entry.taskId}`
-      });
-      missingTaskIds.add(entry.taskId);
-      continue;
-    }
-
-    const isoDate = twDateToISO(entry.date);
-    const startTime = parseTWTime(entry.time);
-    const durationMinutes = entry.hours * 60 + entry.minutes;
-    const endTime = startTime ? addMinutesToTime(startTime, durationMinutes) : '';
-
-    // INSERT into time_entries
-    const insertResult = await db.run(
-      `INSERT INTO time_entries
-         (task_id, description, entry_date, hora_inicio, hora_fin, facturable, send)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
-      [localTaskId, entry.description, isoDate, startTime, endTime, entry.isBillable ? 1 : 0]
-    );
-    const newEntryId = insertResult.lastID;
-
-    // Record in sync_history so future edits do a PUT
-    await db.run(
-      `INSERT INTO sync_history
-         (entry_id, action, tw_time_entry_id, tw_task_id, success)
-       VALUES (?, 'created', ?, ?, 1)`,
-      [newEntryId, entry.id, entry.taskId]
-    );
-
-    results.push({ twEntryId: entry.id, localEntryId: newEntryId, status: 'imported' });
-  }
+  });
 
   return {
     total: twEntries.length,
