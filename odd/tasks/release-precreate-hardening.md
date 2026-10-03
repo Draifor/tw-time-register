@@ -66,7 +66,7 @@ Under the ~400-line delivery budget.
 | H-1 | Harden the script: pagination, non-draft match, draft guard, 422 re-list | `scripts/ensure-github-release.ps1` | delegated (one writer) | [x] — 154 lines |
 | H-2 | Add the in-process mock regression test | `scripts/tests/ensure-github-release.tests.ps1` | delegated (same writer) | [x] — 9 cases |
 | H-3 | Verify: parse, mock test green, live read-only idempotent check | — | delegated + parent spot check | [x] |
-| H-4 | Commit the work unit | — | direct inline | [ ] |
+| H-4 | Commit the work unit | — | direct inline | [x] — `dc6c4a4` |
 
 ## Acceptance criteria
 
@@ -112,3 +112,5 @@ Under the ~400-line delivery budget.
 - 2026-10-03 — **H-1/H-2/H-3 done:** hardened script (154 lines) + 9-case in-process mock test.
   Writer self-verification green; parent re-ran the suite and the live read-only check. See
   *Verification result*.
+- 2026-10-03 — **H-4 done:** committed `dc6c4a4`. RDD gate: `review assess` (base `8025e6d`,
+  committed-only) → risk `medium`, `review_due: false`, reason `under_budget` (396 changed lines).
