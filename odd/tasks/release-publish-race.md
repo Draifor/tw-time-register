@@ -81,7 +81,7 @@ delivery budget.
 | P-2 | Add the idempotent pre-create script | `scripts/ensure-github-release.ps1` | delegated (one writer) | [x] — 106 lines |
 | P-3 | Wire the step into the workflow + republish env | `.github/workflows/release.yml` | delegated (one writer) + parent reorder | [x] — +22 lines |
 | P-4 | Verify: script parse, idempotent path against the live API, YAML parse | — | delegated + parent spot check | [x] |
-| P-5 | Commit the work unit | — | direct inline | [ ] |
+| P-5 | Commit the work unit | — | direct inline | [x] — `0f49a57` |
 
 ## Acceptance criteria
 
@@ -119,6 +119,31 @@ delivery budget.
   workflow re-run republishes into it. Bounded and recoverable, and strictly better than the
   previous failure mode (a release missing assets while CI stayed green).
 
+## Review outcome (2026-10-03)
+
+Native RDD review, tier **high**, four lenses (`review-risk`, `review-resilience`,
+`review-readability`, `review-reliability`). Final state **approved**; the exact acknowledgement
+was run once and **authority burned**. No correction was required.
+
+Advisory (non-blocking) findings the lenses raised — none opened a correction, and none blocks
+this change; each is a candidate for separate later work:
+
+- **Create branch not tolerant of a concurrent create** (`R4-2`, `R3-create-path-not-idempotent`):
+  the list-then-create is a non-atomic check-then-create, so a `422 already_exists` on create
+  fails the job. Reachable only if a release appears between the list and the POST, if the tag
+  falls off page 1, or if a release already exists as a draft. A `re-list then exit 0` on
+  `already_exists` would close it.
+- **No pagination / draft match** (`R4-4`, `R2-per-page-cap`): the existence check reads only the
+  first page (`per_page=100`) and treats a draft as a match, while the publisher reuses only
+  non-draft releases.
+- **Empty public release if a later step fails** (`R4-1`, `R1-precreate-public-release-before-gate`,
+  `R3-precreate-orphan-release-on-later-failure`): acknowledged under *Honest limitations*.
+- **`EP_GH_IGNORE_TIME` re-publishes into an existing release** (`R1-gh-ignore-time-republish`,
+  `R2-ep-gh-ignore-time`): intended for re-runs; noted as an artifact-integrity trade-off.
+- Minor: `github.event_name == 'push'` also matches branch pushes (`R2-step-name-vs-guard`,
+  `R3-push-guard-not-tag-scoped`); hard-coded repo default and the unexplained title `v`-strip
+  (`R2-hardcoded-repo-default`, `R2-title-v-strip`).
+
 ## Progress
 
 - 2026-10-03 — Track opened from the `v1.12.0` publish failure. Mechanism re-verified against
@@ -127,3 +152,6 @@ delivery budget.
   `Pre-create the GitHub release (tag push)` step in `release.yml` (+ `EP_GH_IGNORE_TIME` on the
   publish step). Parent reordered the workflow comment so the `afterPack`/"two steps below"
   preamble stays glued to the packaging steps. Verified per *Verification result*.
+- 2026-10-03 — **P-5 done:** committed `0f49a57` `fix(release): pre-create the tag's GitHub
+  release before electron-builder`. Native review approved and acknowledged (authority burned);
+  see *Review outcome*.
