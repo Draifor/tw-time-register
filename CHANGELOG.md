@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-10-03
+
+### Added
+
+- **Gate de release (R4)**: el workflow de release ejecuta `scripts/verify-release-assets.ps1` tras publicar y falla el job si el tag resolvió a más de un release de GitHub o si alguna de las tres URLs del updater (`latest.yml`, el instalador `.exe` y su `.blockmap`) no responde HTTP 200 con el tamaño que reporta la API. Es de solo lectura y no republica; se añadió a raíz del release duplicado que expuso `v1.11.0` (`c221ec2`; `scripts/verify-release-assets.ps1`, `.github/workflows/release.yml`)
+
+### Changed
+
+- **Tailwind CSS 4**: el renderer pasa de 3.4.18 a 4.3.3 con el plugin `@tailwindcss/vite` y `@import "tailwindcss"`; la capa de tokens shadcn se porta a CSS-first (`@theme` / `@theme inline`), se eliminan `tailwind.config.js`, `postcss.config.js` y `autoprefixer`, `tailwindcss-animate` se reemplaza por `tw-animate-css` 1.4.0 y se aplican los renombres de clase de v4 (`shadow-sm`→`shadow-xs`, `outline-none`→`outline-hidden`, `backdrop-blur-sm`→`backdrop-blur-xs`). La variante `dark:` deja de ser CSS muerto —queda ligada a la clase `.dark`— y la pila de fuente Inter, que nunca se aplicaba, entra en efecto (`8be00df`, `c5ab008`, `e94d03c`, `5995f81`; `odd/tasks/tailwind-4.md`)
+- **Vite 8 (Rolldown)**: el bundler sube a 8.3.2 con `@vitejs/plugin-react` 6.1.1 y `vite-plugin-electron-renderer` 1.0.0; las tres claves `rollupOptions` de `vite.config.ts` pasan a `rolldownOptions` para que el plugin de Electron no descarte el `external` que mantiene fuera del bundle a `electron` y `better-sqlite3` (`e65b75a`; `odd/tasks/vite-8.md`)
+- **Vitest 5**: `vitest`, `@vitest/coverage-v8` y `@vitest/ui` suben a 5.0.3; jest-dom se importa por `@testing-library/jest-dom/vitest` y `updater.test.ts` carga un módulo fresco por test para convivir con el nuevo default `clearMocks: true` (`6c313e8`; `odd/tasks/vitest-5.md`)
+- **TypeScript 7 en paralelo a la API de TS 6**: el CLI `tsc` pasa a 7.0.2 (alias `@typescript/native`) mientras el nombre `typescript` queda resolviendo al paquete de API TS 6 (`@typescript/typescript6` 6.0.2) que `typescript-eslint` necesita; se elimina `moduleResolution: "node10"` de `src/main/tsconfig.json` porque TS 7 lo removió. El bundle despachado no cambia: lo produce Vite/Rolldown, no `tsc` (`cf363bb`; `odd/tasks/typescript-7.md`)
+- **ESLint 10 + @eslint-react**: `eslint` sube a 10.12.0, `@eslint/js` a 10.0.1 y `typescript-eslint` a 8.71.0; `eslint-plugin-react` y `eslint-plugin-react-hooks` —incompatibles con ESLint 10 a nivel de peer y de runtime— se reemplazan por `@eslint-react/eslint-plugin` 5.23.5, que porta `rules-of-hooks` (error) y `exhaustive-deps` (warn). Se registra una pérdida de cobertura: dos reglas (`react/function-component-definition` y `react/jsx-filename-extension`) no tienen equivalente en `@eslint-react` (`05d6128`, `93bbc9f`; `odd/tasks/eslint-10.md`)
+- **Rendimiento (Fase 2, PERF-201..PERF-207)**: el timer en vivo se aísla en `<LiveTimer/>` para que la app no re-renderice el formulario cada segundo, cada entrada pasa a un `EntryCard` memoizado con handlers estables, las tablas y reportes resuelven tareas con lookups `Map` O(1), `Combobox` conserva la búsqueda ante re-renders del padre (BUG-07), el payload del borrador se serializa dentro del debounce en vez de en cada tecla y los atajos de teclado registran su listener una sola vez. La suite crece de 196 a 203 tests (`a2e9a5d`, `e0f60f9`, `a4e73dc`, `0d723f5`, `5bbf832`; `odd/tasks/performance-fase-2.md`, `docs/PERFORMANCE-ROADMAP.md`)
+
+**React Compiler** (track G) se evaluó con un spike medido sobre las dos vías de integración de `@vitejs/plugin-react` 6 y se descartó como un no-go medido: el compilador omite `WorkTimeForm` —el componente que motivaba el track— y 52 de las 132 funciones candidatas del renderer, a cambio de +4.4% a +5.6% de bundle. No hubo cambio de build (`odd/tasks/react-compiler.md`)
+
 ## [1.11.0] - 2026-09-28
 
 ### Added

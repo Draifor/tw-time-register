@@ -291,6 +291,17 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
   - Cerrar la app con una actualización ya descargada → `/S` sin `--force-run`: instala en silencio y **no** relanza. Relanzar una app que el usuario acaba de cerrar sería intrusivo, así que ese comportamiento se deja como lo entrega `electron-updater`.
   - El upgrade silencioso respeta la carpeta elegida en la instalación original: el instalador lee `InstallLocation` del registro y la reutiliza.
 
+### ✅ v1.12.0 — Modernización del stack & Rendimiento (PUBLICADA - Oct 2026)
+
+- [x] Tailwind CSS 4 — capa de tokens CSS-first (`@theme`), `tw-animate-css` y variante `dark` corregida
+- [x] Vite 8 (Rolldown) con `@vitejs/plugin-react` 6
+- [x] Vitest 5 para la suite (203 tests)
+- [x] TypeScript 7 en paralelo a la API de TS 6
+- [x] ESLint 10 + `@eslint-react`
+- [x] React Compiler evaluado y descartado como no-go medido
+- [x] Rendimiento Fase 2 — timer aislado, tarjetas memoizadas, lookups O(1) y atajos registrados una vez (`docs/PERFORMANCE-ROADMAP.md`)
+- [x] Gate de release R4 — un release por tag y URLs del updater verificadas
+
 ### v2.0.0 — Multi-plataforma
 
 - [ ] Soporte macOS (Apple Silicon + Intel)
