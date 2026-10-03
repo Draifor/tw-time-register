@@ -14,7 +14,7 @@ const buildElectron = (isDev: boolean) => ({
   sourcemap: isDev,
   minify: !isDev,
   outDir: join(root, 'dist-electron'),
-  rollupOptions: {
+  rolldownOptions: {
     // Only externalize the Electron runtime and native modules (.node binaries).
     // Everything else (axios, electron-updater, etc.) gets bundled into index.js
     // so node_modules doesn't need to be present in the installed app.
@@ -73,7 +73,7 @@ export default ({ command }: ConfigEnv): UserConfig => {
       build: {
         outDir: join(root, '/dist-vite'),
         emptyOutDir: true,
-        rollupOptions: {}
+        rolldownOptions: {}
       },
       server: {
         port: process.env.PORT === undefined ? 3000 : +process.env.PORT
@@ -96,7 +96,7 @@ export default ({ command }: ConfigEnv): UserConfig => {
     build: {
       outDir: join(root, '/dist-vite'),
       emptyOutDir: true,
-      rollupOptions: {}
+      rolldownOptions: {}
     },
     server: {
       port: process.env.PORT === undefined ? 3000 : +process.env.PORT
