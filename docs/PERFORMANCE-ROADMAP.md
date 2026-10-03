@@ -223,21 +223,21 @@ Estos son bugs funcionales (no solo lentitud) y conviene resolverlos temprano.
 ---
 
 ### Fase 4 — Sync y red
-- [ ] **PERF-401 · 🔴 Concurrencia acotada en `smartSyncEntries`**
+- [x] **PERF-401 · 🔴 Concurrencia acotada en `smartSyncEntries`**
   - **Ubicación:** `src/main/services/syncService.ts:125-191`
   - **Problema:** loop secuencial de HTTP con timeout 10 s; una falla bloquea el resto.
   - **Acción:** pool con `p-limit(5)`, respetando rate limits; agrupar escrituras en transacción.
 
-- [ ] **PERF-402 · 🔴 `pullEntriesFromTW` en transacción**
+- [x] **PERF-402 · 🔴 `pullEntriesFromTW` en transacción**
   - **Ubicación:** `src/main/services/syncService.ts:337-380`
   - **Problema:** 2 INSERT (transacciones implícitas) por entrada × cientos (pageSize 500).
   - **Acción:** una transacción + statements preparados una vez.
 
-- [ ] **PERF-403 · 🟡 Eliminar N+1 de sync**
+- [x] **PERF-403 · 🟡 Eliminar N+1 de sync**
   - **Ubicación:** `src/main/services/syncService.ts:150` (`getLastSuccessfulSync` por entrada), `src/main/services/apiService.ts` (credenciales por llamada)
   - **Acción:** una query `IN (...)` por lote (apoyada en `idx_sh_entry_ok`); resolver credenciales/`safeStorage` una vez por sync.
 
-- [ ] **PERF-404 · 🟡 Retry/backoff y límite de concurrencia HTTP**
+- [x] **PERF-404 · 🟡 Retry/backoff y límite de concurrencia HTTP**
   - **Ubicación:** `src/main/services/apiService.ts` (todas las llamadas axios), `:330-371` (`fetchTWTaskDetails` con `Promise.all` sin límite)
   - **Acción:** instancia axios con retry en 429/5xx + backoff (`Retry-After`); `p-limit` en `fetchTWTaskDetails`; guardas de paginación (`:411-445`).
 

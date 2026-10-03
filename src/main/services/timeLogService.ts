@@ -12,6 +12,9 @@ import { columnsDB } from '../database/models/TimeLog';
 // Re-export all model types so callers only need one import
 export type { TimeLog, TimeLogDB, TimeLogInput } from '../database/models/TimeLog';
 
+/** Max entry ids per `IN (?, ...)` clause — keeps the statement under SQLite's bound-variable limit. */
+const SENT_CHUNK_SIZE = 500;
+
 /**
  * Mark a time entry as sent to TeamWork.
  * This is a thin wrapper that updates only the `send` flag.
@@ -19,6 +22,34 @@ export type { TimeLog, TimeLogDB, TimeLogInput } from '../database/models/TimeLo
 export async function markEntryAsSent(entryId: number): Promise<void> {
   const db = await openDb();
   await db.run(`UPDATE ${columnsDB.TABLE_NAME} SET ${columnsDB.SENT} = 1 WHERE ${columnsDB.ID} = ?`, [entryId]);
+}
+
+/**
+ * Mark many time entries as sent in ONE transaction (chunked to respect
+ * SQLite's bound-variable limit).
+ *
+ * better-sqlite3 transactions require a synchronous callback, so the updates
+ * use `db.runSync` INSIDE the callback: a synchronous SQLite error propagates to
+ * the transaction controller and rolls the whole batch back. `markEntryAsSent`
+ * is kept for single-entry callers.
+ */
+export async function markEntriesAsSent(entryIds: number[]): Promise<void> {
+  const uniqueIds = [...new Set(entryIds)];
+  if (uniqueIds.length === 0) {
+    return;
+  }
+
+  const db = await openDb();
+  db.transaction(() => {
+    for (let start = 0; start < uniqueIds.length; start += SENT_CHUNK_SIZE) {
+      const chunk = uniqueIds.slice(start, start + SENT_CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(',');
+      db.runSync(
+        `UPDATE ${columnsDB.TABLE_NAME} SET ${columnsDB.SENT} = 1 WHERE ${columnsDB.ID} IN (${placeholders})`,
+        chunk
+      );
+    }
+  });
 }
 
 /**

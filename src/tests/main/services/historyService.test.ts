@@ -3,7 +3,9 @@ import {
   recordSync,
   getSyncHistory,
   getRecentHistory,
-  getLastSuccessfulSync
+  getLastSuccessfulSync,
+  getLastSuccessfulSyncBatch,
+  recordSyncBatch
 } from '../../../main/services/historyService';
 
 // ── Mock database ─────────────────────────────────────────────────────────────
@@ -18,12 +20,20 @@ function setupMockDb(
     run?: ReturnType<typeof vi.fn>;
     all?: ReturnType<typeof vi.fn>;
     get?: ReturnType<typeof vi.fn>;
+    runSync?: ReturnType<typeof vi.fn>;
+    getSync?: ReturnType<typeof vi.fn>;
+    allSync?: ReturnType<typeof vi.fn>;
+    transaction?: ReturnType<typeof vi.fn>;
   } = {}
 ) {
   const mockDb = {
     run: overrides.run ?? vi.fn().mockResolvedValue({ lastID: 42 }),
     all: overrides.all ?? vi.fn().mockResolvedValue([]),
-    get: overrides.get ?? vi.fn().mockResolvedValue(null)
+    get: overrides.get ?? vi.fn().mockResolvedValue(null),
+    runSync: overrides.runSync ?? vi.fn().mockReturnValue({ lastID: 42, changes: 1 }),
+    getSync: overrides.getSync ?? vi.fn().mockReturnValue(undefined),
+    allSync: overrides.allSync ?? vi.fn().mockReturnValue([]),
+    transaction: overrides.transaction ?? vi.fn((fn: () => unknown) => fn())
   };
   vi.mocked(openDb).mockResolvedValue(mockDb as unknown as Awaited<ReturnType<typeof openDb>>);
   return mockDb;
@@ -202,5 +212,118 @@ describe('getLastSuccessfulSync', () => {
     expect(result).not.toBeNull();
     expect(result?.twTimeEntryId).toBe('999');
     expect(result?.success).toBe(true);
+  });
+});
+
+// ── recordSyncBatch ───────────────────────────────────────────────────────────
+
+describe('recordSyncBatch', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('does nothing for an empty batch', async () => {
+    const mockDb = setupMockDb();
+
+    await recordSyncBatch([]);
+
+    expect(mockDb.transaction).not.toHaveBeenCalled();
+    expect(mockDb.runSync).not.toHaveBeenCalled();
+  });
+
+  it('inserts every row inside ONE transaction using the synchronous run', async () => {
+    const mockDb = setupMockDb();
+
+    await recordSyncBatch([
+      { entryId: 1, action: 'created', success: true },
+      { entryId: 2, action: 'updated', success: false, errorMessage: 'boom' }
+    ]);
+
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+    expect(mockDb.runSync).toHaveBeenCalledTimes(2);
+    const firstArgs = mockDb.runSync.mock.calls[0][1] as unknown[];
+    const secondArgs = mockDb.runSync.mock.calls[1][1] as unknown[];
+    expect(firstArgs).toEqual([1, 'created', null, null, 1, null]);
+    expect(secondArgs).toEqual([2, 'updated', null, null, 0, 'boom']);
+  });
+
+  it('rolls the whole batch back when a statement fails', async () => {
+    // Stateful fake that mirrors better-sqlite3's synchronous transaction
+    // contract: a synchronous throw from the callback triggers ROLLBACK, so the
+    // rows written before the failure must not survive.
+    const committed: number[] = [];
+    const mockDb = setupMockDb({
+      runSync: vi.fn((_sql: string, params?: unknown[]) => {
+        const entryId = Number((params ?? [])[0]);
+        if (entryId === 2) {
+          throw new Error('constraint failed');
+        }
+        committed.push(entryId);
+        return { lastID: committed.length, changes: 1 };
+      }),
+      transaction: vi.fn((fn: () => unknown) => {
+        const snapshot = [...committed];
+        try {
+          return fn();
+        } catch (error) {
+          committed.length = 0;
+          committed.push(...snapshot);
+          throw error;
+        }
+      })
+    });
+
+    await expect(
+      recordSyncBatch([
+        { entryId: 1, action: 'created', success: true },
+        { entryId: 2, action: 'created', success: true }
+      ])
+    ).rejects.toThrow('constraint failed');
+
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+    expect(committed).toEqual([]);
+  });
+});
+
+// ── getLastSuccessfulSyncBatch ────────────────────────────────────────────────
+
+describe('getLastSuccessfulSyncBatch', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('returns an empty Map for empty input without querying the database', async () => {
+    const mockDb = setupMockDb();
+
+    const result = await getLastSuccessfulSyncBatch([]);
+
+    expect(result.size).toBe(0);
+    expect(mockDb.all).not.toHaveBeenCalled();
+  });
+
+  it('issues one windowed query and maps rows by entry_id', async () => {
+    const mockDb = setupMockDb({
+      all: vi.fn().mockResolvedValue([
+        { ...rawRow, entry_id: 10, tw_time_entry_id: '999' },
+        { ...rawRow, entry_id: 11, tw_time_entry_id: '111' }
+      ])
+    });
+
+    const result = await getLastSuccessfulSyncBatch([10, 11]);
+
+    expect(mockDb.all).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockDb.all.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('ROW_NUMBER() OVER');
+    expect(sql).toContain('PARTITION BY entry_id');
+    expect(sql).toContain('IN (?,?)');
+    expect(params).toEqual([10, 11]);
+    expect(result.get(10)?.twTimeEntryId).toBe('999');
+    expect(result.get(11)?.twTimeEntryId).toBe('111');
+  });
+
+  it('de-duplicates ids and chunks large inputs into multiple queries', async () => {
+    const mockDb = setupMockDb({ all: vi.fn().mockResolvedValue([]) });
+    const ids = Array.from({ length: 501 }, (_, i) => i + 1);
+
+    await getLastSuccessfulSyncBatch([...ids, ...ids]);
+
+    // 501 unique ids → two chunks (500 + 1)
+    expect(mockDb.all).toHaveBeenCalledTimes(2);
   });
 });
