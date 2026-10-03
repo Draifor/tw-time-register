@@ -62,22 +62,53 @@ $headers = @{
   'Authorization'        = "Bearer $env:GH_TOKEN"
 }
 
-# List releases and filter by tag_name - never GET /releases/tags/{tag}, which returns ONE
-# arbitrary release for the tag (the blindness that hid the duplicate on v1.11.0).
-try {
-  $listResponse = Invoke-WebRequest -Uri "https://api.github.com/repos/$Repository/releases?per_page=100" -Headers $headers -Method Get -MaximumRedirection 10 -SkipHttpErrorCheck
-} catch {
-  Fail "could not query the Releases API: $($_.Exception.Message)"
-}
-if ([int] $listResponse.StatusCode -ne 200) {
-  Fail "Releases API returned HTTP $([int] $listResponse.StatusCode) (expected 200). A 403 usually means the token lacks contents:write or hit the rate limit."
+# List every release for the repo, following pagination. Never GET /releases/tags/{tag}, which
+# returns ONE arbitrary release for the tag (the blindness that hid the duplicate on v1.11.0).
+function Get-AllReleases {
+  param([string] $Repo, [hashtable] $Headers)
+  $all = @()
+  for ($page = 1; $page -le 100; $page++) {
+    $uri = "https://api.github.com/repos/$Repo/releases?per_page=100&page=$page"
+    try {
+      $resp = Invoke-WebRequest -Uri $uri -Headers $Headers -Method Get -MaximumRedirection 10 -SkipHttpErrorCheck
+    } catch {
+      throw "could not query the Releases API: $($_.Exception.Message)"
+    }
+    if ([int] $resp.StatusCode -ne 200) {
+      throw "Releases API returned HTTP $([int] $resp.StatusCode) (expected 200). A 403 usually means the token lacks contents:write or hit the rate limit."
+    }
+    $items = @($resp.Content | ConvertFrom-Json)
+    $all += $items
+    if ($items.Count -lt 100) { return $all }
+  }
+  throw 'Releases API pagination exceeded 100 pages; aborting to avoid an unbounded loop.'
 }
 
-$existing = @($listResponse.Content | ConvertFrom-Json | Where-Object { $_.tag_name -eq $Tag })
+# A release is reusable by electron-builder only when it is NOT a draft (releaseType 'release').
+function Get-TagRelease {
+  param([object[]] $Releases, [string] $Tag)
+  return @($Releases | Where-Object { $_.tag_name -eq $Tag -and -not $_.draft })
+}
+
+try {
+  $releases = @(Get-AllReleases -Repo $Repository -Headers $headers)
+} catch {
+  Fail $_.Exception.Message
+}
+
+$existing = @(Get-TagRelease -Releases $releases -Tag $Tag)
 if ($existing.Count -ge 1) {
   $ids = @($existing | ForEach-Object { $_.id }) -join ', '
   Write-Output "$prefix OK: release for '$Tag' already exists (id: $ids); nothing to create."
   exit 0
+}
+
+# A draft for the tag is invisible to electron-builder's reuse, and the tag is taken, so a create
+# would fail. Surface it instead of exiting 0 and letting the publisher race.
+$drafts = @($releases | Where-Object { $_.tag_name -eq $Tag -and $_.draft })
+if ($drafts.Count -ge 1) {
+  $ids = @($drafts | ForEach-Object { $_.id }) -join ', '
+  Fail "a draft release exists for '$Tag' (id: $ids). electron-builder reuses only non-draft releases; publish or delete the draft, then re-run."
 }
 
 # Create a normal (non-draft, non-prerelease) release. It must not be a draft: a draft is
@@ -97,10 +128,27 @@ try {
 } catch {
   Fail "could not create the release for '$Tag': $($_.Exception.Message)"
 }
-if ([int] $createResponse.StatusCode -ne 201) {
-  Fail "creating the release for '$Tag' returned HTTP $([int] $createResponse.StatusCode) (expected 201): $($createResponse.Content)"
+if ([int] $createResponse.StatusCode -eq 201) {
+  $release = $createResponse.Content | ConvertFrom-Json
+  Write-Output "$prefix OK: created release '$($release.name)' (id $($release.id)) for tag '$Tag'."
+  exit 0
 }
 
-$release = $createResponse.Content | ConvertFrom-Json
-Write-Output "$prefix OK: created release '$($release.name)' (id $($release.id)) for tag '$Tag'."
-exit 0
+# A concurrent create (or a release that appeared between our list and this POST) reports 422
+# already_exists. Re-list once and adopt the winner instead of failing the job.
+if ([int] $createResponse.StatusCode -eq 422 -and $createResponse.Content -match 'already_exists') {
+  try {
+    $relist = @(Get-AllReleases -Repo $Repository -Headers $headers)
+  } catch {
+    Fail $_.Exception.Message
+  }
+  $adopted = @(Get-TagRelease -Releases $relist -Tag $Tag)
+  if ($adopted.Count -ge 1) {
+    $ids = @($adopted | ForEach-Object { $_.id }) -join ', '
+    Write-Output "$prefix OK: release for '$Tag' now exists (created concurrently, id: $ids); nothing to create."
+    exit 0
+  }
+  Fail "creating the release for '$Tag' returned 422 already_exists, but no non-draft release for the tag is visible afterwards; investigate before re-running."
+}
+
+Fail "creating the release for '$Tag' returned HTTP $([int] $createResponse.StatusCode) (expected 201): $($createResponse.Content)"
