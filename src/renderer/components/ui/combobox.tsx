@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Controller, Control, RegisterOptions } from 'react-hook-form';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -54,7 +54,19 @@ function ComboboxInner({
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const filtered = options.filter((opt) => opt.label.toLowerCase().includes(search.toLowerCase()));
+  // Read the latest options through a ref so the open/reset effect below can
+  // depend only on `open`/selection. `WorkTimeForm` rebuilds `options` every
+  // second (fresh projected progress), and depending on its identity re-ran
+  // that effect each tick, wiping the user's typed search (BUG-07).
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  });
+
+  const filtered = useMemo(
+    () => options.filter((opt) => opt.label.toLowerCase().includes(search.toLowerCase())),
+    [options, search]
+  );
 
   // Close on outside click
   useEffect(() => {
@@ -68,14 +80,18 @@ function ComboboxInner({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Focus search input and align highlight to current selection when opened
+  // Focus search input and align highlight to current selection when opened.
+  // Depends on `open` and the primitive selection only; `options` is read
+  // through the ref so a parent rebuild does not re-run it.
   useEffect(() => {
     if (!open) return;
     setSearch('');
-    const selectedIndex = value ? options.findIndex((opt) => opt.value === value.value) : -1;
+    const selectedValue = value?.value;
+    const selectedIndex = selectedValue ? optionsRef.current.findIndex((opt) => opt.value === selectedValue) : -1;
     setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-    setTimeout(() => searchRef.current?.focus(), 0);
-  }, [open, options, value]);
+    const focusTimeout = setTimeout(() => searchRef.current?.focus(), 0);
+    return () => clearTimeout(focusTimeout);
+  }, [open, value?.value]);
 
   // Scroll highlighted item into view
   useEffect(() => {
