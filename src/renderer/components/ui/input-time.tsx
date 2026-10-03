@@ -79,7 +79,7 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
         hooks.forEach((hook) => hook(dates, dateStr, fp as never));
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [optionsKey]);
 
   const pickerValue = useMemo(() => field.value || [], [field.value]);
