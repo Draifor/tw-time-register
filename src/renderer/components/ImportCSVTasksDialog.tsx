@@ -255,7 +255,7 @@ function ImportCSVTasksDialog() {
             {/* Preview table */}
             <div className="max-h-64 overflow-auto rounded-md border text-sm">
               <table className="w-full">
-                <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                <thead className="sticky top-0 bg-muted/80 backdrop-blur-xs">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
                       {t('tasks.importCSV.colTaskName')}

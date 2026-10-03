@@ -260,7 +260,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
               <Label htmlFor="comment-body">{t('taskComment.bodyLabel')}</Label>
               <textarea
                 id="comment-body"
-                className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-y"
                 placeholder={t('taskComment.bodyPlaceholder')}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -290,7 +290,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                       <input
                         type="text"
                         autoFocus
-                        className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                         placeholder={t('taskComment.notifySearch')}
                         value={peopleSearch}
                         onChange={(e) => setPeopleSearch(e.target.value)}

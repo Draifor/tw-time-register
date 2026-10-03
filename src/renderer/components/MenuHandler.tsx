@@ -25,7 +25,7 @@ function MenuHandler({ label, items }: MenuHandlerProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={handleClick}
-        className={`px-3 py-1 text-sm transition-colors hover:bg-slate-700 focus:outline-none ${
+        className={`px-3 py-1 text-sm transition-colors hover:bg-slate-700 focus:outline-hidden ${
           isOpen ? 'bg-slate-700' : ''
         }`}
       >

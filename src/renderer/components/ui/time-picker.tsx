@@ -35,7 +35,7 @@ function TimePickerInput({ value, onChange, className, placeholder, disabled }: 
 
   const baseStyles =
     'w-24 rounded border border-input bg-background px-2 py-1 text-xs font-mono text-center ' +
-    'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
+    'focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
   // Read the latest props through refs so the options object can stay stable.
   // react-flatpickr v4 mutates an options object that receives prop hooks and

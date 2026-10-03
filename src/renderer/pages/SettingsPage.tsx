@@ -772,7 +772,7 @@ export default function SettingsPage() {
               onChange={(e) => setNewTplBody(e.target.value)}
               placeholder={t('settings.templates.bodyPlaceholder')}
               rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-y"
             />
             <Button
               type="button"
@@ -803,7 +803,7 @@ export default function SettingsPage() {
                       value={editingTpl.body}
                       onChange={(e) => setEditingTpl({ ...editingTpl, body: e.target.value })}
                       rows={3}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-y"
                     />
                     <div className="flex gap-2">
                       <Button

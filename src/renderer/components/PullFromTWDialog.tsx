@@ -504,7 +504,7 @@ export default function PullFromTWDialog() {
                                   prev.map((r, idx) => (idx === i ? { ...r, typeName: e.target.value } : r))
                                 )
                               }
-                              className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-0.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                              className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-0.5 text-xs shadow-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
                             >
                               <option value="">{t('timeLogs.pull.selectType')}</option>
                               {typeList.map((tn) => (
