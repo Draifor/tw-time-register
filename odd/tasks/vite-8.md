@@ -92,7 +92,7 @@ other track's config or versions, and any version bump, tag or publish.
 | C3 | **Migrate `vite.config.ts`**: rename every `rollupOptions` to `rolldownOptions` (E6), especially the `buildElectron` external list (E5); confirm no `esbuild` option exists (E7); settle the classic-JSX question (E8) by the build result alone, changing only config if needed | `vite.config.ts` | direct inline (already-understood edits) | [x] — **done 2026-10-03.** Renamed all three sites `vite.config.ts:17,76,99`; zero `rollupOptions` and zero `esbuild` remain (E6, E7). The `buildElectron` external list now lives under `rolldownOptions`, so the plugin's normalization no longer drops it (E5). **E8 settled by running: the build compiles the JSX with no React-in-scope error** — `plugin-react@6` + Oxc handled the classic `jsx: "react"` tsconfig without any config change. |
 | C4 | **Prove the Electron + renderer build under Rolldown**: `npm run build` → verify `dist-vite/**` with `base: './'`; `npx vite build` → verify `dist-electron/index.js` loads, `__dirname`/CJS interop survive, and `better-sqlite3` stays external/unbundled | `dist-electron/**`, `dist-vite/**` | per-action worker | [x] — **done 2026-10-03.** `npm run build` exit 0 on **vite 8.3.2**: renderer → `dist-vite/index.html` + `assets/index-CRbiQ0wJ.css` (83.39 kB) + `assets/index-BB_QvrXf.js` (964.39 kB), and `index.html` keeps `./assets/…` (base `./` preserved); main → `dist-electron/index.js` **547,011 B**, preload → `dist-electron/preload.js` **7,396 B**. `better-sqlite3` appears **once** as an external `require`, `electron` is externalized, and `node --check dist-electron/index.js` exits 0 (valid CJS — `__dirname`/interop intact). |
 | C5 | **Verify:** suite (≥196), `type-check`, `lint`, `build`, `pnpm install --frozen-lockfile`, `test:coverage`; plus the human smoke test (launch the app, exercise `better-sqlite3`, confirm the renderer) | — | per-action workers + human | machine gates **done 2026-10-03** — `npm test` **196/196** (21 files) on vitest 5.0.3 / Vite 8.3.2; `type-check`, `lint`, `build`, `frozen-lockfile`, `test:coverage` all exit 0; coverage headline identical to baseline (statements **40.57%**, branches **33.71%**, functions **40.26%**, lines **41.19%**). **Human smoke test PASSED 2026-10-03** — the user launched the app and confirmed it renders correctly and a native `better-sqlite3`-backed operation works. |
-| C6 | **Record results, evidence and residue here**, then close the track | this document | direct inline | [ ] |
+| C6 | **Record results, evidence and residue here**, then close the track | this document | direct inline | [x] — **done 2026-10-03.** Results, evidence and residue recorded; native review approved and authority burned; the two advisory findings recorded (below); the track is closed. Content committed as `e65b75a` (build), `926d8b7` (track doc), `e107f08` (smoke-test pass) plus the closing doc commit. Push/PR remain the user's decision. |
 
 ## Acceptance criteria
 
@@ -119,9 +119,30 @@ other track's config or versions, and any version bump, tag or publish.
   residue. The pre-existing `apiService.ts` dynamic-and-static import warning persists, now phrased as
   `INEFFECTIVE_DYNAMIC_IMPORT`.
 - **`node --check` proves syntax, not runtime.** The true Electron/native path is the human smoke test (C5),
-  which remains outstanding at the time of this record.
+  which **passed on 2026-10-03** (see the C5 row and Progress).
 - **No version bump, tag or publish.** Content on `staging` since `v1.10.0` remains unreleased; that stays a
   human decision.
+
+## Review record
+
+- **Approved** 2026-10-03, lineage `review-02f030fac5117d9c`, one lens `review-reliability`, tier **medium**,
+  candidate `e0b7655b..49c8f763` (4 paths, 950 lines including the generated lockfile), correction budget 200 —
+  **no correction opened**. Consent was relayed and **granted** by the user; acknowledged, authority **burned**
+  (`gentle-ai.review-acknowledged/v1`).
+- **A first, oversized attempt was abandoned.** The selectorless preflight resolved a stale boundary
+  (`base-ref 91d10d6`) that inflated the candidate to 44 files / 3131 lines (Tracks B, F and the release gate
+  plus this one). `review.status` timed out on that candidate (`operation_timeout`, `retry_safe: false`,
+  `next_action: stop`, nothing mutated). The user chose to rescope; a fresh transaction lineage
+  `review-1ae7e629a009f600` was left unreviewed and the review was restarted with the Track C fork point
+  (`--base-ref e3c6001`), which resolved to the correct 4-path candidate.
+- **Two non-blocking advisory findings** (recorded as follow-ups, never a reason to re-review this candidate):
+  - **R3-1** (WARNING, `odd/tasks/vite-8.md:121-122`) — the document contradicted itself: the Residue section
+    said the human smoke test was still outstanding while the C5 row and Progress recorded it as passed.
+    **Fixed in this closing commit** (true state: passed 2026-10-03).
+  - **R3-2** (WARNING, inferential, `vite.config.ts:17`) — no committed assertion guards the `external`
+    invariant that keeps `electron` and native `better-sqlite3` out of the bundled main output; the 196-test
+    floor does not load `vite.config.ts`, so only the manual build and smoke test prove it. A cheap
+    build-output-level assertion is a candidate follow-up.
 
 ## Delivery plan
 
@@ -148,3 +169,8 @@ to `staging`.** Push and PR remain the user's call.
   PASSED 2026-10-03** — the user launched the app and confirmed the renderer renders and a native
   `better-sqlite3`-backed operation works. C1–C5 complete. Next: native review of this candidate under RDD,
   then C6 close and the human's push/PR decision.
+- 2026-10-03 — **Track C verified and closed.** Native review of the scoped candidate
+  (`e0b7655b..49c8f763`, 4 paths, medium, one `review-reliability` lens) came back **approved**; authority
+  burned. The two advisories (R3-1 doc contradiction, R3-2 unguarded external invariant) are recorded, and
+  R3-1 is fixed in this commit. The first, oversized review attempt was abandoned after its status timed out.
+  **C1–C6 complete.** Push and PR remain the user's decision.
