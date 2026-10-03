@@ -268,6 +268,12 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
     queryKey: queryKeys.typeTasks.all,
     queryFn: fetchTypeTasks
   });
+  // Hoisted out of the typeName cell so the option objects are built once per
+  // `typeTasks` change instead of on every cell render.
+  const typeOptions = useMemo(
+    () => (typeTasks ?? []).map((tt: { typeName: string }) => ({ value: tt.typeName, label: tt.typeName })),
+    [typeTasks]
+  );
   interface RowT {
     row: Row<Task>;
   }
@@ -303,10 +309,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
                   )}
                   {typeTasks ? (
                     <Select
-                      options={typeTasks.map((tt: { typeName: string }) => ({
-                        value: tt.typeName,
-                        label: tt.typeName
-                      }))}
+                      options={typeOptions}
                       value={
                         row.original.typeName ? { value: row.original.typeName, label: row.original.typeName } : null
                       }
@@ -383,7 +386,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
           ]
         : [])
     ],
-    [isEditable, typeTasks, handleDelete, onEdit]
+    [isEditable, typeTasks, typeOptions, handleDelete, onEdit]
   );
 
   function handleAddRow() {

@@ -72,16 +72,24 @@ function ReportsPage() {
     queryKey: queryKeys.tasks.list(''),
     queryFn: () => fetchTasks()
   });
-  const tasks = tasksData ?? [];
+  const tasks = useMemo(() => tasksData ?? [], [tasksData]);
+
+  // O(1) task lookup by name for the per-row progress columns below. First
+  // match wins, mirroring the previous `tasks.find(...)` semantics.
+  const tasksByName = useMemo(() => {
+    const map = new Map<string, Task>();
+    for (const task of tasks) {
+      if (!map.has(task.taskName)) map.set(task.taskName, task);
+    }
+    return map;
+  }, [tasks]);
 
   const getTaskEstimatedTime = (taskName: string): number => {
-    const task = tasks.find((t) => t.taskName === taskName);
-    return task?.estimatedTime ?? 0;
+    return tasksByName.get(taskName)?.estimatedTime ?? 0;
   };
 
   const getTaskLoggedMinutes = (taskName: string): number => {
-    const task = tasks.find((t) => t.taskName === taskName);
-    return task?.totalLoggedMinutes ?? 0;
+    return tasksByName.get(taskName)?.totalLoggedMinutes ?? 0;
   };
 
   const [dateFrom, setDateFrom] = useState('');
