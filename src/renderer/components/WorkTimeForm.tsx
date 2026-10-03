@@ -1,5 +1,15 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { useForm, useFieldArray, useWatch, Control, FieldValues, Controller } from 'react-hook-form';
+import {
+  useForm,
+  useFieldArray,
+  useWatch,
+  Control,
+  FieldValues,
+  Controller,
+  FieldErrors,
+  UseFormRegister,
+  UseFormSetValue
+} from 'react-hook-form';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, GripVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -164,6 +174,320 @@ const serializeEntryDates = (entry: WorkTimeEntry): WorkTimeDraftEntry => ({
   endTime: entry.endTime.map((d) => d.toISOString())
 });
 
+type TaskOption = {
+  value: string;
+  label: string;
+  link: string;
+  estimatedTime: number;
+  totalLoggedMinutes: number;
+};
+
+interface EntryCardProps {
+  index: number;
+  control: Control<{ entries: WorkTimeEntry[] }>;
+  typedControl: Control<FieldValues>;
+  register: UseFormRegister<{ entries: WorkTimeEntry[] }>;
+  setValue: UseFormSetValue<{ entries: WorkTimeEntry[] }>;
+  entryErrors?: FieldErrors<WorkTimeEntry>;
+  options: TaskOption[];
+  draftMinutesByTask: Map<string, number>;
+  activeTimer: { index: number; startedAt: Date } | null;
+  isDragged: boolean;
+  isDragOver: boolean;
+  canRemove: boolean;
+  onStartTimer: (index: number) => void;
+  onStopTimer: () => void;
+  onRemove: (index: number) => void;
+  onDragStart: (e: React.DragEvent, index: number) => void;
+  onDragOver: (e: React.DragEvent, index: number) => void;
+  onDrop: (e: React.DragEvent, index: number) => void;
+  onDragEnd: () => void;
+  onElapsedMinutesChange: (minutes: number) => void;
+}
+
+// Extracted, module-scope card so `React.memo` can actually skip sibling rows
+// while the user types. The root still re-renders on every `useWatch('entries')`
+// change, but each card only re-renders when one of its stable props changes;
+// per-entry values are read through their own react-hook-form subscriptions.
+const EntryCard = React.memo(function EntryCard({
+  index,
+  control,
+  typedControl,
+  register,
+  setValue,
+  entryErrors,
+  options,
+  draftMinutesByTask,
+  activeTimer,
+  isDragged,
+  isDragOver,
+  canRemove,
+  onStartTimer,
+  onStopTimer,
+  onRemove,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  onElapsedMinutesChange
+}: EntryCardProps) {
+  const { t } = useTranslation();
+  const taskError = entryErrors?.task;
+  const startTimeError = entryErrors?.startTime;
+
+  return (
+    <Card
+      onDragOver={(e) => onDragOver(e, index)}
+      onDrop={(e) => onDrop(e, index)}
+      onDragEnd={onDragEnd}
+      className={cn(
+        'animate-in fade-in-0 slide-in-from-top-2 duration-300 transition-[opacity,border-color]',
+        isDragged && 'opacity-40 border-dashed',
+        isDragOver && 'border-primary border-2'
+      )}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <div
+              draggable
+              onDragStart={(e) => onDragStart(e, index)}
+              className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground touch-none"
+              title={t('workTimeForm.dragToReorder')}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+            <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
+          </div>
+          <div className="flex items-center gap-1">
+            {activeTimer?.index === index ? (
+              <LiveTimer
+                startedAt={activeTimer.startedAt}
+                onStop={onStopTimer}
+                onElapsedMinutesChange={onElapsedMinutesChange}
+              />
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => onStartTimer(index)}
+                      disabled={activeTimer !== null}
+                    >
+                      <Timer className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{activeTimer !== null ? t('workTimeForm.timer.otherRunning') : t('workTimeForm.timer.start')}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => onRemove(index)}
+              disabled={!canRemove}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Single row layout - wraps on smaller screens */}
+        <div className="flex flex-wrap gap-4 items-start">
+          <div className="flex-1 min-w-[200px] space-y-2">
+            <Label htmlFor={`entries.${index}.description`}>{t('common.description')}</Label>
+            <Textarea
+              placeholder={t('workTimeForm.descPlaceholder')}
+              className="w-full"
+              name={`entries.${index}.description`}
+              control={typedControl}
+              rules={{ required: 'Description is required' }}
+            />
+          </div>
+          <div className="w-[200px] space-y-2">
+            <Label htmlFor={`entries.${index}.task`}>{t('workTimeForm.task')}</Label>
+            <Controller
+              name={`entries.${index}.task`}
+              control={control}
+              rules={{ required: t('workTimeForm.taskRequired') }}
+              render={({ field }) => {
+                const selectedOption = (() => {
+                  const val = field.value;
+                  if (!val) return null;
+                  if (typeof val === 'object' && 'value' in val) {
+                    return options.find((o) => String(o.value) === String((val as { value: string }).value)) ?? null;
+                  }
+                  return null;
+                })();
+
+                const selectedTask = selectedOption as {
+                  value: string;
+                  label: string;
+                  estimatedTime?: number;
+                  totalLoggedMinutes?: number;
+                } | null;
+                const draftMinutes = selectedTask ? (draftMinutesByTask.get(String(selectedTask.value)) ?? 0) : 0;
+                const taskInfo =
+                  selectedTask?.estimatedTime && selectedTask.estimatedTime > 0
+                    ? getTaskProgressInfo(selectedTask.estimatedTime, selectedTask.totalLoggedMinutes)
+                    : null;
+
+                return (
+                  <div className="space-y-1">
+                    <Combobox
+                      options={options}
+                      placeholder={t('workTimeForm.selectTask')}
+                      searchPlaceholder={t('workTimeForm.searchTasks')}
+                      value={selectedTask}
+                      onChange={field.onChange}
+                      showProgress
+                      className="w-full"
+                    />
+                    {taskInfo && selectedTask?.estimatedTime && selectedTask.estimatedTime > 0 && (
+                      <div
+                        className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          taskInfo.status === 'overtime'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            : taskInfo.status === 'warning'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                              : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        }`}
+                      >
+                        {t(draftMinutes > 0 ? 'workTimeForm.progressInfoProjected' : 'workTimeForm.progressInfo', {
+                          logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
+                          estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
+                          pct: Math.round(taskInfo.pct),
+                          margin: formatMinutesToHHMM(taskInfo.margin),
+                          draft: formatMinutesToHHMM(draftMinutes)
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
+            />
+            {taskError && <span className="text-sm text-destructive">{taskError.message}</span>}
+          </div>
+          <div className="w-[170px] space-y-2">
+            <Label htmlFor={`entries.${index}.date`}>{t('common.date')}</Label>
+            <InputDate
+              name={`entries.${index}.date`}
+              control={typedControl}
+              rules={{ required: t('workTimeForm.dateRequired') }}
+            />
+          </div>
+          <div className="w-[90px] space-y-2">
+            <Label htmlFor={`entries.${index}.hours`}>{t('timeLogs.colDuration')}</Label>
+            <InputTime
+              name={`entries.${index}.hours`}
+              control={typedControl}
+              className="w-full"
+              rules={{ required: t('workTimeForm.durationRequired') }}
+              options={{
+                enableTime: true,
+                noCalendar: true,
+                time_24hr: true,
+                dateFormat: 'H:i',
+                defaultDate: '00:00'
+              }}
+            />
+          </div>
+          <div className="w-[100px] space-y-2">
+            <Label htmlFor={`entries.${index}.startTime`}>{t('timeLogs.colStart')}</Label>
+            <InputTime
+              name={`entries.${index}.startTime`}
+              control={typedControl}
+              className="w-full"
+              rules={{ required: t('workTimeForm.startRequired') }}
+              options={{
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: 'h:i K',
+                defaultDate: '09:00',
+                onChange: () => {
+                  setValue(`entries.${index}.manualStartTime`, true, { shouldDirty: true });
+                }
+              }}
+            />
+            {startTimeError && <span className="text-sm text-destructive">{startTimeError.message}</span>}
+          </div>
+          <div className="w-[100px] space-y-2">
+            <Label htmlFor={`entries.${index}.endTime`}>{t('timeLogs.colEnd')}</Label>
+            <InputTime
+              name={`entries.${index}.endTime`}
+              control={typedControl}
+              className="w-full"
+              options={{
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: 'h:i K',
+                time_24hr: false,
+                defaultDate: '09:00',
+                clickOpens: false
+              }}
+            />
+          </div>
+          <div className="flex flex-col justify-end space-y-2">
+            <Label
+              htmlFor={`entries.${index}.afterLunch`}
+              className="flex items-center gap-1.5 cursor-pointer select-none"
+            >
+              <UtensilsCrossed className="h-3.5 w-3.5 text-muted-foreground" />
+              {t('workTimeForm.afterLunch')}
+            </Label>
+            <div className="h-10 flex items-center">
+              <label
+                htmlFor={`entries.${index}.afterLunch`}
+                className="relative inline-flex items-center cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id={`entries.${index}.afterLunch`}
+                  {...register(`entries.${index}.afterLunch`)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+              </label>
+            </div>
+          </div>
+          <div className="flex flex-col justify-end space-y-2">
+            <Label
+              htmlFor={`entries.${index}.isBillable`}
+              className="flex items-center gap-1.5 cursor-pointer select-none"
+            >
+              <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+              {t('common.billable')}
+            </Label>
+            <div className="h-10 flex items-center">
+              <label
+                htmlFor={`entries.${index}.isBillable`}
+                className="relative inline-flex items-center cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id={`entries.${index}.isBillable`}
+                  {...register(`entries.${index}.isBillable`)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export default function WorkTimeForm() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -208,11 +532,22 @@ export default function WorkTimeForm() {
     handleSubmit,
     reset,
     setValue,
+    getValues,
     register
   } = useForm<{ entries: WorkTimeEntry[] }>({
     defaultValues: { entries: [defaultValue] }
   });
   const { fields, append, insert, remove, move } = useFieldArray({ control, name: 'entries' });
+
+  // `useFieldArray` recreates `remove`/`move` on every render, so keep the latest
+  // in refs. The memoized card handlers below must keep a stable identity while
+  // the user types, otherwise `React.memo` would be defeated on every keystroke.
+  const removeRef = useRef(remove);
+  const moveRef = useRef(move);
+  useEffect(() => {
+    removeRef.current = remove;
+    moveRef.current = move;
+  });
   const result = useWatch({ control, name: 'entries' });
   const { data: tasks } = useTasks();
   // Cast control so it's compatible with generic UI components (InputTime, InputForm, InputDate)
@@ -323,6 +658,22 @@ export default function WorkTimeForm() {
   // Minutes currently sitting in the form (not yet saved) grouped by task id.
   // This lets the task progress badge/dropdown show the projected consumption
   // as if the draft entries were already saved.
+  //
+  // `draftSignature` is a primitive encoding of exactly the entry values the map
+  // reads (task id + duration). Keying the memo on it keeps `draftMinutesByTask`
+  // referentially stable across description keystrokes (same contents → same Map),
+  // so `optionsWithDraft` — and therefore every card's `options` prop — keeps its
+  // identity while the user types. It still rebuilds on task/duration/timer events.
+  const draftSignature = React.useMemo(() => {
+    const parts: string[] = [];
+    (result ?? []).forEach((entry) => {
+      const taskId = getEntryTaskId(entry);
+      if (!taskId) return;
+      parts.push(`${taskId}:${getEntryMinutes(entry)}`);
+    });
+    return parts.join('|');
+  }, [result]);
+
   const draftMinutesByTask = React.useMemo(() => {
     const map = new Map<string, number>();
 
@@ -341,7 +692,11 @@ export default function WorkTimeForm() {
     }
 
     return map;
-  }, [result, activeTimer, timerElapsedMinutes]);
+    // `draftSignature` encodes every entry value this map reads, so `result` is
+    // intentionally omitted from the dependencies: a description-only change must
+    // reuse the previous Map and return the same identity.
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
+  }, [draftSignature, activeTimer, timerElapsedMinutes]);
 
   const optionsWithDraft = React.useMemo(
     () =>
@@ -409,69 +764,78 @@ export default function WorkTimeForm() {
     };
   }, [draggedIndex]);
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    e.dataTransfer.effectAllowed = 'move';
-    // Transparent 1×1 image — hides the default browser drag ghost; the card
-    // itself shows opacity feedback instead.
-    const ghost = new Image();
-    ghost.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(ghost, 0, 0);
-    dragClientYRef.current = e.clientY;
-    setDraggedIndex(index);
-    startAutoScroll();
-  };
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, index: number) => {
+      e.dataTransfer.effectAllowed = 'move';
+      // Transparent 1×1 image — hides the default browser drag ghost; the card
+      // itself shows opacity feedback instead.
+      const ghost = new Image();
+      ghost.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      e.dataTransfer.setDragImage(ghost, 0, 0);
+      dragClientYRef.current = e.clientY;
+      setDraggedIndex(index);
+      startAutoScroll();
+    },
+    [startAutoScroll]
+  );
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (draggedIndex !== null && draggedIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (draggedIndex !== null && draggedIndex !== index) {
+        setDragOverIndex(index);
+      }
+    },
+    [draggedIndex]
+  );
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    stopAutoScroll();
-    if (draggedIndex === null || draggedIndex === dropIndex) {
+  const handleDrop = useCallback(
+    (e: React.DragEvent, dropIndex: number) => {
+      e.preventDefault();
+      stopAutoScroll();
+      if (draggedIndex === null || draggedIndex === dropIndex) {
+        setDraggedIndex(null);
+        setDragOverIndex(null);
+        return;
+      }
+      moveRef.current(draggedIndex, dropIndex);
+      // Rearrange previousValues to keep cascade tracking consistent
+      const newPrev = [...previousValues.current];
+      const [movedPrev] = newPrev.splice(draggedIndex, 1);
+      newPrev.splice(dropIndex, 0, movedPrev);
+      previousValues.current = newPrev;
+      // Update live timer index if the dragged or displaced entry owns it
+      if (activeTimerRef.current) {
+        const timerIdx = activeTimerRef.current.index;
+        let newIdx = timerIdx;
+        if (timerIdx === draggedIndex) {
+          newIdx = dropIndex;
+        } else if (draggedIndex < dropIndex && timerIdx > draggedIndex && timerIdx <= dropIndex) {
+          newIdx = timerIdx - 1;
+        } else if (draggedIndex > dropIndex && timerIdx >= dropIndex && timerIdx < draggedIndex) {
+          newIdx = timerIdx + 1;
+        }
+        if (newIdx !== timerIdx) {
+          const updated = { ...activeTimerRef.current, index: newIdx };
+          setActiveTimer(updated);
+          localStorage.setItem(
+            'wt_activeTimer',
+            JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+          );
+        }
+      }
       setDraggedIndex(null);
       setDragOverIndex(null);
-      return;
-    }
-    move(draggedIndex, dropIndex);
-    // Rearrange previousValues to keep cascade tracking consistent
-    const newPrev = [...previousValues.current];
-    const [movedPrev] = newPrev.splice(draggedIndex, 1);
-    newPrev.splice(dropIndex, 0, movedPrev);
-    previousValues.current = newPrev;
-    // Update live timer index if the dragged or displaced entry owns it
-    if (activeTimerRef.current) {
-      const timerIdx = activeTimerRef.current.index;
-      let newIdx = timerIdx;
-      if (timerIdx === draggedIndex) {
-        newIdx = dropIndex;
-      } else if (draggedIndex < dropIndex && timerIdx > draggedIndex && timerIdx <= dropIndex) {
-        newIdx = timerIdx - 1;
-      } else if (draggedIndex > dropIndex && timerIdx >= dropIndex && timerIdx < draggedIndex) {
-        newIdx = timerIdx + 1;
-      }
-      if (newIdx !== timerIdx) {
-        const updated = { ...activeTimerRef.current, index: newIdx };
-        setActiveTimer(updated);
-        localStorage.setItem(
-          'wt_activeTimer',
-          JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
-        );
-      }
-    }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
+    },
+    [draggedIndex, stopAutoScroll]
+  );
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     stopAutoScroll();
     setDraggedIndex(null);
     setDragOverIndex(null);
-  };
+  }, [stopAutoScroll]);
   // ── End drag & drop ──────────────────────────────────────────────────────
 
   const handleStartTimer = useCallback(
@@ -505,6 +869,19 @@ export default function WorkTimeForm() {
     setTimerElapsedMinutes(0);
     localStorage.removeItem('wt_activeTimer');
   }, [activeTimer, setValue]);
+
+  const handleRemoveEntry = useCallback(
+    (index: number) => {
+      // If the timer is running on this entry, stop it silently before removing
+      if (activeTimer?.index === index) {
+        setActiveTimer(null);
+        setTimerElapsedMinutes(0);
+        localStorage.removeItem('wt_activeTimer');
+      }
+      removeRef.current(index);
+    },
+    [activeTimer]
+  );
   // ── End live timer ──────────────────────────────────────────────────────────
 
   const calculateEndTime = (startTimeArray: Date[], hoursArray: Date[]) => {
@@ -716,11 +1093,12 @@ export default function WorkTimeForm() {
   };
 
   const handleAddEntry = async () => {
-    const lastEntry = result[result.length - 1];
+    const entries = getValues('entries');
+    const lastEntry = entries[entries.length - 1];
     const currentDate = lastEntry?.date || getLocalISODate();
 
     // Calculate draft time already in the form for this date
-    const draftMinutes = result.reduce((acc, entry) => {
+    const draftMinutes = entries.reduce((acc, entry) => {
       if (entry.date !== currentDate) return acc;
       const hours = entry.hours?.[0]?.getHours() ?? 0;
       const minutes = entry.hours?.[0]?.getMinutes() ?? 0;
@@ -825,8 +1203,9 @@ export default function WorkTimeForm() {
   // previous entry (or the next one when inserting at the very top). The
   // chaining effect then shifts the following entries automatically.
   const handleInsertEntry = (atIndex: number) => {
-    const prevEntry = atIndex > 0 ? result[atIndex - 1] : undefined;
-    const nextEntry = result[atIndex];
+    const entries = getValues('entries');
+    const prevEntry = atIndex > 0 ? entries[atIndex - 1] : undefined;
+    const nextEntry = entries[atIndex];
 
     const date = prevEntry?.date ?? nextEntry?.date ?? getLocalISODate();
     const startTime = prevEntry?.endTime?.[0]
@@ -925,279 +1304,29 @@ export default function WorkTimeForm() {
             onClick={() => handleInsertEntry(index)}
             label={t('workTimeForm.insertEntry')}
           />,
-          <Card
+          <EntryCard
             key={field.id}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={(e) => handleDrop(e, index)}
+            index={index}
+            control={control}
+            typedControl={typedControl}
+            register={register}
+            setValue={setValue}
+            entryErrors={errors.entries?.[index]}
+            options={optionsWithDraft}
+            draftMinutesByTask={draftMinutesByTask}
+            activeTimer={activeTimer}
+            isDragged={draggedIndex === index}
+            isDragOver={dragOverIndex === index && draggedIndex !== index}
+            canRemove={fields.length > 1}
+            onStartTimer={handleStartTimer}
+            onStopTimer={handleStopTimer}
+            onRemove={handleRemoveEntry}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             onDragEnd={handleDragEnd}
-            className={cn(
-              'animate-in fade-in-0 slide-in-from-top-2 duration-300 transition-[opacity,border-color]',
-              draggedIndex === index && 'opacity-40 border-dashed',
-              dragOverIndex === index && draggedIndex !== index && 'border-primary border-2'
-            )}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground touch-none"
-                    title={t('workTimeForm.dragToReorder')}
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </div>
-                  <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
-                </div>
-                <div className="flex items-center gap-1">
-                  {activeTimer?.index === index ? (
-                    <LiveTimer
-                      startedAt={activeTimer.startedAt}
-                      onStop={handleStopTimer}
-                      onElapsedMinutesChange={setTimerElapsedMinutes}
-                    />
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => handleStartTimer(index)}
-                            disabled={activeTimer !== null}
-                          >
-                            <Timer className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            {activeTimer !== null
-                              ? t('workTimeForm.timer.otherRunning')
-                              : t('workTimeForm.timer.start')}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    onClick={() => {
-                      // If timer is running on this entry, stop it silently before removing
-                      if (activeTimer?.index === index) {
-                        setActiveTimer(null);
-                        setTimerElapsedMinutes(0);
-                        localStorage.removeItem('wt_activeTimer');
-                      }
-                      remove(index);
-                    }}
-                    disabled={fields.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Single row layout - wraps on smaller screens */}
-              <div className="flex flex-wrap gap-4 items-start">
-                <div className="flex-1 min-w-[200px] space-y-2">
-                  <Label htmlFor={`entries.${index}.description`}>{t('common.description')}</Label>
-                  <Textarea
-                    placeholder={t('workTimeForm.descPlaceholder')}
-                    className="w-full"
-                    name={`entries.${index}.description`}
-                    control={typedControl}
-                    rules={{ required: 'Description is required' }}
-                  />
-                </div>
-                <div className="w-[200px] space-y-2">
-                  <Label htmlFor={`entries.${index}.task`}>{t('workTimeForm.task')}</Label>
-                  <Controller
-                    name={`entries.${index}.task`}
-                    control={control}
-                    rules={{ required: t('workTimeForm.taskRequired') }}
-                    render={({ field }) => {
-                      const selectedOption = (() => {
-                        const val = field.value;
-                        if (!val) return null;
-                        if (typeof val === 'object' && 'value' in val) {
-                          return (
-                            optionsWithDraft.find(
-                              (o) => String(o.value) === String((val as { value: string }).value)
-                            ) ?? null
-                          );
-                        }
-                        return null;
-                      })();
-
-                      const selectedTask = selectedOption as {
-                        value: string;
-                        label: string;
-                        estimatedTime?: number;
-                        totalLoggedMinutes?: number;
-                      } | null;
-                      const draftMinutes = selectedTask ? (draftMinutesByTask.get(String(selectedTask.value)) ?? 0) : 0;
-                      const taskInfo =
-                        selectedTask?.estimatedTime && selectedTask.estimatedTime > 0
-                          ? getTaskProgressInfo(selectedTask.estimatedTime, selectedTask.totalLoggedMinutes)
-                          : null;
-
-                      return (
-                        <div className="space-y-1">
-                          <Combobox
-                            options={optionsWithDraft}
-                            placeholder={t('workTimeForm.selectTask')}
-                            searchPlaceholder={t('workTimeForm.searchTasks')}
-                            value={selectedTask}
-                            onChange={field.onChange}
-                            showProgress
-                            className="w-full"
-                          />
-                          {taskInfo && selectedTask?.estimatedTime && selectedTask.estimatedTime > 0 && (
-                            <div
-                              className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                taskInfo.status === 'overtime'
-                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  : taskInfo.status === 'warning'
-                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                              }`}
-                            >
-                              {t(
-                                draftMinutes > 0 ? 'workTimeForm.progressInfoProjected' : 'workTimeForm.progressInfo',
-                                {
-                                  logged: formatMinutesToHHMM(selectedTask.totalLoggedMinutes ?? 0),
-                                  estimated: formatMinutesToHHMM(selectedTask.estimatedTime ?? 0),
-                                  pct: Math.round(taskInfo.pct),
-                                  margin: formatMinutesToHHMM(taskInfo.margin),
-                                  draft: formatMinutesToHHMM(draftMinutes)
-                                }
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-                  {errors?.entries?.[index]?.task && (
-                    <span className="text-sm text-destructive">{errors.entries[index].task.message}</span>
-                  )}
-                </div>
-                <div className="w-[170px] space-y-2">
-                  <Label htmlFor={`entries.${index}.date`}>{t('common.date')}</Label>
-                  <InputDate
-                    name={`entries.${index}.date`}
-                    control={typedControl}
-                    rules={{ required: t('workTimeForm.dateRequired') }}
-                  />
-                </div>
-                <div className="w-[90px] space-y-2">
-                  <Label htmlFor={`entries.${index}.hours`}>{t('timeLogs.colDuration')}</Label>
-                  <InputTime
-                    name={`entries.${index}.hours`}
-                    control={typedControl}
-                    className="w-full"
-                    rules={{ required: t('workTimeForm.durationRequired') }}
-                    options={{
-                      enableTime: true,
-                      noCalendar: true,
-                      time_24hr: true,
-                      dateFormat: 'H:i',
-                      defaultDate: '00:00'
-                    }}
-                  />
-                </div>
-                <div className="w-[100px] space-y-2">
-                  <Label htmlFor={`entries.${index}.startTime`}>{t('timeLogs.colStart')}</Label>
-                  <InputTime
-                    name={`entries.${index}.startTime`}
-                    control={typedControl}
-                    className="w-full"
-                    rules={{ required: t('workTimeForm.startRequired') }}
-                    options={{
-                      enableTime: true,
-                      noCalendar: true,
-                      dateFormat: 'h:i K',
-                      defaultDate: '09:00',
-                      onChange: () => {
-                        setValue(`entries.${index}.manualStartTime`, true, { shouldDirty: true });
-                      }
-                    }}
-                  />
-                  {errors?.entries?.[index]?.startTime && (
-                    <span className="text-sm text-destructive">{errors.entries[index].startTime.message}</span>
-                  )}
-                </div>
-                <div className="w-[100px] space-y-2">
-                  <Label htmlFor={`entries.${index}.endTime`}>{t('timeLogs.colEnd')}</Label>
-                  <InputTime
-                    name={`entries.${index}.endTime`}
-                    control={typedControl}
-                    className="w-full"
-                    options={{
-                      enableTime: true,
-                      noCalendar: true,
-                      dateFormat: 'h:i K',
-                      time_24hr: false,
-                      defaultDate: '09:00',
-                      clickOpens: false
-                    }}
-                  />
-                </div>
-                <div className="flex flex-col justify-end space-y-2">
-                  <Label
-                    htmlFor={`entries.${index}.afterLunch`}
-                    className="flex items-center gap-1.5 cursor-pointer select-none"
-                  >
-                    <UtensilsCrossed className="h-3.5 w-3.5 text-muted-foreground" />
-                    {t('workTimeForm.afterLunch')}
-                  </Label>
-                  <div className="h-10 flex items-center">
-                    <label
-                      htmlFor={`entries.${index}.afterLunch`}
-                      className="relative inline-flex items-center cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        id={`entries.${index}.afterLunch`}
-                        {...register(`entries.${index}.afterLunch`)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-col justify-end space-y-2">
-                  <Label
-                    htmlFor={`entries.${index}.isBillable`}
-                    className="flex items-center gap-1.5 cursor-pointer select-none"
-                  >
-                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                    {t('common.billable')}
-                  </Label>
-                  <div className="h-10 flex items-center">
-                    <label
-                      htmlFor={`entries.${index}.isBillable`}
-                      className="relative inline-flex items-center cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        id={`entries.${index}.isBillable`}
-                        {...register(`entries.${index}.isBillable`)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            onElapsedMinutesChange={setTimerElapsedMinutes}
+          />
         ])}
 
         <InsertDivider
