@@ -70,6 +70,24 @@ jobs:
       - name: Build (Vite + Electron)
         run: pnpm build
 
+      # Pre-create the GitHub release for this tag so electron-builder only uploads into it.
+      #
+      # electron-builder's publisher cache is not atomic: the .exe.blockmap and the .exe are
+      # queued as two concurrent artifact tasks, each can build its own GitHubPublisher, and
+      # each calls createRelease. One POST wins and the other fails with 422 already_exists,
+      # which aborts the publish and can leave the release incomplete (this happened on
+      # v1.12.0, and skipped the gate below because the publish step failed first).
+      #
+      # GitHubPublisher.getOrCreateRelease reuses an existing release for the tag, so creating
+      # it here - before electron-builder runs - makes both publishers find it and only upload.
+      # Idempotent: a no-op when the release already exists (e.g. a workflow re-run).
+      - name: Pre-create the GitHub release (tag push)
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/ensure-github-release.ps1 -Tag $env:GITHUB_REF_NAME
+
       # The gate is the `afterPack` hook registered in package.json: it runs the
       # packaged-native-module probe inside the build that produces the artifact.
       # A probe failure throws and aborts the build during the pack phase, before
@@ -83,6 +101,10 @@ jobs:
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Upload into the tag's own release even once it is older than electron-builder's
+          # 2-hour republish window, so a manual re-run actually republishes instead of
+          # silently skipping. Asset collisions are handled by the publisher (delete + re-upload).
+          EP_GH_IGNORE_TIME: 'true'
         run: pnpm exec electron-builder --win --publish always
 
       # The afterPack probe above certifies the packaged bytes; this gate
