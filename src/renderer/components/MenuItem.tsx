@@ -14,7 +14,7 @@ function MenuItem({ label, items, onClick, setIsOpen }: MenuItemProps) {
     <div className="relative group">
       <button
         onClick={handleClick}
-        className="flex items-center w-full px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground focus:outline-none transition-colors"
+        className="flex items-center w-full px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground focus:outline-hidden transition-colors"
       >
         {label}
         {items && <ChevronRight className="ml-auto h-4 w-4 opacity-70" />}

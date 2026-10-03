@@ -302,7 +302,7 @@ function TimeLogsTable() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('timeLogs.searchPlaceholder')}
-              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-hidden focus:ring-1 focus:ring-ring"
             />
           </div>
           {/* Filter toggle */}
@@ -356,7 +356,7 @@ function TimeLogsTable() {
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
-                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-hidden focus:ring-1 focus:ring-ring"
               />
             </div>
             {/* Date to */}
@@ -366,7 +366,7 @@ function TimeLogsTable() {
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
-                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-hidden focus:ring-1 focus:ring-ring"
               />
             </div>
             {/* Clear */}
@@ -427,7 +427,7 @@ function TimeLogsTable() {
                         type="date"
                         value={editData.date}
                         onChange={(e) => setEditData((d) => ({ ...d, date: e.target.value }))}
-                        className="w-32 rounded border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-32 rounded border border-input bg-background px-2 py-1 text-xs font-mono focus:outline-hidden focus:ring-1 focus:ring-ring"
                       />
                     </td>
                     {/* Task — read-only */}
@@ -443,7 +443,7 @@ function TimeLogsTable() {
                         value={editData.description}
                         onChange={(e) => setEditData((d) => ({ ...d, description: e.target.value }))}
                         placeholder={t('common.description')}
-                        className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
                       />
                     </td>
                     {/* Start time */}
@@ -473,7 +473,7 @@ function TimeLogsTable() {
                           onChange={(e) => setEditData((d) => ({ ...d, isBillable: e.target.checked }))}
                           className="sr-only peer"
                         />
-                        <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+                        <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
                       </label>
                     </td>
                     {/* Status — unchanged */}

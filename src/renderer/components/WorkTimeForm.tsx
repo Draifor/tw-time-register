@@ -136,7 +136,7 @@ function InsertDivider({ onClick, label }: { onClick: () => void; label: string 
         type="button"
         onClick={onClick}
         title={label}
-        className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-all hover:border-primary hover:text-primary group-hover/insert:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-all hover:border-primary hover:text-primary group-hover/insert:opacity-100 focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
       >
         <Plus className="h-3 w-3" />
         {label}
@@ -1219,7 +1219,7 @@ export default function WorkTimeForm() {
                         {...register(`entries.${index}.afterLunch`)}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
                     </label>
                   </div>
                 </div>
@@ -1242,7 +1242,7 @@ export default function WorkTimeForm() {
                         {...register(`entries.${index}.isBillable`)}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+                      <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
                     </label>
                   </div>
                 </div>

@@ -186,7 +186,7 @@ function ReportsPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-hidden focus:ring-1 focus:ring-ring"
           />
         </div>
         <div className="space-y-1">
@@ -195,7 +195,7 @@ function ReportsPage() {
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 rounded-md border border-input bg-background text-foreground px-2 text-sm font-mono focus:outline-hidden focus:ring-1 focus:ring-ring"
           />
         </div>
         <div className="space-y-1 min-w-[240px] flex-1">
@@ -206,7 +206,7 @@ function ReportsPage() {
               value={taskSearch}
               onChange={(e) => setTaskSearch(e.target.value)}
               placeholder={t('reports.taskSearchPlaceholder')}
-              className="h-8 w-full rounded-md border border-input bg-background text-foreground px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 w-full rounded-md border border-input bg-background text-foreground px-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-ring"
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
