@@ -148,9 +148,20 @@ dependencies. No push, no PR, no merge (the user owns those).
 ## Delivery
 
 - Actual authored changed lines: **~1827** (`a1fb7f1`: 1482 insertions + 345 deletions across 12
-  files), well above the ~400 advisory budget. One cohesive feature; the `ask-on-risk` question
-  (chain strategy: `stacked-to-main` vs `feature-branch-chain`) is raised with the user before
-  delivery. Fase 2 and Fase 3 both shipped as a single PR into `staging`.
+  files), well above the ~400 advisory budget. Strategy chosen by the user: **single PR** into
+  `staging` (Fase 2/3 precedent). PR #16: https://github.com/Draifor/tw-time-register/pull/16
+
+## Review outcome
+
+- Native RDD review was attempted: assessment `medium` risk, `review_due: true`
+  (`slice_budget_reached`), consent granted, lineage `review-eeb2684c5e361b04`, single lens
+  `review-reliability`. The reviewer OpenCode Task returned an empty result on three attempts
+  (`opencode_task_output_empty`) and no capture landed (STATUS stayed at
+  `reviewer_results_required`). Per operator disposition the frozen candidate was abandoned
+  (`review abandon`, reason `operator_disposition`); there is **no review record** for this
+  change. This is a client-runtime failure (empty sub-agent result), not a Gentle AI defect.
+- Note: `gentle-ai review status --cwd .` shows four other stale `reviewing` lineages from prior
+  sessions (one with captured lens results); they were left untouched.
 
 ## Route log
 
@@ -171,3 +182,5 @@ dependencies. No push, no PR, no merge (the user owns those).
   added synchronous `runSync`/`getSync`/`allSync` to `DatabaseWrapper` because an un-awaited
   `async run` inside `db.transaction` swallowed errors and committed partial work.
 - 2026-10-03 — **Gates green** (see Verification result).
+- 2026-10-03 — **Delivery**: PR #16 opened into `staging` (single PR). RDD review attempted but
+  the reviewer runtime returned empty three times; candidate abandoned per operator disposition.
