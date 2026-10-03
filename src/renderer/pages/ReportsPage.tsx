@@ -5,6 +5,7 @@ import { BarChart2, CalendarDays, ListTodo, TrendingUp, Clock, CheckCircle2, Cir
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import useTimeLogs from '../hooks/useTimeLogs';
+import useIncrementalRows from '../hooks/useIncrementalRows';
 import { Skeleton } from '../components/ui/skeleton';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
@@ -163,6 +164,11 @@ function ReportsPage() {
     return [...map.entries()].map(([date, v]) => ({ date, ...v })).sort((a, b) => b.date.localeCompare(a.date));
   }, [filtered]);
 
+  // The aggregations above stay computed from the FULL filtered list; these
+  // hooks only cap how many of their rows are mounted at once.
+  const byTaskRows = useIncrementalRows(byTask.length);
+  const byDayRows = useIncrementalRows(byDay.length);
+
   // ── render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -317,7 +323,7 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {byTask.map((row) => {
+                  {byTask.slice(0, byTaskRows.visibleCount).map((row) => {
                     const pct = row.entries > 0 ? Math.round((row.sentEntries / row.entries) * 100) : 0;
                     const barWidth = totalMinutes > 0 ? Math.round((row.minutes / totalMinutes) * 100) : 0;
                     const estimated = getTaskEstimatedTime(row.taskName);
@@ -433,6 +439,17 @@ function ReportsPage() {
                 </tbody>
               </table>
             </div>
+            {byTaskRows.hasMore && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={byTaskRows.showMore}
+                  className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  {t('reports.showMore', { count: byTask.length - byTaskRows.visibleCount })}
+                </button>
+              </div>
+            )}
           </TabsContent>
 
           {/* ── BY DAY ── */}
@@ -454,7 +471,7 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {byDay.map((row) => {
+                  {byDay.slice(0, byDayRows.visibleCount).map((row) => {
                     const pct = row.entries > 0 ? Math.round((row.sentEntries / row.entries) * 100) : 0;
                     return (
                       <tr key={row.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -491,6 +508,17 @@ function ReportsPage() {
                 </tbody>
               </table>
             </div>
+            {byDayRows.hasMore && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={byDayRows.showMore}
+                  className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  {t('reports.showMore', { count: byDay.length - byDayRows.visibleCount })}
+                </button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       )}

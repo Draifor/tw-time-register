@@ -202,7 +202,8 @@ const en = {
       colEstimated: 'Est. Time',
       colProgress: 'Progress',
       onTime: 'On time',
-      margin: 'Margin'
+      margin: 'Margin',
+      showMore: 'Show more ({{count}})'
     },
     settings: {
       title: 'Settings',

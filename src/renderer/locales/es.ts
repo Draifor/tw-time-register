@@ -202,7 +202,8 @@ const es = {
       colEstimated: 'Tiempo est.',
       colProgress: 'Progreso',
       onTime: 'En tiempo',
-      margin: 'Margen'
+      margin: 'Margen',
+      showMore: 'Mostrar más ({{count}})'
     },
     settings: {
       title: 'Configuración',
