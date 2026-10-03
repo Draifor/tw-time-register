@@ -100,11 +100,8 @@ This is that document.
 | B3 | Port the token layer to `@theme inline`: the 20 shadcn colours (E6), `borderRadius` (`:53-57`), and the Inter stack that E3 shows has never applied | `src/renderer/index.css`, `tailwind.config.js` | delegated (one writer) | [x] — **done 2026-10-02.** Static tokens (`slate-800/900`, `--font-sans`) live in a plain `@theme`; the shadcn colour layer, `chart-1..5` and `radius-lg/md/sm` live in `@theme inline` because they reference the runtime `var(--token)` triplets. `tailwind.config.js` is reduced to `content` + the `tailwindcss-animate` plugin — the `theme` object and the dead `variants`/`fontFamily` key are gone, and the `@config` bridge stays until B4. **Intended visible change:** `--font-sans` now feeds v4 preflight's `--default-font-family`, so the Inter stack that E3 proved never applied is active — the B6 smoke test must compare the app font. Green: `npm test` **196 passed** (floor 194), `type-check`, `lint`, `build`. Built CSS `dist-vite/assets/index-eiKI4LPz.css` (84.31 kB): `hsl(var(--background))` ×11, `:where(.dark` ×37, and the `--font-sans:"Inter", …` → `--default-font-family:var(--font-sans)` chain present. |
 | B4 | Replace `tailwindcss-animate` with `tw-animate-css` and re-verify the 10 animation lines in 7 files (E10) | `package.json`, CSS entry, 7 component files | delegated (one writer) | [x] — **done 2026-10-02.** `tailwindcss-animate` removed from `dependencies`; `tw-animate-css` **^1.4.0** added to `devDependencies` (the 1.x line — v2 has breaking changes). The animation layer is now CSS-first: `@import "tw-animate-css"` replaced the `@config` bridge, `tailwind.config.js` is **deleted**, and `components.json` `tailwind.config` is now `""` — **open question 3 is closed.** **Zero component edits**: `tw-animate-css` emits the same class names (`animate-in`/`animate-out`/`fade-in-0`/`fade-out-0`/`zoom-in-95`/`zoom-out-95`/`slide-in-from-*`/`slide-out-to-*`), so all 10 lines in the 7 files resolve unchanged. Green: `pnpm install --frozen-lockfile`, `npm test` **196 passed** (floor 194), `type-check`, `lint`, `build`. Built CSS `dist-vite/assets/index-CiImzn4E.css` **85.29 kB** (baseline 84.31 kB; +0.98 kB from the larger keyframe set): token layer `hsl(var(--background))` ×11, dark variant `:where(.dark` ×37, `animate-in` ×2, `@keyframes enter`/`exit` present, `tailwindcss-animate` ×0. |
 | B5 | Apply the E8 class-level renames, after confirming the full rename table against the upgrade guide | `src/**` | delegated (one writer) | [x] — **done 2026-10-02.** Table confirmed against the official upgrade guide **and** the installed v4 defaults. Applied across `src/renderer/**`: `shadow-sm`→`shadow-xs` (**17**), standalone `shadow`→`shadow-sm` (**8**), `backdrop-blur-sm`→`backdrop-blur-xs` (**1**), standalone `backdrop-blur`→`backdrop-blur-sm` (**1**), `outline-none`→`outline-hidden` (**41**) — 28 files, 53 replacements. **Two E8 corrections found by measuring first:** (a) E8's bare-`shadow` count of **4** was incomplete — there are **8** standalone tokens (incl. `after:shadow` ×3 and `data-[state=active]:shadow` ×1); (b) E8's `blur-sm`/bare `blur` were actually **`backdrop-blur-sm`/`backdrop-blur`**, so no standalone `blur` utility exists. **Exempt (and why):** `rounded-*`/bare `rounded` are **not** renamed because this repo's `@theme inline` override keeps `--radius-sm` at the v3 value (`calc(var(--radius) - 4px)` = 0.25rem) — renaming to `rounded-xs` would change the output; `ring-*` are not renamed because there is no bare `ring` and every width/color/offset is explicit. Green: `npm test` **196 passed** (floor 194), `type-check`, `lint`, `build`. Built CSS: `.shadow-xs` (`0 1px 2px 0`, color emitted as hex `#0000000d`), `.outline-hidden` (incl. the `forced-colors` block), `.backdrop-blur-xs`, and `.rounded-sm{border-radius:calc(var(--radius) - 4px)}` intact. |
-| B6 | Verify: suite, `type-check`, `lint`, `build`, the visual comparison against B1's baseline, and the human smoke test — plus a cheap build-output assertion that the generated stylesheet contains the token layer and the class-bound dark variant (review finding `R3-no-build-output-assertion`) | — | per-action workers | [ ] |
-| B7 | Record results, evidence and residue here | this document | direct inline | [ ] |
-
-Task detail for B3–B5 is deliberately deferred to B1's outcome: the token port's shape depends on whether
-the dark variant is wired correctly.
+| B6 | Verify: suite, `type-check`, `lint`, `build`, the visual comparison against B1's baseline, and the human smoke test — plus a cheap build-output assertion that the generated stylesheet contains the token layer and the class-bound dark variant (review finding `R3-no-build-output-assertion`) | — | per-action workers | [x] — **done 2026-10-02.** Machine part run by a read-only verifier: `npm test` **196/196** (floor 194), `npm run type-check` exit 0, `npm run lint` exit 0, `npm run build` exit 0. Generated-CSS assertion on `dist-vite/assets/index-DvyYt1Tr.css` (**85,595 bytes**): `hsl(var(--background))` ×11, `:where(.dark` ×37, `prefers-color-scheme` ×0, `.shadow-xs` present, `.outline-hidden` present (with the `@media (forced-colors: active)` block), `.backdrop-blur-xs` present, `.rounded-sm{border-radius:calc(var(--radius) - 4px)}` intact, `@keyframes enter`/`exit` and `animate-in` ×2 present, `tailwindcss-animate` ×0. Human smoke test on the running app (`pnpm dev`): **PASS** — the user confirmed dark-mode status colours, typography, shadows/rings/rounded, the 7 animated components and flatpickr all look correct, i.e. **only intended changes**. |
+| B7 | Record results, evidence and residue here | this document | direct inline | [x] — **done 2026-10-02.** B6's machine evidence, the human smoke-test verdict, the residue and the delivery re-evaluation are recorded in this document. |
 
 ## Acceptance criteria
 
@@ -127,10 +124,32 @@ the dark variant is wired correctly.
    - E8's own counts were partly wrong and are corrected in B5's row (bare `shadow` is 8, not 4; the "blur" tokens are `backdrop-blur`).
 3. ~~**Keep the JS config or go fully CSS-first?**~~ **Resolved 2026-10-02 (B4): fully CSS-first.** B3 ported the tokens, B4 moved the animation layer to `@import "tw-animate-css"` and deleted `tailwind.config.js` plus the `@config` bridge. `components.json` now has `"config": ""`. No JS Tailwind config remains; content detection is v4's automatic scanning of the Vite root (`src/renderer`), verified against the B3 build's utility counts.
 
-## Delivery plan (not yet decided)
+## Residue
 
-`delivery_strategy: ask-on-risk` (the repo default). No slice decision is due yet: the changed-line forecast
-does not exist until B3–B5 are scoped. Re-evaluate after they are.
+- **`dev:electron` / `build:electron` are stale and broken — pre-existing, out of this track's scope.**
+  `src/main/tsconfig.json:12` sets `ignoreDeprecations: "6.0"`, valid only on TypeScript ≥ 6; the repo pins
+  **5.8.3**, so `tsc -p src/main/tsconfig.json` fails with `TS5103`. Its `rootDir`/`outDir` pair would also
+  emit `dist-electron/src/main/index.js`, which is not the `main` declared by `package.json`. Neither path is
+  the real build: `vite.config.ts:29-55` compiles `src/main/index.ts` and `preload.ts` through
+  `vite-plugin-electron`, so `pnpm dev` and `pnpm dist:win` work. Introduced by `dfd178d` (2026-05-10),
+  untouched by this branch, already noted in `docs/PERFORMANCE-ROADMAP.md:267`. **Decision (user,
+  2026-10-02): leave it as is.**
+- **`R3-no-build-output-assertion` is satisfied only ad hoc.** B6 ran the generated-CSS check by hand; it is
+  **not** a committed test, so CI does not enforce it. Persisting it (a script or a Vitest case over the built
+  stylesheet) remains an open follow-up if the guarantee is wanted automatically.
+- **No versioned visual baseline exists** (`git ls-files '*baseline*'` is empty). B6's visual comparison was
+  therefore against the user's own prior view of the running app, not a stored artifact. Recorded as a process
+  gap for future visual tracks.
+
+## Delivery plan
+
+`delivery_strategy: ask-on-risk` (the repo default). The size is now measured, so the ask is due: the branch
+from the fork point `c221ec2` to `5995f81` is **36 files, +646 −619**. Breaking that down — **233** authored
+source/config lines (excluding this document and the lockfile), **211** lines in this document, and **821** in
+the generated `pnpm-lock.yaml`. Counting authored lines with generated files excluded gives **444**, over the
+~400 heuristic, so the strategy call is a real one: a single coherent PR with an exception, or a chain
+(`stacked-to-main` / `feature-branch-chain`). The functional change itself (src + configs) is 233 lines and is
+one coherent migration; the overage is dominated by this document. **Decision pending: a human call.**
 
 **Adjacent and still open, but not part of this track:** the content merged into `main` since the last tag
 (`v1.10.0`; the diff is 16 files, **+2293 −804**) is **unreleased**. It carries the silent updater, the
@@ -209,3 +228,18 @@ human decision, and nothing in this document depends on it.
   `.outline-hidden` (+ forced-colors block), `.backdrop-blur-xs`, and the untouched
   `.rounded-sm{border-radius:calc(var(--radius) - 4px)}`. Next: **B6** (the full verification pass —
   suite + gates + the build-output assertion + the human visual smoke test against B1's baseline).
+- 2026-10-02 — **B6 done: machine verification and human smoke test both PASS.** The machine part was delegated
+  to a read-only verifier and came back green on `feat/tailwind-4` @ `5995f81`: `npm test` **196/196** (floor
+  194), `npm run type-check`, `npm run lint`, `npm run build` all exit 0. The generated-CSS assertion on
+  `dist-vite/assets/index-DvyYt1Tr.css` (**85,595 bytes**) matched every expected value — token layer
+  (`hsl(var(--background))` ×11), class-bound dark variant (`:where(.dark` ×37, `prefers-color-scheme` ×0), the
+  renamed utilities (`.shadow-xs`, `.outline-hidden` with its `@media (forced-colors: active)` block,
+  `.backdrop-blur-xs`), the untouched `.rounded-sm` override, and the `tw-animate-css` keyframes
+  (`@keyframes enter`/`exit`, `animate-in` ×2, `tailwindcss-animate` ×0). The user then reviewed the running
+  app (`pnpm dev`) and confirmed dark-mode status colours, typography, shadows/rings/rounded, the 7 animated
+  components and flatpickr all look correct — **only intended changes**.
+- 2026-10-02 — **B7 done: the track is recorded and closed.** Acceptance criteria met: `tailwindcss` on 4.x,
+  `autoprefixer` and `tailwindcss-animate` gone, `tw-animate-css` present, 196 tests ≥ the 194 floor, gates
+  green, and the visual comparison showed only intended changes. Residue recorded above
+  (`dev:electron`/`build:electron` left as is; the CSS assertion is ad hoc only; no versioned visual baseline).
+  **Next step is human: the delivery decision (see Delivery plan).**
