@@ -126,7 +126,7 @@ bounded and reviewable.
 | E3 | **Migrate the React plugins to `@eslint-react` (still ESLint 9):** remove `eslint-plugin-react` + `eslint-plugin-react-hooks`; add `@eslint-react/eslint-plugin@^5.23.5`; rewrite `eslint.config.mjs` to the flat `eslintReact.configs["recommended-typescript"]` shape, porting the four enabled rules; re-point the seven inline disables (E10) | `package.json`, `pnpm-lock.yaml`, `eslint.config.mjs`, 5 source files | direct inline (one config file + mechanical comment re-points; the preset was inspected empirically first) | [x] — **done 2026-10-03.** `pnpm install` exit 0 (`+16 -172`); `@eslint-react/eslint-plugin` **5.23.5** added, both `eslint-plugin-*react*` removed; peer issues printed are only the pre-existing `electron-builder`/`dmg-builder` mismatch. `eslint.config.mjs` now extends `eslintReact.configs['recommended-typescript']` (65 rules, verified to include `@eslint-react/rules-of-hooks` = **error** and `@eslint-react/exhaustive-deps` = **warn**, and to need **no** `projectService`). The seven inline disables were re-pointed to `@eslint-react/*`; `eslint` reports **no** `rule not found`. |
 | E4 | **Tune to green:** run `npm run lint`, triage every finding, adopt/justify each `@eslint-react` rule; fix only what belongs in scope, record the rest as follow-ups | `eslint.config.mjs` | direct inline (design/measure loop) | [x] — **done 2026-10-03; the user chose to adopt the full preset.** `pnpm exec eslint .` exits **0** with **0 errors and 83 warnings** across 29 files. No rule was disabled. The warnings are recorded as a deliberate baseline and as follow-ups (see Residue); none is fatal and none belongs to a lint-tooling track. |
 | E5 | **ESLint 9 → 10 major:** `eslint` → `^10.12.0`, `@eslint/js` → `^10.0.1`; re-run lint and resolve any ESLint-10-specific findings | `package.json`, `pnpm-lock.yaml`, `eslint.config.mjs` | direct inline (version bump + measured follow-up) | [x] — **done 2026-10-03.** `pnpm install` exit 0 (`+44 -43`); `eslint` **10.12.0**, `@eslint/js` **10.0.1**. `pnpm exec eslint --version` → **v10.12.0**; `eslint .` exits **0** with the **same 0 errors / 83 warnings** — no ESLint-10-specific finding, no config change needed. Only the pre-existing `electron-builder` peer mismatch is printed. |
-| E6 | **Full gates:** `pnpm install --frozen-lockfile`, `lint`, `type-check`, `npm test` (≥196), `build`; confirm no peer warnings and a single `typescript` | — | per-action worker (read-only verification) | [ ] |
+| E6 | **Full gates:** `pnpm install --frozen-lockfile`, `lint`, `type-check`, `npm test` (≥196), `build`; confirm no peer warnings and a single `typescript` | — | per-action worker (read-only verification) | [x] — **done 2026-10-03, VERDICT PASS.** `pnpm install --frozen-lockfile` exit 0 with **no peer warnings**; `pnpm exec eslint --version` **v10.12.0**; `npm run lint` exit 0 (**0 errors / 83 warnings**, all `@eslint-react/*`); `type-check` 0; `npm test` **196/196** across 21 files; `npm run build` 0. Neither legacy plugin is in `package.json` or the lockfile, and `typescript@5.8.3` is absent. Bundle sizes and the +8 B delta are recorded in Residue. |
 | E7 | **Record results, evidence and residue here**, run the native review of the scoped candidate, then close the track | this document | direct inline | [ ] |
 
 ## Acceptance criteria
@@ -153,6 +153,12 @@ bounded and reviewable.
   supported`). Expected and transient: E5 moves to the supported `10.x` line.
 - **Two `eslint-plugin-react` rules were dropped with no direct `@eslint-react` equivalent:** `react/function-component-definition` (warn) and `react/jsx-filename-extension` (**error**) — the migration guide offers the former only through the extra `@eslint-react/kit` package and has no equivalent for the latter. The codebase already conforms to both, so nothing regressed, but the guarantee is gone.
 - **The 83-warning `@eslint-react` baseline (E4) is deliberate, not debt left unnoticed:** `no-forward-ref` 47, `no-array-index-key` 12, `set-state-in-effect` 8, `use-state` 7, `purity` 6, plus `no-unnecessary-use-prefix`, `naming-convention-ref-name` and `web-api-no-leaked-timeout` 1 each. `no-forward-ref` is largely the shadcn `components/ui/*` files (React 19 deprecates `forwardRef`) and is the natural companion to the React 19 track; the rest are real but out of scope for a lint-tooling track. Non-blocking (`eslint` exits 0).
+- **Bundle-size anomaly, resolved as not-ours:** `dist-electron/index.js` measures **547,019 B** on this
+  candidate versus the **547,011 B** recorded in Track C, Track D (E16) and the E1 baseline. Rebuilding with the
+  **baseline** `src/main/preload.ts` still produces **547,019 B**, the artifact is deterministic (two builds,
+  identical SHA-256 `9E320E9C…`), `vite`/`rolldown`/`electron`/`electron-updater` are the same versions as the
+  baseline, and no non-comment main-process source changed — so the earlier figure is unreproducible, not a
+  regression. `preload.js` is unchanged at **7,396 B**. The artifact is gitignored and not part of the PR.
 - _(further residue recorded as the track advances)_
 
 ## Delivery plan
@@ -189,3 +195,11 @@ which carries Tracks C and D) and a single PR to `staging`.** Push and PR remain
   `eslint` **10.12.0** resolved cleanly (no new peer warnings). `eslint .` exits **0** with the **identical
   0 errors / 83 warnings** — the major needed **no** config change, confirming nothing in the config used an
   API that ESLint 10 removed. **Next: E6 — the full gate set.**
+- 2026-10-03 — **E6 done; VERDICT PASS.** The read-only worker ran the whole pipeline on `93bbc9f`:
+  `frozen-lockfile` 0 + no peer warnings, `eslint` **10.12.0**, `lint` **0 errors / 83 warnings**,
+  `type-check` 0, **196/196** tests across 21 files, `build` 0. Legacy plugins and `typescript@5.8.3` are
+  absent. One honest anomaly is recorded in Residue: the main bundle measures **547,019 B** now versus
+  **547,011 B** captured in Track C/D and in E1. A controlled re-measurement (rebuilding with the **baseline**
+  `preload.ts`) still yields **547,019 B**, and the build tools and `electron-updater` are byte-identical
+  versions — so the delta is **not** Track E's source change; it is an unreproducible baseline figure. **Next:
+  E7 — record, review, close.**
