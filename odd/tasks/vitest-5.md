@@ -115,6 +115,23 @@ other track's config or versions, and any version bump, tag or publish.
 - **No version bump, tag or publish.** Content on `staging` since `v1.10.0` remains unreleased; that stays a
   human decision.
 
+## Review record
+
+- **Approved** 2026-10-03, lineage `review-2feb270891cab86d`, one lens `review-reliability`, tier **medium**,
+  candidate `2987765..baee9ef` (6 paths, 583 lines), correction budget 200 — **no correction opened**.
+  Acknowledged; authority **burned** (`gentle-ai.review-acknowledged/v1`). Consent was relayed and **granted**
+  by the user.
+- **Four non-blocking advisory findings** (recorded as follow-ups, never a reason to re-review this candidate):
+  - `R3-VITEST5-NOCI` (WARNING, `package.json:103`) — the major bump has no *automated* regression gate: the
+    repo's only CI workflow never runs the suite, so the green result is a one-time manual observation.
+  - `R3-JESTDOM-ENTRY` (SUGGESTION, `src/tests/setup.ts:6`) — the `/vitest` subpath resolves against an
+    unpinned jest-dom major; the compatibility is asserted rather than pinned. (It did resolve: `tsc` and the
+    suite pass.)
+  - `R3-CARET-DRIFT` (SUGGESTION, `package.json:83-84`) — the version-locked trio uses caret ranges, so a
+    non-frozen resolution could mismatch; pre-existing style.
+  - `R3-KNOWN-FLAKE` (SUGGESTION, `odd/tasks/vitest-5.md:88`) — the 196 floor coexists with a pre-existing
+    date-dependent flake that merely did not reproduce on this run.
+
 ## Delivery plan
 
 `delivery_strategy: ask-on-risk` (the repo default). The forecast is well under the ~400 authored-line
