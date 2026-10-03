@@ -157,6 +157,16 @@ dependency changes. No push, no PR, no merge (the user owns those).
     with no tracked lockfile (a pre-existing repo condition), so its exact tree is not
     reproducible from the repository alone.
 
+## Delivery
+
+- Strategy: **single-pr** (user-selected 2026-10-03). One PR from `feat/performance-fase-3`
+  into `staging`, holding every commit of the feature:
+  - `8bc9928` — PERF-301 virtualize `TimeLogsTable`
+  - `17f964b` — PERF-302 bound the `ReportsPage` aggregation tables
+  - `0ac698f`, `6938d91` — docs
+- Running authored changed lines ~488; the advisory budget is exceeded and accepted because the
+  change is one cohesive feature (matches the Fase 2 single-PR precedent).
+
 ## Route log
 
 | Task group | Route | Trigger evidence |
@@ -191,3 +201,5 @@ dependency changes. No push, no PR, no merge (the user owns those).
   `review-reliability`, 674 lines); the exact acknowledgement burned authority. 3 non-blocking
   advisories recorded (see Review outcome). The human smoke pass (large dataset + Profiler) is
   still outstanding.
+- 2026-10-03 — Delivery strategy chosen by the user: **single-pr** into `staging` (see
+  Delivery).
