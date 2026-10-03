@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useForm, useFieldArray, useWatch, Control, FieldValues, Controller } from 'react-hook-form';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, TimerOff, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, GripVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import Textarea from './ui/textarea-form';
 import { Label } from './ui/label';
 import Combobox from './ui/combobox';
 import TotalTimeDay from './TotalTimeDay';
+import LiveTimer from './LiveTimer';
 import InputTime from './ui/input-time';
 import InputDate from './ui/input-date';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -307,19 +308,10 @@ export default function WorkTimeForm() {
     }
     return null;
   });
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('wt_activeTimer');
-      if (saved) {
-        const { startedAt } = JSON.parse(saved) as { startedAt: string };
-        return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-      }
-    } catch {
-      /* ignore */
-    }
-    return 0;
-  });
-  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Elapsed minutes of the running timer, reported by LiveTimer at minute
+  // granularity so projected progress stays fresh without re-rendering the form
+  // every second.
+  const [timerElapsedMinutes, setTimerElapsedMinutes] = useState(0);
   // Ref that always points to the latest activeTimer — avoids stale closures in
   // keyboard shortcut callbacks registered before the next render.
   const activeTimerRef = useRef(activeTimer);
@@ -344,12 +336,12 @@ export default function WorkTimeForm() {
     if (activeTimer) {
       const timerTaskId = getEntryTaskId(result?.[activeTimer.index]);
       if (timerTaskId) {
-        map.set(timerTaskId, (map.get(timerTaskId) ?? 0) + Math.floor(elapsedSeconds / 60));
+        map.set(timerTaskId, (map.get(timerTaskId) ?? 0) + timerElapsedMinutes);
       }
     }
 
     return map;
-  }, [result, activeTimer, elapsedSeconds]);
+  }, [result, activeTimer, timerElapsedMinutes]);
 
   const optionsWithDraft = React.useMemo(
     () =>
@@ -482,40 +474,8 @@ export default function WorkTimeForm() {
   };
   // ── End drag & drop ──────────────────────────────────────────────────────
 
-  // Start/stop the 1-second tick whenever activeTimer changes
-  useEffect(() => {
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    if (activeTimer) {
-      timerIntervalRef.current = setInterval(() => {
-        setElapsedSeconds(Math.floor((Date.now() - activeTimer.startedAt.getTime()) / 1000));
-      }, 1000);
-    }
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    };
-  }, [activeTimer]);
-
-  // Clear interval on unmount
-  useEffect(
-    () => () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    },
-    []
-  );
-
-  const formatElapsed = (secs: number): string => {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = secs % 60;
-    return h > 0
-      ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-      : `${m}:${String(s).padStart(2, '0')}`;
-  };
-
   const handleStartTimer = useCallback(
     (index: number) => {
-      // Stop any existing timer without saving to form (user switched tasks)
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       const now = new Date();
       // startTime stored as 1970-epoch Date — same convention as the rest of the form
       const startDate = new Date('1970-01-01T00:00:00');
@@ -524,7 +484,7 @@ export default function WorkTimeForm() {
       setValue(`entries.${index}.manualStartTime`, false);
       const state = { index, startedAt: now };
       setActiveTimer(state);
-      setElapsedSeconds(0);
+      setTimerElapsedMinutes(0);
       localStorage.setItem('wt_activeTimer', JSON.stringify({ index, startedAt: now.toISOString() }));
     },
     [setValue]
@@ -532,7 +492,6 @@ export default function WorkTimeForm() {
 
   const handleStopTimer = useCallback(() => {
     if (!activeTimer) return;
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     const now = new Date();
     const elapsed = Math.floor((now.getTime() - activeTimer.startedAt.getTime()) / 1000);
     const elapsedMinutes = Math.floor(elapsed / 60);
@@ -543,7 +502,7 @@ export default function WorkTimeForm() {
     // Updating 'hours' triggers the chained useEffect → recalculates endTime automatically
     setValue(`entries.${activeTimer.index}.hours`, [durationDate]);
     setActiveTimer(null);
-    setElapsedSeconds(0);
+    setTimerElapsedMinutes(0);
     localStorage.removeItem('wt_activeTimer');
   }, [activeTimer, setValue]);
   // ── End live timer ──────────────────────────────────────────────────────────
@@ -571,13 +530,12 @@ export default function WorkTimeForm() {
       return;
     }
 
-    const payload = { entries: result.map(serializeEntryDates) };
-
     if (saveDraftTimeoutRef.current) {
       clearTimeout(saveDraftTimeoutRef.current);
     }
 
     saveDraftTimeoutRef.current = setTimeout(() => {
+      const payload = { entries: result.map(serializeEntryDates) };
       void saveWorkTimeDraft(payload).catch((error) => {
         console.error('Error saving WorkTime draft:', error);
       });
@@ -937,9 +895,8 @@ export default function WorkTimeForm() {
             const lastIndex = fields.length - 1;
             // If the timer is running on the last entry, stop it silently
             if (activeTimerRef.current?.index === lastIndex) {
-              if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
               setActiveTimer(null);
-              setElapsedSeconds(0);
+              setTimerElapsedMinutes(0);
               localStorage.removeItem('wt_activeTimer');
             }
             remove(lastIndex);
@@ -993,21 +950,16 @@ export default function WorkTimeForm() {
                   <CardTitle className="text-base">{t('workTimeForm.entryN', { num: index + 1 })}</CardTitle>
                 </div>
                 <div className="flex items-center gap-1">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        {activeTimer?.index === index ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors font-mono tabular-nums"
-                            onClick={handleStopTimer}
-                          >
-                            <TimerOff className="h-4 w-4 mr-1.5 animate-pulse" />
-                            {formatElapsed(elapsedSeconds)}
-                          </Button>
-                        ) : (
+                  {activeTimer?.index === index ? (
+                    <LiveTimer
+                      startedAt={activeTimer.startedAt}
+                      onStop={handleStopTimer}
+                      onElapsedMinutesChange={setTimerElapsedMinutes}
+                    />
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button
                             type="button"
                             variant="ghost"
@@ -1018,19 +970,17 @@ export default function WorkTimeForm() {
                           >
                             <Timer className="h-4 w-4" />
                           </Button>
-                        )}
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          {activeTimer?.index === index
-                            ? t('workTimeForm.timer.stop')
-                            : activeTimer !== null
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {activeTimer !== null
                               ? t('workTimeForm.timer.otherRunning')
                               : t('workTimeForm.timer.start')}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -1039,9 +989,8 @@ export default function WorkTimeForm() {
                     onClick={() => {
                       // If timer is running on this entry, stop it silently before removing
                       if (activeTimer?.index === index) {
-                        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
                         setActiveTimer(null);
-                        setElapsedSeconds(0);
+                        setTimerElapsedMinutes(0);
                         localStorage.removeItem('wt_activeTimer');
                       }
                       remove(index);
