@@ -75,13 +75,13 @@ no merge (the user owns those).
 
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
-| P2-01 | PERF-204 + BUG-07: `filtered` via `useMemo` (only meaningful work when `open`); reset effect depends on `open` + the primitive `value?.value` (read latest `options` through a ref), clear the focus `setTimeout` on cleanup | `src/renderer/components/ui/combobox.tsx` | delegated writer | [ ] |
-| P2-02 | PERF-203: task lookup `Map<taskName, Task>` built with `useMemo`, used by `TimeLogsTable` (`getTaskProgressByName`) and `ReportsPage` (`getTaskEstimatedTime`/`getTaskLoggedMinutes`) | `TimeLogsTable.tsx`, `ReportsPage.tsx` | delegated writer | [ ] |
-| P2-03 | PERF-205: memoize `typeOptions` in `useTasks` (currently `typeTasks.map` per cell) and extract a `React.memo` `TimeLogRow` with stable callbacks in `TimeLogsTable` | `hooks/useTasks.tsx`, `TimeLogsTable.tsx` | delegated writer | [ ] |
-| P2-04 | PERF-206: move the `result.map(serializeEntryDates)` payload build **inside** the autosave `setTimeout` so it does not run on every keystroke | `WorkTimeForm.tsx` | delegated writer | [ ] |
-| P2-05 | PERF-207: keep `shortcuts` + `enabled` in refs in `useKeyboardShortcuts` and register the `keydown` listener once (`[]`); actions observe the latest closures | `hooks/useKeyboardShortcuts.ts`, `WorkTimeForm.tsx` | delegated writer | [ ] |
-| P2-06 | PERF-201: extract `<LiveTimer startedAt onStop onElapsedMinutesChange />` that owns its own 1-second state/interval; remove `elapsedSeconds`/`timerIntervalRef`/`formatElapsed` from the root and drive the projected-progress minutes from a per-minute `timerElapsedMinutes` state | `components/LiveTimer.tsx` (new), `WorkTimeForm.tsx` | delegated writer | [ ] |
-| P2-07 | PERF-202: remove the root `useWatch({ name: 'entries' })`; maintain entries via a `watch(cb)` subscription (no re-render) for the cascade + `draftMinutesByTask`; extract a `React.memo` `EntryCard` with stable handlers and per-field subscriptions; handlers read `getValues()` | `WorkTimeForm.tsx` | delegated writer | [ ] |
+| P2-01 | PERF-204 + BUG-07: `filtered` via `useMemo`; reset effect depends on `open` + the primitive `value?.value` (latest `options` via a ref), focus `setTimeout` cleaned up | `src/renderer/components/ui/combobox.tsx` | delegated writer | [x] `a2e9a5d` |
+| P2-02 | PERF-203: task lookup `Map<taskName, Task>` (`useMemo`), used by `TimeLogsTable` and `ReportsPage` | `TimeLogsTable.tsx`, `ReportsPage.tsx` | delegated writer | [x] `e0f60f9` |
+| P2-03 | PERF-205: memoize `typeOptions` in `useTasks` and extract a `React.memo` `TimeLogRow` with stable callbacks | `hooks/useTasks.tsx`, `TimeLogsTable.tsx` | delegated writer | [x] `e0f60f9` |
+| P2-04 | PERF-206: build the `result.map(serializeEntryDates)` payload **inside** the autosave `setTimeout` | `WorkTimeForm.tsx` | delegated writer | [x] `a4e73dc` |
+| P2-05 | PERF-207: keep `shortcuts` + `enabled` in refs in `useKeyboardShortcuts`; register the `keydown` listener once | `hooks/useKeyboardShortcuts.ts` | delegated writer | [x] `0d723f5` |
+| P2-06 | PERF-201: extract `<LiveTimer/>` owning its 1-second state/interval; root drives projected progress from minute-granularity state | `components/LiveTimer.tsx` (new), `WorkTimeForm.tsx` | delegated writer | [x] `a4e73dc` |
+| P2-07 | PERF-202: extract a `React.memo` `EntryCard` with stable handlers + per-field subscriptions, make `draftMinutesByTask`/`optionsWithDraft` value-stable, and read entries via `getValues()` in the add/insert handlers, so typing in one card does not re-render its siblings. **Variant chosen:** keep the root `useWatch` only as the reactive driver for the cascade + draft map (its root re-render is cheap), rather than replacing it with a `watch(cb)` subscription — lower regression risk on the untested cascade. Revisit the subscription only if the Profiler shows the root reconciliation dominating. | `WorkTimeForm.tsx` | delegated writer | [ ] |
 
 ## Acceptance criteria
 
@@ -103,7 +103,9 @@ no merge (the user owns those).
 
 | ID | Finding | Evidence | Disposition |
 |---|---|---|---|
-| — | — | — | — |
+| F1 | Native review (lineage `review-84e997dc4841d7c7`, `review-reliability`) approved the P2-01..03 slice with 3 non-blocking advisories: (a) WARNING — narrowing `Combobox`'s reset effect deps means a caller that swaps option **content** while open can leave `highlightedIndex` stale (in `WorkTimeForm` the content is stable, only progress changes); (b) SUGGESTION — the combobox test does not assert highlight alignment; (c) SUGGESTION — the `TimeLogRow` memo test mounts a harness, not the real table. | review capture `R3-combobox-highlight`, `R3-combobox-highlight-coverage`, `R3-memo-integration-coverage` | Accepted as follow-up; no correction opened (non-blocking). |
+| F2 | `LiveTimer` setup triggers the `@eslint-react/set-state-in-effect` warning (state set in the `startedAt` effect). Required by the design (recompute on `startedAt` change); warning-only. | `src/renderer/components/LiveTimer.tsx:34-40` | Accepted; lint stays at 0 errors. |
+| F3 | PERF-206 has no meaningful RED test: it is a timing/allocation refactor with no observable behaviour delta. Covered by the full suite + type-check + lint instead. | worker report | Documented exception. |
 
 ## Route log
 
@@ -120,3 +122,18 @@ no merge (the user owns those).
   `src/renderer/**`; the Fase 2 anchors were re-mapped on disk (roadmap line numbers are stale
   by ~+18..65 lines; see the mapping in the session log). Track A already hardened
   `input-time.tsx` (`optionsKey` serialized memo) and query keys are centralized.
+- 2026-10-03 — **Batch 1 done** (`a2e9a5d`, `e0f60f9`): `Combobox` search survives parent
+  re-renders (BUG-07) with a RED→GREEN test; `TimeLogsTable`/`ReportsPage` use O(1)
+  `Map` lookups; `useTasks` hoists `typeOptions`; `TimeLogRow` extracted as `React.memo`
+  with a render-count test. Tests 199/199.
+- 2026-10-03 — **Native review approved** for the `cf7b834..e0f60f9` slice
+  (lineage `review-84e997dc4841d7c7`, lens `review-reliability`, medium risk, 914 lines);
+  authority burned. 3 non-blocking advisories recorded (F1).
+- 2026-10-03 — **Batch 2 done** (`a4e73dc`, `0d723f5`): `<LiveTimer/>` owns the 1-second
+  interval with a fake-timer isolation test (RED→GREEN); `useKeyboardShortcuts` registers
+  once via refs with a single-registration/latest-action test; draft serialization moved
+  inside the debounce. Tests 202/202; type-check clean; lint 0 errors (82 pre-existing
+  warnings). `review_due` false (`under_budget`, 386 lines) for `e0f60f9..HEAD`.
+- 2026-10-03 — **P2-07 opened** with the lower-risk variant recorded in the task table
+  (keep the root watch as the cascade driver; memoize `EntryCard` and value-stabilize the
+  derived maps).
