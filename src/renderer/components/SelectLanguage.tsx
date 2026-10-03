@@ -33,7 +33,7 @@ function SelectLanguage() {
       }
     };
     loadLanguage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, []);
 
   const languageHandler = async (lang: string) => {

@@ -49,7 +49,7 @@ function TotalTimeDay({ control }: TotalTimeDayProps) {
       .then((pairs) => setDbInfo(new Map(pairs)))
       .catch(() => setDbInfo(new Map()))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [datesKey]);
 
   // Draft minutes per date, aggregated from form entries
