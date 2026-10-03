@@ -18,6 +18,8 @@ yarn-error.log*
 # local tooling artifacts (generated, not source)
 .atl/
 .codegraph/
+.vitest/
+/coverage/
 
 # local env files
 .env.local
