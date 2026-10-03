@@ -7,7 +7,7 @@
 - **Branch:** `feat/performance-fase-4` (off `origin/staging` @ `b6c57aa`, the PR #15 merge)
 - **Created:** 2026-10-03
 - **Source:** `docs/PERFORMANCE-ROADMAP.md` §Fase 4 (PERF-401..404), re-verified on disk on 2026-10-03
-- **Status:** IN PROGRESS
+- **Status:** IMPLEMENTATION COMPLETE — delivery and human smoke pass pending (user-owned)
 
 ## Objective
 
@@ -98,12 +98,12 @@ dependencies. No push, no PR, no merge (the user owns those).
 
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
-| P4-01 | New `mapWithConcurrency(items, limit, fn)` helper (order-preserving, bounded) + tests | `src/main/utils/concurrency.ts`, `src/tests/main/utils/concurrency.test.ts` | delegated writer | [ ] |
-| P4-02 | PERF-403: batch last-successful-sync lookup (single `IN (...)` + window function, chunked) and resolve credentials once per sync | `src/main/services/historyService.ts`, `src/main/services/apiService.ts`, `src/main/services/syncService.ts` | delegated writer | [ ] |
-| P4-03 | PERF-401: bounded pool (limit 5) in `smartSyncEntries` + batched/transactional history+flag writes | `src/main/services/syncService.ts`, `src/main/services/historyService.ts`, `src/main/services/timeLogService.ts` | delegated writer | [ ] |
-| P4-04 | PERF-402: single transaction for `pullEntriesFromTW` inserts | `src/main/services/syncService.ts` | delegated writer | [ ] |
-| P4-05 | PERF-404: retry/backoff helper + apply to axios calls; cap `fetchTWTaskDetails` concurrency; pagination guard | `src/main/utils/httpRetry.ts`, `src/main/services/apiService.ts` | delegated writer | [ ] |
-| P4-06 | Tests for all of the above + full gates + roadmap checkmarks | `src/tests/**`, `docs/PERFORMANCE-ROADMAP.md` | delegated (same writer) + per-action | [ ] |
+| P4-01 | New `mapWithConcurrency(items, limit, fn)` helper (order-preserving, bounded) + tests | `src/main/utils/concurrency.ts`, `src/tests/main/utils/concurrency.test.ts` | delegated writer | [x] `a1fb7f1` |
+| P4-02 | PERF-403: batch last-successful-sync lookup (single `IN (...)` + window function, chunked) and resolve credentials once per sync | `src/main/services/historyService.ts`, `src/main/services/apiService.ts`, `src/main/services/syncService.ts` | delegated writer | [x] `a1fb7f1` |
+| P4-03 | PERF-401: bounded pool (limit 5) in `smartSyncEntries` + batched/transactional history+flag writes | `src/main/services/syncService.ts`, `src/main/services/historyService.ts`, `src/main/services/timeLogService.ts` | delegated writer | [x] `a1fb7f1` |
+| P4-04 | PERF-402: single transaction for `pullEntriesFromTW` inserts | `src/main/services/syncService.ts` | delegated writer | [x] `a1fb7f1` |
+| P4-05 | PERF-404: retry/backoff helper + apply to axios calls; cap `fetchTWTaskDetails` concurrency; pagination guard | `src/main/utils/httpRetry.ts`, `src/main/services/apiService.ts` | delegated writer | [x] `a1fb7f1` |
+| P4-06 | Tests for all of the above + full gates + roadmap checkmarks | `src/tests/**`, `docs/PERFORMANCE-ROADMAP.md` | delegated (same writer) + per-action | [x] gates green |
 | P4-07 | Work-unit commit(s) + native RDD review | — | parent + native | [ ] |
 
 ## Acceptance criteria
@@ -122,18 +122,35 @@ dependencies. No push, no PR, no merge (the user owns those).
 - `npm test` green (except the documented environmental flake in a full parallel run),
   `npm run type-check` clean, `npm run lint` clean (0 errors), `npm run build` OK.
 
+## Verification result
+
+- Focused (sync/DB side) `npx vitest run src/tests/main/utils src/tests/main/services/{syncService,historyService,apiService}.test.ts` → 4 files, **62 passed**.
+- Focused (HTTP side) `npx vitest run src/tests/main/utils src/tests/main/services/apiService.test.ts` → 3 files, **44 passed**.
+- `npm test` (full) → **250 passed (31 files)**; the documented Electron parallel flake did **not** manifest this run.
+- `npm run type-check` → clean (no diagnostics).
+- `npm run lint` → **0 errors, 82 warnings** (all pre-existing).
+- `npm run build` → success (renderer 2957 modules, electron main 313 modules, preload).
+- Baseline after Fase 3 was 213 collected; +37 tests this feature.
+
 ## Honest limitations
 
 - Network retry and HTTP concurrency are proven by unit tests with injected sleep/deps, not
   against live TeamWork; a real sync is the definitive proof.
-- The transaction grouping changes write batching, not per-entry atomicity semantics that the UI
-  already relied on.
+- The retry helper deliberately does NOT retry errors with no HTTP response (connection
+  reset/timeout) for any method, because a timed-out POST may already have created the entry.
+  Only 429 (any method) and 5xx (idempotent methods only) are retried.
+- Real better-sqlite3 rollback is exercised by the mocked Vitest unit test and the existing
+  Electron child-process `database.integration.test.ts` harness, not by the focused unit suite.
+- Root-cause correction: an un-awaited `async run` inside `db.transaction` swallowed SQL errors
+  and committed partial work, so synchronous `runSync`/`getSync`/`allSync` were added to
+  `DatabaseWrapper` and the transaction bodies rewritten to use them.
 
 ## Delivery
 
-- Strategy: **ask-on-risk** (default). Forecast: ~500–650 authored changed lines, likely a
-  single PR into `staging` (Fase 2 and Fase 3 precedent), pending the user's chain-strategy
-  choice if the branch crosses ~400.
+- Actual authored changed lines: **~1827** (`a1fb7f1`: 1482 insertions + 345 deletions across 12
+  files), well above the ~400 advisory budget. One cohesive feature; the `ask-on-risk` question
+  (chain strategy: `stacked-to-main` vs `feature-branch-chain`) is raised with the user before
+  delivery. Fase 2 and Fase 3 both shipped as a single PR into `staging`.
 
 ## Route log
 
@@ -147,3 +164,10 @@ dependencies. No push, no PR, no merge (the user owns those).
 - 2026-10-03 — Feature opened on `feat/performance-fase-4` (off `origin/staging` @ `b6c57aa`).
   Dependency decision recorded: zero-dep in-repo helpers. Base includes Fase 3 (PR #14) and the
   release pre-create hardening (PR #15).
+- 2026-10-03 — **P4-01..P4-06 done** (work unit `a1fb7f1`). New `mapWithConcurrency` +
+  `withRetry` helpers; `getLastSuccessfulSyncBatch` + `recordSyncBatch`; `markEntriesAsSent`
+  batch; optional-credentials threading; bounded sync pool; single-transaction pull; retry on
+  429 / idempotent-5xx; `fetchTWTaskDetails` capped at 5; pagination guard. Root-cause fix:
+  added synchronous `runSync`/`getSync`/`allSync` to `DatabaseWrapper` because an un-awaited
+  `async run` inside `db.transaction` swallowed errors and committed partial work.
+- 2026-10-03 — **Gates green** (see Verification result).
