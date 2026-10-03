@@ -119,7 +119,7 @@ bump, tag or publish.
 | D3 | **Settle TS 6/7 config compatibility by running, not reading:** `npm run type-check` (TS 7 on the root config) and `npm run build:electron` (TS 7 emit on the main config); adapt a tsconfig **only** where the compiler actually rejects it | `tsconfig*.json` (conditional) | direct inline (measured, minimal) | [x] — **done 2026-10-03.** `type-check` passed with **zero** config change (root uses `bundler`). `build:electron` failed once with **TS5108** (`moduleResolution=node10` removed, E15); removing that single line from `src/main/tsconfig.json` made it exit 0, and the emitted main CJS passes `node --check`. `ignoreDeprecations: "6.0"` was left in place (TS 7 still accepts it). |
 | D4 | **Full gates:** `npm test` (≥196), `type-check`, `lint` (`tseslint` on the TS 6 API), `build`, `pnpm install --frozen-lockfile` | — | per-action worker (read-only verification) | [x] — **done 2026-10-03, VERDICT PASS.** `frozen-lockfile` exit 0 (no peer warnings on the frozen path); `type-check` 0; `lint` 0; `npm test` **196/196** across 21 files, 0 failures; `npm run build` 0 with `dist-electron/index.js` **547,011 B** / `preload.js` **7,396 B** (E16); `npm run build:electron` 0 + `node --check` 0. Only the four expected paths changed. |
 | D5 | **Runtime-verification decision (revised by measurement):** the shipped bundle is not built by `tsc` (E8) and is byte-size-identical to Track C's (E16), so a human smoke test does not exercise this change | — | — (not required; evidenced) | [x] — **resolved 2026-10-03: no human smoke test.** Recorded with its reasoning in Verification mode. If the user wants a launch anyway it is a re-check of the app, not of Track D. |
-| D6 | **Record results, evidence and residue here**, run the native review of the scoped candidate, then close the track | this document | direct inline | [ ] |
+| D6 | **Record results, evidence and residue here**, run the native review of the scoped candidate, then close the track | this document | direct inline | [x] — **done 2026-10-03.** Native review **approved**, authority **burned** (lineage `review-68fbd1d1ac84a77a`, one `review-reliability` lens, medium, **no correction opened**); two advisory findings recorded in the Review record. Work units committed: `cf363bb` (build), `c7e8d93` (docs) plus this closing commit. Push and PR remain the user's decision. |
 
 ## Acceptance criteria
 
@@ -145,6 +145,21 @@ bump, tag or publish.
 - **No version bump, tag or publish.** Track D is build tooling; the unreleased `staging` content stays a
   human decision.
 
+## Review record
+
+Native review of the scoped candidate (4 paths, 495 changed lines including the generated lockfile, tier
+**medium**), lineage `review-68fbd1d1ac84a77a`, one lens `review-reliability`, correction budget 200 —
+**no correction opened**. Consent was relayed and **granted** by the user; the reviewer captured on the **first**
+attempt; the exact acknowledgement burned the authority (`gentle-ai.review-acknowledged/v1`,
+`consumed_revision` `sha256:b4b7e6a4…`).
+
+Two non-blocking advisory findings, recorded as follow-ups (never a reason to re-review this candidate):
+
+| ID | Severity | Claim | Disposition |
+|---|---|---|---|
+| R3-wiring-unenforced | WARNING | The two-compiler wiring (`tsc` → 7.0.2, `typescript` → API 6.0.2) is asserted only by the ad-hoc commands in this document; nothing committed (test, npm script, CI step) encodes it, so the invariant can regress silently while the recorded gates stay green. | **Valid.** Not patched here — a source change after the review freeze would need a new candidate. Candidate follow-up: a tiny script/test that asserts `require('typescript/package.json').version` and the `tsc --version` output. |
+| R3-implicit-moduleresolution | SUGGESTION | `src/main/tsconfig.json` no longer pins a resolution mode; with `module: "commonjs"` it now inherits TS 7's implicit default. | **Valid, addressed by recording.** `tsc -p src/main/tsconfig.json --showConfig` emits no `moduleResolution` (it is implicit), and pinning `node10` is impossible because TS 7 removed it (E15). The mode is therefore inherited, not chosen; the emitted main CJS resolves and passes `node --check`, and the shipped bundle is built by Vite (E8), so the inheritance is tooling-only. Pinning an explicit different mode (e.g. `node16`) would change resolution semantics, so it is deliberately not done here; a future config pass can pin or record it. |
+
 ## Delivery plan
 
 `delivery_strategy: ask-on-risk` (the repo default). The authored change is a two-line dependency block in
@@ -168,3 +183,9 @@ PR to `staging`.** Push and PR remain the user's call.
   by Vite/Rolldown, not `tsc` (E8), and is byte-size-identical to Track C's (E16), so no smoke test could
   exercise the change. **Next: D6 — commit the work units, run the native review of the scoped candidate, then
   close.**
+- 2026-10-03 — **D6 complete; Track D is CLOSED.** Work units: `cf363bb` (`build(typescript): adopt TypeScript
+  7 side-by-side with the TS 6 API` — the two-line dependency block plus the one forced line removed from
+  `src/main/tsconfig.json`) and `c7e8d93` (`docs(odd): record the TypeScript 7 track`), plus this closing
+  commit. Native review **approved** with authority burned (lineage `review-68fbd1d1ac84a77a`, one
+  `review-reliability` lens, medium, no correction opened); the two advisory findings are recorded in the Review
+  record. **D1–D6 complete.** Push and PR remain the user's decision.
