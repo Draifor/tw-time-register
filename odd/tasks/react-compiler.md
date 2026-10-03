@@ -60,7 +60,7 @@ What is *not* known, and cannot be assumed:
 | E8 | **The failing functions are the biggest and most complex screens.** Per-file error counts: `SettingsPage.tsx` **9**, `ImportTasksDialog.tsx` 5, `TimeLogsTable.tsx` 5, `PullFromTWDialog.tsx` 4, `useTable.tsx` 3, `HomePage.tsx` 3, `combobox.tsx` 3, then 18 files with 1–2. The compiler covers the small presentational pieces and skips the hard ones. | same log, grouped by filename |
 | E9 | **Both integration paths build, and the Rust path is much faster — but neither compiles `WorkTimeForm`.** Babel path: renderer build **9.58 s** (baseline 3.77 s, **+5.81 s**) and bundle **1,007,129 B** (+42,730 B, **+4.43%**). Rust path (`react({ compiler: { logDiagnostics: true } })` + `oxc-transform-react@0.145.0`): renderer build **4.10 s** (+0.33 s) and bundle **1,018,380 B** (+53,981 B, **+5.60%**); it reported the *same* `WorkTimeForm` `try/finally` skip with ~21 diagnostics total (fewer than Babel's 52 — the Rust port does not surface every Todo check). Plugin-react's declared peer is `oxc-transform-react@^0.145.0`; the latest **0.152.0 is outside that range** and produces a peer warning. | build timings + `dist-vite/assets/*.js` sizes, baseline vs both paths |
 | E10 | **The test runner does not see the compiler.** `vitest.config.ts` uses only `react()` (its own config, deliberately separate from `vite.config.ts`); so the 196 tests would **not** exercise compiled output unless the compiler preset is added there too. Any adoption must add it to both configs, or the regression floor proves nothing about the shipped bytes. | `vitest.config.ts:10` |
-| E11 | **Four real (non-Todo) findings are worth keeping regardless of the adoption decision.** `useTable.tsx:18` / `:28` — `useSkipper` reads `shouldSkipRef.current` **during render** (a genuine Rules-of-React violation, not a compiler quirk). `useTable.tsx:98` — TanStack Table's `useReactTable()` is **incompatible by design** ("returns functions that cannot be memoized safely"). `SettingsPage.tsx:134` — React Hook Form's `useForm().watch()` is incompatible. `input-time.tsx:83` — the manual `useMemo` keyed on `[optionsKey]` no longer matches the inferred deps (`[options]`). | spike diagnostics, `Refs`/`IncompatibleLibrary`/`PreserveManualMemo` details |
+| E11 | **The 4 non-Todo findings were each read in source after the spike — and none is a safe code fix.** `useTable.tsx:18/28` — `useSkipper` reads `shouldSkipRef.current` **during render**: a genuine Rules-of-React violation, but it is the **documented TanStack escape hatch** whose whole point is to avoid an extra render; there is no behaviour-identical refactor, and it only needs changing *if* the compiler is adopted (rejected). `useTable.tsx:98` — TanStack Table `useReactTable()` is **incompatible by design** (it returns unmemoizable functions); unfixable from here. `SettingsPage.tsx:134` — React Hook Form `useForm().watch()` is likewise incompatible; unfixable from here. `input-time.tsx:83` — the `useMemo` on `[optionsKey]` is **intentional and correct**: the comment at `:35-45` explains that keying on `options` identity would rebuild the flatpickr instance every second under the live timer and close open pickers (the Track A regression); the compiler's `PreserveManualMemo` flag is expected, and "fixing" the deps would **reintroduce** that bug. | `useTable.tsx:16-29,98`, `input-time.tsx:35-45,52-83`, `SettingsPage.tsx:134`; spike `Refs`/`IncompatibleLibrary`/`PreserveManualMemo` details |
 
 ## Constraints
 
@@ -138,9 +138,12 @@ and one optional-in-logical block. The 4 real findings are E11.
 4. **The blockers are upstream, not ours.** 48/52 are `Todo` (unimplemented compiler features). Waiting is a
    legitimate option; refactoring the app around compiler gaps is a large, open-ended commitment.
 
-**What is worth doing *regardless* (E11):** fix `useSkipper`'s ref-read during render, and note the
-TanStack Table / RHF `watch()` incompatibilities. Those are real signal the compiler surfaced even though
-adoption is not warranted yet.
+**Follow-up check (E11):** each non-Todo finding was read in source after the spike. **None is a safe code
+change.** `useSkipper` is the documented TanStack pattern (a behaviour-identical refactor does not exist,
+and it is only needed *if* the compiler is adopted); the TanStack Table and RHF incompatibilities are
+library-level; and `input-time.tsx`'s memo is deliberate and correct. **No follow-up patch is warranted** —
+the flags are a useful audit, not a bug list. The lesson: a compiler flag is a hypothesis; read the source
+before calling it a defect.
 
 **Consequence for `performance-fase-0-1.md` Fase 2:** the compiler cannot carry the re-render work for
 `WorkTimeForm`, so Fase 2 should be planned as **targeted manual memoisation / structural fixes**, not
@@ -167,6 +170,12 @@ deferred to the compiler. This resolves the dependency `react-19.md:438-442` rec
   `watch()` are incompatible **by design**, so its ceiling is below 100%) and would rewrite idiomatic code
   around temporary upstream `Todo` gaps that the React team will implement. The real Rules-of-React
   violations (E11) are carried as a separate small follow-up, not contorted into this track.
+- 2026-10-03 — **Follow-up verification: no code change warranted (E11 corrected).** Read each non-Todo
+  finding in source before patching. `input-time.tsx`'s `[optionsKey]` memo is deliberate and correct —
+  changing its deps would reintroduce the Track A picker regression; `useSkipper` is the documented TanStack
+  pattern with no behaviour-identical refactor; the TanStack Table / RHF `watch()` incompatibilities are
+  library-level. **Record only — no `src/**` change.** The earlier "real violations to fix" framing was drawn
+  from compiler flags without reading the code, and is corrected here.
 
 ## Resume — the next session starts here
 
@@ -179,9 +188,10 @@ document is the record and the tree is clean.
    upstream `Todo` gaps that the React team will implement (E6), so refactoring around them today is
    throwaway churn. **Revisit trigger:** when React Compiler implements `try/finally` and destructuring
    defaults, re-run the spike — the harness and baseline are recorded here and it takes ~10 minutes.
-2. **Do regardless of the decision:** fix `useSkipper`'s ref-read during render (`useTable.tsx:18/28`) — a
-   genuine Rules-of-React violation; and carry the TanStack Table (`useTable.tsx:98`) and RHF `watch()`
-   (`SettingsPage.tsx:134`) incompatibilities as known follow-ups.
+2. **No follow-up patch (verified in source — E11).** `useSkipper`'s ref-read during render is the documented
+   TanStack pattern with no behaviour-identical fix (it only needs changing if the compiler is adopted);
+   the TanStack Table (`useTable.tsx:98`) and RHF `watch()` (`SettingsPage.tsx:134`) incompatibilities are
+   library-level; and `input-time.tsx`'s memo is deliberate. The flags are an audit record, not a bug list.
 3. **Feed the decision back upstream:** `performance-fase-0-1.md` Fase 2 should be planned as targeted
    manual/structural re-render work, since the compiler cannot carry `WorkTimeForm` (E7, and the G1
    consequence note). Align `react-19.md`'s Resume item 4, which left this choice to Track G.
