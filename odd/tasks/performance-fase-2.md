@@ -7,7 +7,7 @@
 - **Branch:** `feat/performance-fase-2` (off `staging` @ `cf7b834`, the PR #12 merge)
 - **Created:** 2026-10-03
 - **Source:** `docs/PERFORMANCE-ROADMAP.md` §Fase 2 (PERF-201..207), re-verified on disk on 2026-10-03
-- **Status:** in progress
+- **Status:** **CLOSED** — all 7 tasks done and reviewed (2026-10-03). Delivery (PR) is the user's decision.
 
 ## Objective
 
@@ -81,7 +81,7 @@ no merge (the user owns those).
 | P2-04 | PERF-206: build the `result.map(serializeEntryDates)` payload **inside** the autosave `setTimeout` | `WorkTimeForm.tsx` | delegated writer | [x] `a4e73dc` |
 | P2-05 | PERF-207: keep `shortcuts` + `enabled` in refs in `useKeyboardShortcuts`; register the `keydown` listener once | `hooks/useKeyboardShortcuts.ts` | delegated writer | [x] `0d723f5` |
 | P2-06 | PERF-201: extract `<LiveTimer/>` owning its 1-second state/interval; root drives projected progress from minute-granularity state | `components/LiveTimer.tsx` (new), `WorkTimeForm.tsx` | delegated writer | [x] `a4e73dc` |
-| P2-07 | PERF-202: extract a `React.memo` `EntryCard` with stable handlers + per-field subscriptions, make `draftMinutesByTask`/`optionsWithDraft` value-stable, and read entries via `getValues()` in the add/insert handlers, so typing in one card does not re-render its siblings. **Variant chosen:** keep the root `useWatch` only as the reactive driver for the cascade + draft map (its root re-render is cheap), rather than replacing it with a `watch(cb)` subscription — lower regression risk on the untested cascade. Revisit the subscription only if the Profiler shows the root reconciliation dominating. | `WorkTimeForm.tsx` | delegated writer | [ ] |
+| P2-07 | PERF-202: extract a `React.memo` `EntryCard` with stable handlers + per-field subscriptions, make `draftMinutesByTask`/`optionsWithDraft` value-stable, and read entries via `getValues()` in the add/insert handlers, so typing in one card does not re-render its siblings. **Variant chosen:** keep the root `useWatch` only as the reactive driver for the cascade + draft map (its root re-render is cheap), rather than replacing it with a `watch(cb)` subscription — lower regression risk on the untested cascade. Revisit the subscription only if the Profiler shows the root reconciliation dominating. | `WorkTimeForm.tsx` | delegated writer | [x] `5bbf832` |
 
 ## Acceptance criteria
 
@@ -106,6 +106,8 @@ no merge (the user owns those).
 | F1 | Native review (lineage `review-84e997dc4841d7c7`, `review-reliability`) approved the P2-01..03 slice with 3 non-blocking advisories: (a) WARNING — narrowing `Combobox`'s reset effect deps means a caller that swaps option **content** while open can leave `highlightedIndex` stale (in `WorkTimeForm` the content is stable, only progress changes); (b) SUGGESTION — the combobox test does not assert highlight alignment; (c) SUGGESTION — the `TimeLogRow` memo test mounts a harness, not the real table. | review capture `R3-combobox-highlight`, `R3-combobox-highlight-coverage`, `R3-memo-integration-coverage` | Accepted as follow-up; no correction opened (non-blocking). |
 | F2 | `LiveTimer` setup triggers the `@eslint-react/set-state-in-effect` warning (state set in the `startedAt` effect). Required by the design (recompute on `startedAt` change); warning-only. | `src/renderer/components/LiveTimer.tsx:34-40` | Accepted; lint stays at 0 errors. |
 | F3 | PERF-206 has no meaningful RED test: it is a timing/allocation refactor with no observable behaviour delta. Covered by the full suite + type-check + lint instead. | worker report | Documented exception. |
+| F4 | Second native review (`review-a57bfe6b7bbedd02`, `review-reliability`, medium, 1320 lines) approved the batch-2/3 slice. The first `review-reliability` capture returned `opencode_task_output_empty` (client-runtime defect, not Gentle AI); the same-lineage STATUS reoffered the bound slot and the retry was admitted. 3 non-blocking SUGGESTIONs: (a) `LiveTimer`'s interval effect is keyed on the `startedAt` Date reference — the only caller passes a stable reference; (b) the isolation test does not exercise `onElapsedMinutesChange`; (c) the entry-memo test's stability snapshot is timing-based. | review capture `R3-001`, `R3-002`, `R3-003` | Accepted as follow-up; no correction opened. |
+| F5 | `EntryCard` value-stability uses a primitive `draftSignature` (task id + minutes) instead of a render-time ref comparison, because `@eslint-react/refs` forbids reading `ref.current` during render. Behaviourally equivalent; documented inline. | `WorkTimeForm.tsx` `draftSignature` memo | Accepted deviation from the prescribed mechanism. |
 
 ## Route log
 
@@ -137,3 +139,18 @@ no merge (the user owns those).
 - 2026-10-03 — **P2-07 opened** with the lower-risk variant recorded in the task table
   (keep the root watch as the cascade driver; memoize `EntryCard` and value-stabilize the
   derived maps).
+- 2026-10-03 — **Batch 3 done** (`5bbf832`): inline per-entry card extracted to a
+  module-scope `React.memo(EntryCard)` with stable handlers (drag/remove handlers wrapped
+  in `useCallback`; `useFieldArray`'s `remove`/`move` read through latest-value refs),
+  `draftMinutesByTask` value-stabilized via a `draftSignature` primitive, and
+  `getValues('entries')` in the add/insert handlers. A **full-form integration test** proves
+  a description keystroke in one card does not re-render its sibling. Tests 203/203.
+- 2026-10-03 — **Native review approved** for the `e0f60f9..HEAD` slice
+  (`review-a57bfe6b7bbedd02`, `review-reliability`, medium, 1320 lines); authority burned.
+  The first reviewer capture was empty (`opencode_task_output_empty`, client-runtime
+  defect); the same-lineage STATUS reoffered the slot and the retry was admitted. 3
+  non-blocking SUGGESTIONs recorded (F4). Second review of the phase.
+- **Fase 2 complete.** All of PERF-201..207 implemented and reviewed across two approved
+  native slices. Final gates: `npm test` 203/203, `npm run type-check` clean, `npm run lint`
+  0 errors (pre-existing warnings only), `npm run build` OK. Remaining follow-ups are the
+  non-blocking advisories in F1/F4 and the human Profiler/smoke pass from §7 of the roadmap.
