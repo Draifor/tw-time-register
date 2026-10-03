@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -50,6 +50,233 @@ import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo } from '../lib/progressUtils';
 import { Task } from '../../types/tasks';
 
+export interface TimeLogRowProps {
+  entry: TimeEntry;
+  idx: number;
+  isSyncing: boolean;
+  /** True while any row is being edited; locks the per-row action buttons. */
+  isRowLocked: boolean;
+  isDuplicating: boolean;
+  isDeleting: boolean;
+  tasksByName: Map<string, Task>;
+  onStartEdit: (entry: TimeEntry) => void;
+  onDuplicate: (entry: TimeEntry) => void;
+  onSyncOne: (entry: TimeEntry) => void;
+  onRequestDelete: (entry: TimeEntry) => void;
+  onOpenExternal: (link: string) => void;
+}
+
+// Extracted out of the table body so a row can skip re-rendering when only
+// unrelated rows or parent state change. Every prop is referentially stable or
+// a primitive; the map is memoized in the table.
+export const TimeLogRow = React.memo(function TimeLogRow({
+  entry,
+  idx,
+  isSyncing,
+  isRowLocked,
+  isDuplicating,
+  isDeleting,
+  tasksByName,
+  onStartEdit,
+  onDuplicate,
+  onSyncOne,
+  onRequestDelete,
+  onOpenExternal
+}: TimeLogRowProps) {
+  const { t } = useTranslation();
+  const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
+  const task = tasksByName.get(entry.taskName || '');
+  const progress = task && task.estimatedTime ? getTaskProgressInfo(task.estimatedTime, task.totalLoggedMinutes) : null;
+  const taskName = entry.taskName || '—';
+
+  return (
+    <tr
+      className={`border-b last:border-0 transition-colors ${
+        idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+      } hover:bg-accent/30`}
+    >
+      <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">{entry.date}</td>
+      <td className="px-4 py-3 align-top">
+        <div className="flex items-start gap-2 max-w-[260px]">
+          {progress && (
+            <div
+              className="mt-1.5 w-2 h-2 rounded-full shrink-0"
+              style={{
+                backgroundColor:
+                  progress.status === 'overtime' ? '#ef4444' : progress.status === 'warning' ? '#f59e0b' : '#10b981'
+              }}
+              title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
+            />
+          )}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {entry.taskLink ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenExternal(entry.taskLink!)}
+                    className="group/task inline-flex items-start gap-1 text-left font-medium leading-snug hover:text-primary transition-colors"
+                  >
+                    <span className="whitespace-normal break-words">{taskName}</span>
+                    <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-0 group-hover/task:opacity-100 transition-opacity" />
+                  </button>
+                ) : (
+                  <span className="cursor-default font-medium leading-snug whitespace-normal break-words">
+                    {taskName}
+                  </span>
+                )}
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="font-medium whitespace-normal break-words">{taskName}</p>
+                {entry.taskLink && (
+                  <p className="mt-1 font-mono text-[10px] text-muted-foreground break-all">{entry.taskLink}</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-top text-muted-foreground">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block max-w-[320px] cursor-default leading-snug whitespace-normal break-words">
+                {entry.description || '—'}
+              </span>
+            </TooltipTrigger>
+            {entry.description && (
+              <TooltipContent className="max-w-sm">
+                <p className="whitespace-pre-wrap break-words">{entry.description}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </td>
+      <td className="px-4 py-3 text-center font-mono text-xs">{entry.startTime || '—'}</td>
+      <td className="px-4 py-3 text-center font-mono text-xs">{entry.endTime || '—'}</td>
+      <td className="px-4 py-3 text-center font-mono text-xs font-medium">{formatDuration(hours, minutes)}</td>
+      <td className="px-4 py-3 text-center">
+        {entry.isBillable ? (
+          <Badge variant="secondary" className="text-xs">
+            {t('timeLogs.yes')}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-xs">No</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-center">
+        {entry.isSent ? (
+          <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-500/20">
+            <CheckCircle2 className="h-3 w-3" />
+            {t('common.sent')}
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+          >
+            <Clock className="h-3 w-3" />
+            {t('common.pending')}
+          </Badge>
+        )}
+      </td>
+      <td className="px-4 py-3 text-center">
+        <div className="flex items-center justify-center gap-1">
+          {/* Edit button — always visible */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                  disabled={isRowLocked}
+                  onClick={() => onStartEdit(entry)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{entry.isSent ? t('timeLogs.editResync') : t('timeLogs.editEntry')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {/* Duplicate button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                  disabled={isRowLocked || isDuplicating}
+                  onClick={() => onDuplicate(entry)}
+                >
+                  {isDuplicating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('timeLogs.duplicateEntry')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {/* Comment button — only when the entry has a TW task link */}
+          {(() => {
+            const twId = entry.taskLink?.match(/\/tasks\/(\d+)/)?.[1];
+            return twId ? (
+              <TaskCommentDialog twTaskId={twId} taskName={entry.taskName || entry.description || ''} />
+            ) : null;
+          })()}
+          {/* Sync button — only for pending */}
+          {!entry.isSent && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={isSyncing || isRowLocked}
+                    onClick={() => onSyncOne(entry)}
+                  >
+                    {isSyncing ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4 text-primary" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('timeLogs.sendToTW')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {/* Delete button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  disabled={isRowLocked || isDeleting}
+                  onClick={() => onRequestDelete(entry)}
+                >
+                  {isDeleting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('timeLogs.deleteEntry')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 function TimeLogsTable() {
   const { data, isLoading, error } = useTimeLogs();
   const queryClient = useQueryClient();
@@ -59,7 +286,7 @@ function TimeLogsTable() {
     queryKey: queryKeys.tasks.list(''),
     queryFn: () => fetchTasks()
   });
-  const tasks = tasksData ?? [];
+  const tasks = useMemo(() => tasksData ?? [], [tasksData]);
   // Track loading state per entry
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
   const [syncingAll, setSyncingAll] = useState(false);
@@ -102,11 +329,15 @@ function TimeLogsTable() {
     });
   }, [data, search, filterTask, filterDateFrom, filterDateTo]);
 
-  const getTaskProgressByName = (taskName: string) => {
-    const task = tasks.find((t) => t.taskName === taskName);
-    if (!task || !task.estimatedTime) return null;
-    return getTaskProgressInfo(task.estimatedTime, task.totalLoggedMinutes);
-  };
+  // O(1) task lookup by name for the per-row progress dot. First match wins,
+  // mirroring the previous `tasks.find(...)` semantics.
+  const tasksByName = useMemo(() => {
+    const map = new Map<string, Task>();
+    for (const task of tasks) {
+      if (!map.has(task.taskName)) map.set(task.taskName, task);
+    }
+    return map;
+  }, [tasks]);
 
   const hasActiveFilters = search || filterTask || filterDateFrom || filterDateTo;
 
@@ -117,25 +348,28 @@ function TimeLogsTable() {
     setFilterDateTo('');
   }
 
-  const handleDuplicate = async (entry: TimeEntry) => {
-    setDuplicatingId(entry.entryId);
-    try {
-      await addTimeEntry({
-        taskId: entry.taskId,
-        description: entry.description,
-        date: entry.date,
-        startTime: entry.startTime,
-        endTime: entry.endTime,
-        isBillable: entry.isBillable
-      });
-      toast.success(t('timeLogs.duplicateSuccess', { name: entry.taskName || entry.description }));
-      queryClient.invalidateQueries({ queryKey: ['workTimes'] });
-    } catch (err) {
-      toast.error(String(err));
-    } finally {
-      setDuplicatingId(null);
-    }
-  };
+  const handleDuplicate = useCallback(
+    async (entry: TimeEntry) => {
+      setDuplicatingId(entry.entryId);
+      try {
+        await addTimeEntry({
+          taskId: entry.taskId,
+          description: entry.description,
+          date: entry.date,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+          isBillable: entry.isBillable
+        });
+        toast.success(t('timeLogs.duplicateSuccess', { name: entry.taskName || entry.description }));
+        queryClient.invalidateQueries({ queryKey: ['workTimes'] });
+      } catch (err) {
+        toast.error(String(err));
+      } finally {
+        setDuplicatingId(null);
+      }
+    },
+    [t, queryClient]
+  );
 
   const handleDelete = async (entry: TimeEntry, deleteFromTW: boolean) => {
     setDeletingId(entry.entryId);
@@ -159,7 +393,7 @@ function TimeLogsTable() {
     }
   };
 
-  const handleStartEdit = (entry: TimeEntry) => {
+  const handleStartEdit = useCallback((entry: TimeEntry) => {
     setEditingId(entry.entryId);
     setEditData({
       date: entry.date,
@@ -168,7 +402,7 @@ function TimeLogsTable() {
       description: entry.description,
       isBillable: entry.isBillable
     });
-  };
+  }, []);
 
   const handleCancelEdit = () => {
     setEditingId(null);
@@ -205,34 +439,43 @@ function TimeLogsTable() {
     }
   };
 
-  const setSyncing = (id: number, value: boolean) =>
-    setSyncingIds((prev) => {
-      const next = new Set(prev);
-      if (value) next.add(id);
-      else next.delete(id);
-      return next;
-    });
+  const setSyncing = useCallback(
+    (id: number, value: boolean) =>
+      setSyncingIds((prev) => {
+        const next = new Set(prev);
+        if (value) next.add(id);
+        else next.delete(id);
+        return next;
+      }),
+    []
+  );
 
-  const handleSyncOne = async (entry: TimeEntry) => {
-    setSyncing(entry.entryId, true);
-    try {
-      const result = await smartSyncEntries([entry.entryId]);
-      const r = result.results[0];
-      if (r?.success) {
-        const name = entry.taskName || entry.description;
-        const msg =
-          r.action === 'updated' ? t('timeLogs.entryUpdatedInTW', { name }) : t('timeLogs.entrySentToTW', { name });
-        toast.success(msg);
-        queryClient.invalidateQueries({ queryKey: ['workTimes'] });
-      } else {
-        toast.error(r?.message || t('timeLogs.syncFailed'));
+  const handleSyncOne = useCallback(
+    async (entry: TimeEntry) => {
+      setSyncing(entry.entryId, true);
+      try {
+        const result = await smartSyncEntries([entry.entryId]);
+        const r = result.results[0];
+        if (r?.success) {
+          const name = entry.taskName || entry.description;
+          const msg =
+            r.action === 'updated' ? t('timeLogs.entryUpdatedInTW', { name }) : t('timeLogs.entrySentToTW', { name });
+          toast.success(msg);
+          queryClient.invalidateQueries({ queryKey: ['workTimes'] });
+        } else {
+          toast.error(r?.message || t('timeLogs.syncFailed'));
+        }
+      } catch (err) {
+        toast.error(String(err));
+      } finally {
+        setSyncing(entry.entryId, false);
       }
-    } catch (err) {
-      toast.error(String(err));
-    } finally {
-      setSyncing(entry.entryId, false);
-    }
-  };
+    },
+    [setSyncing, t, queryClient]
+  );
+
+  const handleRequestDelete = useCallback((entry: TimeEntry) => setDeleteTarget(entry), []);
+  const handleOpenExternal = useCallback((link: string) => window.Main.openExternal(link), []);
 
   const handleSyncAll = async () => {
     const pending = (data ?? []).filter((e) => !e.isSent);
@@ -412,12 +655,8 @@ function TimeLogsTable() {
               </tr>
             )}
             {filteredData.map((entry, idx) => {
-              const { hours, minutes } = parseDuration(entry.startTime, entry.endTime);
-              const isSyncing = syncingIds.has(entry.entryId);
-              const isEditing = editingId === entry.entryId;
-
               // --- EDITING ROW ---
-              if (isEditing) {
+              if (editingId === entry.entryId) {
                 const editDuration = parseDuration(editData.startTime, editData.endTime);
                 return (
                   <tr key={entry.entryId} className="border-b last:border-0 bg-accent/40">
@@ -566,213 +805,21 @@ function TimeLogsTable() {
 
               // --- NORMAL ROW ---
               return (
-                <tr
+                <TimeLogRow
                   key={entry.entryId}
-                  className={`border-b last:border-0 transition-colors ${
-                    idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                  } hover:bg-accent/30`}
-                >
-                  <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">{entry.date}</td>
-                  <td className="px-4 py-3 align-top">
-                    {(() => {
-                      const progress = getTaskProgressByName(entry.taskName || '');
-                      const taskName = entry.taskName || '—';
-                      return (
-                        <div className="flex items-start gap-2 max-w-[260px]">
-                          {progress && (
-                            <div
-                              className="mt-1.5 w-2 h-2 rounded-full shrink-0"
-                              style={{
-                                backgroundColor:
-                                  progress.status === 'overtime'
-                                    ? '#ef4444'
-                                    : progress.status === 'warning'
-                                      ? '#f59e0b'
-                                      : '#10b981'
-                              }}
-                              title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
-                            />
-                          )}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                {entry.taskLink ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => window.Main.openExternal(entry.taskLink!)}
-                                    className="group/task inline-flex items-start gap-1 text-left font-medium leading-snug hover:text-primary transition-colors"
-                                  >
-                                    <span className="whitespace-normal break-words">{taskName}</span>
-                                    <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-0 group-hover/task:opacity-100 transition-opacity" />
-                                  </button>
-                                ) : (
-                                  <span className="cursor-default font-medium leading-snug whitespace-normal break-words">
-                                    {taskName}
-                                  </span>
-                                )}
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p className="font-medium whitespace-normal break-words">{taskName}</p>
-                                {entry.taskLink && (
-                                  <p className="mt-1 font-mono text-[10px] text-muted-foreground break-all">
-                                    {entry.taskLink}
-                                  </p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      );
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 align-top text-muted-foreground">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="block max-w-[320px] cursor-default leading-snug whitespace-normal break-words">
-                            {entry.description || '—'}
-                          </span>
-                        </TooltipTrigger>
-                        {entry.description && (
-                          <TooltipContent className="max-w-sm">
-                            <p className="whitespace-pre-wrap break-words">{entry.description}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono text-xs">{entry.startTime || '—'}</td>
-                  <td className="px-4 py-3 text-center font-mono text-xs">{entry.endTime || '—'}</td>
-                  <td className="px-4 py-3 text-center font-mono text-xs font-medium">
-                    {formatDuration(hours, minutes)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {entry.isBillable ? (
-                      <Badge variant="secondary" className="text-xs">
-                        {t('timeLogs.yes')}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">No</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {entry.isSent ? (
-                      <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-500/20">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {t('common.sent')}
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-                      >
-                        <Clock className="h-3 w-3" />
-                        {t('common.pending')}
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      {/* Edit button — always visible */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                              disabled={editingId !== null}
-                              onClick={() => handleStartEdit(entry)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{entry.isSent ? t('timeLogs.editResync') : t('timeLogs.editEntry')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      {/* Duplicate button */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                              disabled={editingId !== null || duplicatingId === entry.entryId}
-                              onClick={() => handleDuplicate(entry)}
-                            >
-                              {duplicatingId === entry.entryId ? (
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{t('timeLogs.duplicateEntry')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      {/* Comment button — only when the entry has a TW task link */}
-                      {(() => {
-                        const twId = entry.taskLink?.match(/\/tasks\/(\d+)/)?.[1];
-                        return twId ? (
-                          <TaskCommentDialog twTaskId={twId} taskName={entry.taskName || entry.description || ''} />
-                        ) : null;
-                      })()}
-                      {/* Sync button — only for pending */}
-                      {!entry.isSent && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                disabled={isSyncing || editingId !== null}
-                                onClick={() => handleSyncOne(entry)}
-                              >
-                                {isSyncing ? (
-                                  <RefreshCw className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Send className="h-4 w-4 text-primary" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{t('timeLogs.sendToTW')}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                      {/* Delete button */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              disabled={editingId !== null || deletingId === entry.entryId}
-                              onClick={() => setDeleteTarget(entry)}
-                            >
-                              {deletingId === entry.entryId ? (
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{t('timeLogs.deleteEntry')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </td>
-                </tr>
+                  entry={entry}
+                  idx={idx}
+                  isSyncing={syncingIds.has(entry.entryId)}
+                  isRowLocked={editingId !== null}
+                  isDuplicating={duplicatingId === entry.entryId}
+                  isDeleting={deletingId === entry.entryId}
+                  tasksByName={tasksByName}
+                  onStartEdit={handleStartEdit}
+                  onDuplicate={handleDuplicate}
+                  onSyncOne={handleSyncOne}
+                  onRequestDelete={handleRequestDelete}
+                  onOpenExternal={handleOpenExternal}
+                />
               );
             })}
           </tbody>

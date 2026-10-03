@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 
 interface KeyboardShortcut {
   key: string;
@@ -27,32 +27,39 @@ interface UseKeyboardShortcutsOptions {
  * });
  */
 export function useKeyboardShortcuts({ shortcuts, enabled = true }: UseKeyboardShortcutsOptions) {
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (!enabled) return;
+  // Keep the latest shortcuts/enabled in refs so the keydown listener can be
+  // registered exactly once while still observing the latest closures.
+  const shortcutsRef = useRef(shortcuts);
+  const enabledRef = useRef(enabled);
 
-      // Don't trigger shortcuts when typing in inputs
-      const target = event.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+  useEffect(() => {
+    shortcutsRef.current = shortcuts;
+    enabledRef.current = enabled;
+  });
 
-      for (const shortcut of shortcuts) {
-        const ctrlMatch = shortcut.ctrl ? event.ctrlKey || event.metaKey : !event.ctrlKey && !event.metaKey;
-        const altMatch = shortcut.alt ? event.altKey : !event.altKey;
-        const shiftMatch = shortcut.shift ? event.shiftKey : !event.shiftKey;
-        const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!enabledRef.current) return;
 
-        if (keyMatch && ctrlMatch && altMatch && shiftMatch) {
-          // Allow Ctrl+key shortcuts even in input fields (like Ctrl+S)
-          if (shortcut.ctrl || shortcut.alt || !isInputField) {
-            event.preventDefault();
-            shortcut.action();
-            return;
-          }
+    // Don't trigger shortcuts when typing in inputs
+    const target = event.target as HTMLElement;
+    const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+    for (const shortcut of shortcutsRef.current) {
+      const ctrlMatch = shortcut.ctrl ? event.ctrlKey || event.metaKey : !event.ctrlKey && !event.metaKey;
+      const altMatch = shortcut.alt ? event.altKey : !event.altKey;
+      const shiftMatch = shortcut.shift ? event.shiftKey : !event.shiftKey;
+      const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
+
+      if (keyMatch && ctrlMatch && altMatch && shiftMatch) {
+        // Allow Ctrl+key shortcuts even in input fields (like Ctrl+S)
+        if (shortcut.ctrl || shortcut.alt || !isInputField) {
+          event.preventDefault();
+          shortcut.action();
+          return;
         }
       }
-    },
-    [shortcuts, enabled]
-  );
+    }
+  }, []);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
