@@ -90,6 +90,16 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
      prohíbe literales hex en `.tsx`/`.ts` del renderer).
    - Aceptación: 0 literales hex en el renderer fuera de `.css`/`.svg`; guard verde.
 
+- [x] **T7 · Hardening post-review T5+T6** (advisories de la review)
+   - `R3-REPORTS-BAR-NOESTIMATE` (WARNING, regresión): la mini-barra de `ReportsPage` pasó a
+     `getStatusBarColor` → `bg-muted`, igual que su track → invisible para `no-estimate` (antes era verde).
+     Ahora usa el color de indicador visible (`getStatusDotColor` → `bg-muted-foreground`).
+   - `R3-RAWPALETTE-PARENTPATH` (WARNING, portabilidad): el guard resolvía rutas con
+     `Dirent.parentPath` (existe desde Node 20.12); ahora usa `readdirSync(recursive, encoding:'utf8')`
+     en modo string.
+   - `R3-COMBOBOX-DUP` (SUGGESTION): documentado, **no** tocado (el dot del combobox usa un status local
+     `'overtime'|'warning'|'on-time'|'none'` que no es `ProgressStatus`).
+
 ## Criterios de aceptación (global)
 
 1. `pnpm test`, `pnpm lint`, `pnpm type-check` en verde (salvo warnings preexistentes).
@@ -242,6 +252,12 @@ _(se completa por tarea)_
      (baseline). **`pnpm type-check`:** exit 0. Spot check del parent: 7/7 en los dos guards.
    - **Grep:** `rg "#[0-9a-fA-F]{3,8}\b" src/renderer -g "*.tsx" -g "*.ts"` → 0 matches.
 
+- **T7** — commit `fix(ux): address review advisories on status indicator colors and guard portability`.
+   - **Archivos:** `ReportsPage.tsx` (barra → indicador visible), `rawPaletteGuard.test.ts`
+     (`readdirSync` string mode portable), `progressUtils.ts` (JSDoc del helper).
+   - **`pnpm test`:** 51 archivos, **374 tests** verdes. **`pnpm lint`:** 0 errores, 83 warnings.
+     **`pnpm type-check`:** exit 0 (tras tipar el overload de `readdirSync` con `encoding:'utf8'`).
+
 ## Review nativa (RDD on) — slice T1
 
 - **Lineage:** `review-439b39e1d244269a`, 1 lente (`review-reliability`), riesgo medium,
@@ -291,3 +307,15 @@ _(se completa por tarea)_
     `TimeLogsTable` pasa de `flex-1` sin tope a un ancho acotado. Confirmar si es deseado o exponer el ancho.
   - `R3-CLEAR-LABEL` (SUGGESTION, introduced): el botón de limpiar deriva su nombre accesible solo de
     `clearLabel`; con `showClear` sin label queda sin nombre. El test ejercita ese caso sin fijar el nombre.
+
+## Review nativa (RDD on) — slice T5+T6
+
+- **Lineage:** `review-ce5126a180fa2338`, 1 lente (`review-reliability`), riesgo medium, **aprobado**
+  y authority quemada (`review-acknowledged/v1`, `authority: burned`). Candidato: 10 paths / 402 líneas
+  (T5 contraste + T6 hex/tokens + guards). Target `sha256:69623bd6…a4d549`; base `c55b270…`.
+- **Disparo:** `review_due: true` / `slice_budget_reached` (402 > budget ~400, acumulado T5+T6 vs boundary `6900332`).
+  Prestart canónico con `--agent=opencode` (consent relay → `granted` por el usuario).
+- **Resultado:** 0 BLOCKER/CRITICAL; 3 hallazgos advisory no bloqueantes:
+  - `R3-REPORTS-BAR-NOESTIMATE` (WARNING, introduced): resuelto en T7.
+  - `R3-RAWPALETTE-PARENTPATH` (WARNING, introduced): resuelto en T7.
+  - `R3-COMBOBOX-DUP` (SUGGESTION, introduced): documentado, no tocado (mapeo inline con status local).

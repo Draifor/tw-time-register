@@ -10,7 +10,7 @@ import useDebouncedValue from '../hooks/useDebouncedValue';
 import { Skeleton } from '../components/ui/skeleton';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
-import { getTaskProgressInfo, getStatusBarColor, getStatusDotColor, formatMinutesToHHMM } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusDotColor, formatMinutesToHHMM } from '../lib/progressUtils';
 import { Task } from '../../types/tasks';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -342,10 +342,11 @@ function ReportsPage() {
                               {row.taskName}
                             </div>
                           </div>
-                          {/* mini progress bar */}
+                          {/* mini share bar — status-colored; uses the visible
+                              status indicator color so no-estimate stays legible */}
                           <div className="mt-1 h-1 w-full rounded-full bg-muted">
                             <div
-                              className={`h-1 rounded-full ${getStatusBarColor(status)}`}
+                              className={`h-1 rounded-full ${getStatusDotColor(status)}`}
                               style={{ width: `${barWidth}%` }}
                             />
                           </div>

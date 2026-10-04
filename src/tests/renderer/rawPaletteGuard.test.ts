@@ -22,18 +22,15 @@ const HEX_COLOR = /#[0-9a-fA-F]{3,8}\b/;
 
 describe('raw palette guard', () => {
   it('contains no raw hex color literals in renderer source', () => {
-    const entries = readdirSync(RENDERER_DIR, { recursive: true, withFileTypes: true });
+    // String-mode recursive readdir returns paths relative to the root and is
+    // portable across Node versions (Dirent.parentPath only exists since 20.12).
+    const entries = readdirSync(RENDERER_DIR, { recursive: true, encoding: 'utf8' });
 
     const offenders = entries
-      .filter((entry) => entry.isFile())
-      .filter((entry) => entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))
-      .filter((entry) => !entry.name.includes('.test.'))
-      .filter((entry) => {
-        const fullPath = path.join(entry.parentPath, entry.name);
-        const source = readFileSync(fullPath, 'utf8');
-        return HEX_COLOR.test(source);
-      })
-      .map((entry) => path.relative(RENDERER_DIR, path.join(entry.parentPath, entry.name)));
+      .filter((entry) => entry.endsWith('.ts') || entry.endsWith('.tsx'))
+      .filter((entry) => !entry.includes('.test.'))
+      .filter((entry) => HEX_COLOR.test(readFileSync(path.join(RENDERER_DIR, entry), 'utf8')))
+      .map((entry) => entry.split(path.sep).join('/'));
 
     expect(
       offenders,
