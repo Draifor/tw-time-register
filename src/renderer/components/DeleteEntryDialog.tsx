@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from './ui/alert-dialog';
 
 interface Props {
   open: boolean;
@@ -17,8 +25,11 @@ interface Props {
 export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting, onConfirm, onCancel }: Props) {
   const { t } = useTranslation();
   const [deleteFromTW, setDeleteFromTW] = useState(false);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   function handleOpenChange(value: boolean) {
+    // While the delete is in flight the dialog must stay open, so an Escape /
+    // close request is ignored until the parent clears `isDeleting`.
     if (!value && !isDeleting) {
       setDeleteFromTW(false);
       onCancel();
@@ -30,17 +41,26 @@ export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(event) => {
+          // UX-406: land focus on the confirm action instead of the default
+          // Cancel button. Preventing the default also skips Radix's built-in
+          // cancel-focus handler.
+          event.preventDefault();
+          confirmRef.current?.focus();
+        }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
             <Trash2 className="h-5 w-5" />
             {t('timeLogs.deleteConfirmTitle')}
-          </DialogTitle>
-        </DialogHeader>
+          </AlertDialogTitle>
+          <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
+        </AlertDialogHeader>
 
         <div className="space-y-4 py-1">
-          <p className="text-sm text-muted-foreground">{t('timeLogs.deleteConfirmDesc')}</p>
           <p className="text-sm font-medium truncate" title={entryLabel}>
             &ldquo;{entryLabel}&rdquo;
           </p>
@@ -70,11 +90,16 @@ export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" size="sm" onClick={onCancel} disabled={isDeleting}>
-            {t('common.cancel')}
-          </Button>
-          <Button variant="destructive" size="sm" onClick={handleConfirm} disabled={isDeleting} className="gap-1.5">
+        <AlertDialogFooter className="gap-2">
+          <AlertDialogCancel disabled={isDeleting}>{t('common.cancel')}</AlertDialogCancel>
+          <Button
+            ref={confirmRef}
+            variant="destructive"
+            size="sm"
+            onClick={handleConfirm}
+            disabled={isDeleting}
+            className="gap-1.5"
+          >
             {isDeleting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -87,8 +112,8 @@ export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting
               </>
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

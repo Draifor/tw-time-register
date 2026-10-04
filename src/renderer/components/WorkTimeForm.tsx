@@ -25,6 +25,15 @@ import InputTime from './ui/input-time';
 import InputDate from './ui/input-date';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from './ui/alert-dialog';
 import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -488,6 +497,11 @@ export default function WorkTimeForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
 
+  // Single pending-deletion state driving one reusable confirmation dialog for
+  // every draft-entry removal (the per-row Trash2 control and the Esc shortcut).
+  const [pendingRemovalIndex, setPendingRemovalIndex] = useState<number | null>(null);
+  const removeConfirmRef = useRef<HTMLButtonElement>(null);
+
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
     const [hours, minutes] = (slot?.startTime || '09:00').split(':').map(Number);
@@ -865,18 +879,28 @@ export default function WorkTimeForm() {
     localStorage.removeItem('wt_activeTimer');
   }, [activeTimer, setValue]);
 
-  const handleRemoveEntry = useCallback(
-    (index: number) => {
-      // If the timer is running on this entry, stop it silently before removing
-      if (activeTimer?.index === index) {
-        setActiveTimer(null);
-        setTimerElapsedMinutes(0);
-        localStorage.removeItem('wt_activeTimer');
-      }
-      removeRef.current(index);
-    },
-    [activeTimer]
-  );
+  const handleRemoveEntry = useCallback((index: number) => {
+    // Do not touch the form yet: open the confirmation dialog and only remove
+    // the row once the user accepts.
+    setPendingRemovalIndex(index);
+  }, []);
+
+  const confirmRemoveEntry = useCallback(() => {
+    if (pendingRemovalIndex === null) return;
+    const index = pendingRemovalIndex;
+    // If the timer is running on this entry, stop it silently before removing
+    if (activeTimer?.index === index) {
+      setActiveTimer(null);
+      setTimerElapsedMinutes(0);
+      localStorage.removeItem('wt_activeTimer');
+    }
+    const wasLastEntry = index === fields.length - 1;
+    removeRef.current(index);
+    setPendingRemovalIndex(null);
+    if (wasLastEntry) {
+      toast.info(t('workTimeForm.lastRemoved'));
+    }
+  }, [pendingRemovalIndex, activeTimer, fields.length, t]);
   // ── End live timer ──────────────────────────────────────────────────────────
 
   const calculateEndTime = (startTimeArray: Date[], hoursArray: Date[]) => {
@@ -1271,17 +1295,12 @@ export default function WorkTimeForm() {
       {
         key: 'Escape',
         action: () => {
-          // Clear the last entry if there's more than one
+          // The confirmation dialog owns Escape while it is open (it dismisses
+          // itself), so never re-open it from this global shortcut.
+          if (pendingRemovalIndex !== null) return;
+          // Clear the last entry if there's more than one, after confirming.
           if (fields.length > 1) {
-            const lastIndex = fields.length - 1;
-            // If the timer is running on the last entry, stop it silently
-            if (activeTimerRef.current?.index === lastIndex) {
-              setActiveTimer(null);
-              setTimerElapsedMinutes(0);
-              localStorage.removeItem('wt_activeTimer');
-            }
-            remove(lastIndex);
-            toast.info(t('workTimeForm.lastRemoved'));
+            setPendingRemovalIndex(fields.length - 1);
           }
         },
         description: 'Remove last entry'
@@ -1388,6 +1407,43 @@ export default function WorkTimeForm() {
           </span>
         </div>
       </form>
+
+      {/* ── Draft entry removal confirmation (UX-402) ─────────────────────── */}
+      <AlertDialog
+        open={pendingRemovalIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemovalIndex(null);
+        }}
+      >
+        <AlertDialogContent
+          className="sm:max-w-md"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            removeConfirmRef.current?.focus();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              {t('timeLogs.deleteConfirmTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <Button
+              ref={removeConfirmRef}
+              variant="destructive"
+              size="sm"
+              onClick={confirmRemoveEntry}
+              className="gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              {t('common.delete')}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
