@@ -1,5 +1,7 @@
-import { autoUpdater, UpdateInfo } from 'electron-updater';
+import path from 'path';
+import { autoUpdater, ProgressInfo, UpdateInfo } from 'electron-updater';
 import { BrowserWindow, app, ipcMain } from 'electron';
+import { createUpdateMarker } from './updateMarker';
 
 // Equivalent to the deprecated `electron-is-dev` package, without the dependency.
 const isDev = !app.isPackaged;
@@ -7,6 +9,11 @@ const isDev = !app.isPackaged;
 // Tracks whether the current check was triggered manually by the user.
 // Manual checks always surface errors; background checks filter "no assets" noise.
 let manualCheck = false;
+
+// Version that finished downloading and is waiting to be installed. Written to
+// the pending-update marker on explicit install so the next start can confirm
+// which version it updated to.
+let downloadedVersion: string | null = null;
 
 // The window that currently receives updater events. Re-assigned on every
 // createWindow() so events still reach the live window after macOS "activate"
@@ -20,6 +27,12 @@ let updaterEventsWired = false;
 
 function sendToRenderer(channel: string, payload: unknown): void {
   targetWindow?.webContents.send(channel, payload);
+}
+
+// Resolved lazily at call time: `app.getPath('userData')` is only valid after
+// the app is ready, and keeping it out of module scope lets tests inject a path.
+function getUpdateMarker() {
+  return createUpdateMarker(path.join(app.getPath('userData'), 'pending-update.json'));
 }
 
 function registerUpdaterIpcHandlers(): void {
@@ -37,7 +50,19 @@ function registerUpdaterIpcHandlers(): void {
     // it relaunch the app. With `oneClick: false` the relaunch happens only when BOTH
     // flags are set, and `isForceRunAfter` is ignored entirely when `isSilent` is false.
     // Evidence: odd/tasks/silent-updates.md (E1-E3, E7).
-    if (!isDev) autoUpdater.quitAndInstall(true, true);
+    if (!isDev) {
+      // Persist the target version BEFORE the process is killed so the next start
+      // can confirm the update (D2/D3). Best-effort: a failure must not block.
+      getUpdateMarker().write(downloadedVersion ?? app.getVersion());
+      autoUpdater.quitAndInstall(true, true);
+    }
+  });
+
+  // One-shot confirmation consumed by the renderer on mount: returns the version
+  // the app just updated to, or null when there is no pending marker.
+  ipcMain.handle('get-update-result', () => {
+    const updatedTo = getUpdateMarker().consume(app.getVersion());
+    return updatedTo ? { updatedTo } : null;
   });
 
   ipcMain.handle('check-for-updates', async () => {
@@ -78,7 +103,19 @@ function wireUpdaterEvents(): void {
 
   // Notify renderer: update downloaded and ready to install
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+    downloadedVersion = info.version;
     sendToRenderer('update-downloaded', { version: info.version });
+  });
+
+  // Forward download progress so the renderer can show a real percentage
+  // instead of an indeterminate spinner.
+  autoUpdater.on('download-progress', (info: ProgressInfo) => {
+    sendToRenderer('update-download-progress', {
+      percent: info.percent,
+      bytesPerSecond: info.bytesPerSecond,
+      transferred: info.transferred,
+      total: info.total
+    });
   });
 
   // Forward errors to renderer.
