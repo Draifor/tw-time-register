@@ -244,26 +244,26 @@ Estos son bugs funcionales (no solo lentitud) y conviene resolverlos temprano.
 ---
 
 ### Fase 5 — Startup y bundle
-- [ ] **PERF-501 · 🔴 Code splitting por ruta + `manualChunks`**
+- [x] **PERF-501 · 🔴 Code splitting por ruta + `manualChunks`**
   - **Ubicación:** `src/renderer/App.tsx:5-9`, `vite.config.ts:67-71,90-94`
   - **Acción:** `React.lazy` + `<Suspense>` por página; `manualChunks` para react, radix, tanstack, flatpickr/date-fns, i18n.
   - **Aceptación:** el chunk inicial deja de incluir WorkTimeForm/flatpickr/date-fns; reporte de build sin warning de 500 KB (o justificado).
 
-- [ ] **PERF-502 · 🔴 Migraciones tras mostrar la ventana**
+- [x] **PERF-502 · 🔴 Migraciones tras mostrar la ventana**
   - **Ubicación:** `src/main/index.ts:115-119`, `src/main/database/database.ts:80-89`, `src/main/database/migrations.ts:5-111`
   - **Acción:** `createWindow()` primero; migrar en paralelo (idempotente) y gatear IPC dependiente si hace falta.
   - **Aceptación:** menor tiempo a primer pintado.
 
-- [ ] **PERF-503 · 🟡 `show:false` + `backgroundColor` + `ready-to-show`**
+- [x] **PERF-503 · 🟡 `show:false` + `backgroundColor` + `ready-to-show`**
   - **Ubicación:** `src/main/index.ts:52-53`
   - **Problema:** `show:true` sin `backgroundColor`/`ready-to-show` → flash blanco.
   - **Acción:** `show:false`, `backgroundColor:'#282c34'`, `once('ready-to-show', () => window.show())`; mover `nativeTheme.themeSource` antes de crear la ventana.
 
-- [ ] **PERF-504 · 🟡 i18n y libs de fecha**
+- [x] **PERF-504 · 🟡 i18n y libs de fecha**
   - **Ubicación:** `src/renderer/plugins/i18n.ts:4,12`, `src/renderer/locales/index.ts:1-6`, `src/renderer/components/TotalTimeDay.tsx:5-6`
   - **Acción:** cargar solo el idioma activo y el otro con `import()`; importar locales de `date-fns/locale/<x>` directo; evaluar eliminar `date-fns` (solo se usa en un archivo).
 
-- [ ] **PERF-505 · ⚪ Higiene de build/config**
+- [x] **PERF-505 · ⚪ Higiene de build/config**
   - **Ubicación:** `package.json:5,23,26` + `src/main/tsconfig.json:17,22` (conflicto `build:electron`), `src/main/database/migrations.ts:14-111` (`console.log` en prod), `vite.config.ts:10` (`rmSync` top-level), `package.json` (deps de build en `dependencies`), `src/renderer/index.html:6` (título placeholder).
 
 ---
