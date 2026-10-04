@@ -57,7 +57,7 @@ doc). Under the ~400-line delivery budget, so one work unit.
 | R-2 | Bump version, write `[1.13.0]` CHANGELOG entry, refresh README | `package.json`, `CHANGELOG.md`, `README.md` | delegated (one writer) | [x] — 3 files, +25/−2 |
 | R-2b | Sync `pnpm-lock.yaml` for `@tanstack/react-virtual` (release blocker surfaced by R-3) | `pnpm-lock.yaml` | direct inline | [x] — +20 lines |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (verify) | [x] — all green after R-2b (see evidence) |
-| R-4 | Commit `chore(release): 1.13.0` | — | direct inline | [ ] |
+| R-4 | Commit `chore(release): 1.13.0` | — | direct inline | [x] — `f87cdd4` + `ea6b51e` |
 | R-5 | Promote to `main` + tag `v1.13.0` | — | direct (user-approved) | [ ] |
 | R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
 
@@ -104,3 +104,7 @@ _To be filled by R-6._
   build), but `pnpm install --frozen-lockfile` failed on a pre-existing lockfile omission
   (`@tanstack/react-virtual`, from PERF-301). **R-2b** synced the lockfile (direct inline, `+20` lines) and
   the frozen install re-check is green (see *Verification evidence*).
+- 2026-10-03 — **R-4 done:** `f87cdd4` `build(deps): sync the lockfile for @tanstack/react-virtual` and
+  `ea6b51e` `chore(release): 1.13.0`. RDD assessment (`--base-ref origin/staging --committed-only` after
+  excluding the untracked `package-lock.json`): **medium** (`configuration_change: package.json`),
+  `review_due: false` — `under_budget` (5 paths, 153 lines). No native review required for this work unit.
