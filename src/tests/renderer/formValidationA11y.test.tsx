@@ -35,10 +35,48 @@ const draftEntries = vi.hoisted(() => [
 ]);
 
 vi.mock('../../renderer/hooks/useTasks', () => {
-  // Stable array identity, matching the real memoized hook.
-  const tasks: unknown[] = [];
-  return { default: () => ({ data: tasks }) };
+  // Stable object identity so table consumers (TasksTable -> DataTable) do not
+  // rebuild their table on every render. WorkTimeForm only reads `data`.
+  const result = {
+    data: [] as unknown[],
+    isLoading: false,
+    isEditable: true,
+    error: null,
+    columns: [] as unknown[],
+    onEdit: vi.fn(),
+    onSubmit: vi.fn(),
+    onDelete: vi.fn(),
+    handleAddRow: vi.fn()
+  };
+  return { default: () => result };
 });
+
+vi.mock('../../renderer/hooks/useTypeTasks', () => {
+  const result = {
+    data: [] as unknown[],
+    isLoading: false,
+    isEditable: true,
+    error: null,
+    columns: [] as unknown[]
+  };
+  return { default: () => result };
+});
+
+vi.mock('../../renderer/services/typeTasksService', () => ({
+  default: vi.fn().mockResolvedValue([]),
+  addTypeTask: vi.fn(),
+  updateTypeTask: vi.fn(),
+  deleteTypeTask: vi.fn()
+}));
+
+vi.mock('../../renderer/services/tasksService', () => ({
+  fetchTasks: vi.fn().mockResolvedValue([]),
+  addTask: vi.fn(),
+  editTask: vi.fn(),
+  deleteTask: vi.fn(),
+  fetchTWSubtasks: vi.fn(),
+  importTasksFromCSV: vi.fn()
+}));
 
 vi.mock('../../renderer/services/timesService', () => ({
   getNextAvailableSlot: vi.fn().mockResolvedValue({
@@ -64,8 +102,27 @@ vi.mock('../../renderer/services/timesService', () => ({
 }));
 
 import WorkTimeForm from '../../renderer/components/WorkTimeForm';
+import TasksTable from '../../renderer/components/TasksTable';
+import TypeTasksTable from '../../renderer/components/TypeTasksTable';
 import InputForm from '../../renderer/components/ui/input-form';
+import InputDate from '../../renderer/components/ui/input-date';
 import { getWorkTimeDraft } from '../../renderer/services/timesService';
+
+// Radix Select / flatpickr need these jsdom shims to mount in the table forms.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
+Object.assign(Element.prototype, {
+  hasPointerCapture: () => false,
+  setPointerCapture: () => {},
+  releasePointerCapture: () => {},
+  scrollIntoView: () => {}
+});
 
 // Minimal harness for the inline-edit control (`FormField` -> `InputForm`) used
 // by the catalog tables, so the validation semantics of that control are pinned
@@ -80,6 +137,29 @@ function RequiredInputForm() {
   );
 }
 
+function RequiredNativeInputForm() {
+  const { control, handleSubmit } = useForm<FieldValues>({ defaultValues: { name: '' } });
+  return (
+    <form onSubmit={handleSubmit(() => undefined)} noValidate>
+      <InputForm name="name" control={control} required rules={{ required: 'Name is required' }} />
+      <button type="submit">submit</button>
+    </form>
+  );
+}
+
+function DateA11yForm({ required }: { required?: boolean }) {
+  const { control } = useForm<FieldValues>({ defaultValues: { d: '' } });
+  return <InputDate name="d" control={control} aria-required={required} />;
+}
+
+function visibleDateInputs(container: HTMLElement): HTMLInputElement[] {
+  return Array.from(container.querySelectorAll('input')).filter((el) => el.getAttribute('type') !== 'hidden');
+}
+
+function Strict({ children }: { children: React.ReactNode }) {
+  return <React.StrictMode>{children}</React.StrictMode>;
+}
+
 function renderForm() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -89,9 +169,20 @@ function renderForm() {
   );
 }
 
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
 describe('WorkTimeForm validation a11y (UX-408)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
     localStorage.clear();
+    vi.clearAllMocks();
+    // Reset the once-queue as well, so a `mockResolvedValueOnce` from one case
+    // can never leak into the next (removes order-sensitivity).
+    vi.mocked(getWorkTimeDraft).mockReset();
+    vi.mocked(getWorkTimeDraft).mockResolvedValue({ entries: draftEntries });
   });
 
   it('announces the start-time required error via aria-invalid + aria-describedby', async () => {
@@ -249,5 +340,66 @@ describe('WorkTimeForm validation a11y (UX-408)', () => {
     expect(errorElement).not.toBeNull();
     expect(errorElement?.tagName).toBe('P');
     expect(errorElement?.textContent).toBe(i18n.t('workTimeForm.descriptionRequired'));
+  });
+
+  it('preserves the native required attribute (and aria-required) on the input-form control', () => {
+    const { container } = render(<RequiredNativeInputForm />);
+
+    const input = container.querySelector('input[name="name"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    // The native attribute that used to reach the DOM must not be dropped.
+    expect(input.hasAttribute('required')).toBe(true);
+    expect(input.getAttribute('aria-required')).toBe('true');
+  });
+
+  it('sets and clears aria-required on the visible date picker input (R3-003)', () => {
+    const { container, rerender } = render(
+      <Strict>
+        <DateA11yForm required />
+      </Strict>
+    );
+    expect(visibleDateInputs(container)[0]?.getAttribute('aria-required')).toBe('true');
+
+    rerender(
+      <Strict>
+        <DateA11yForm required={false} />
+      </Strict>
+    );
+    // Symmetric with aria-invalid: the flag must be removed when no longer required.
+    expect(visibleDateInputs(container)[0]?.getAttribute('aria-required')).toBeNull();
+  });
+
+  it('exposes aria-invalid/aria-describedby/aria-required on the TasksTable add-task form after an invalid submit', () => {
+    const { container, getByRole } = renderWithClient(<TasksTable />);
+
+    fireEvent.click(getByRole('button', { name: /New task/i }));
+    fireEvent.click(getByRole('button', { name: /^Add task$/i }));
+
+    const name = container.querySelector('#new-task-name') as HTMLInputElement;
+    const type = container.querySelector('#new-task-type') as HTMLElement;
+
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(name.getAttribute('aria-describedby')).toBe('new-task-name-error');
+    expect(name.getAttribute('aria-required')).toBe('true');
+
+    expect(type.getAttribute('aria-invalid')).toBe('true');
+    expect(type.getAttribute('aria-describedby')).toBe('new-task-type-error');
+    expect(type.getAttribute('aria-required')).toBe('true');
+
+    expect(container.querySelector('#new-task-name-error')).not.toBeNull();
+    expect(container.querySelector('#new-task-type-error')).not.toBeNull();
+  });
+
+  it('exposes aria-invalid/aria-describedby/aria-required on the TypeTasksTable add-type form after an invalid submit', () => {
+    const { container, getByRole } = renderWithClient(<TypeTasksTable />);
+
+    fireEvent.click(getByRole('button', { name: /New type/i }));
+    fireEvent.click(getByRole('button', { name: /^Add type$/i }));
+
+    const name = container.querySelector('#new-type-name') as HTMLInputElement;
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(name.getAttribute('aria-describedby')).toBe('new-type-name-error');
+    expect(name.getAttribute('aria-required')).toBe('true');
+    expect(container.querySelector('#new-type-name-error')).not.toBeNull();
   });
 });

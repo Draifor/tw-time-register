@@ -17,7 +17,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import '../../renderer/plugins/i18n';
+import i18n from '../../renderer/plugins/i18n';
 
 const draftEntries = vi.hoisted(() => [
   {
@@ -81,7 +81,8 @@ async function waitForFirstCard(container: HTMLElement) {
 }
 
 describe('WorkTimeForm robust submit (UX-401)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
     localStorage.clear();
     vi.mocked(addTimeEntries).mockReset();
     vi.mocked(addTimeEntries).mockResolvedValue([]);
@@ -138,5 +139,38 @@ describe('WorkTimeForm robust submit (UX-401)', () => {
       expect(saveButton).not.toBeDisabled();
     });
     expect(addTimeEntries).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns to idle after a rejected save so the guard does not deadlock', async () => {
+    const { container } = renderForm();
+    await waitForFirstCard(container);
+
+    vi.mocked(addTimeEntries).mockRejectedValueOnce(new Error('save failed'));
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(saveButton).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+
+    // The `finally` reset must release the pending state and the re-entry guard.
+    await waitFor(() => {
+      expect(saveButton).not.toBeDisabled();
+    });
+    expect(saveButton.textContent).not.toMatch(/saving/i);
+    expect(saveButton.querySelector('.animate-spin')).toBeNull();
+
+    // The guard is genuinely released: a second submit runs the save again.
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(2);
+    });
   });
 });

@@ -129,6 +129,10 @@ function InputDate({ className, control, name, rules, options, id, 'aria-require
     }
     if (ariaRequired) {
       input.setAttribute('aria-required', 'true');
+    } else {
+      // Symmetric with aria-invalid / aria-describedby above: clear the flag
+      // when it is no longer requested so a stale attribute cannot linger.
+      input.removeAttribute('aria-required');
     }
   }, [instance, id, name, fieldState.error, ariaRequired]);
 

@@ -16,10 +16,16 @@
  * mount and open inside the test environment.
  */
 import React from 'react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor, within, cleanup, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import '../../renderer/plugins/i18n';
+import i18n from '../../renderer/plugins/i18n';
+
+// Capture the toasts without a mounted <Toaster />.
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: { info: vi.fn(), success: vi.fn(), error: vi.fn(), warning: vi.fn() }
+}));
+vi.mock('sonner', () => ({ toast: toastMock, Toaster: () => null }));
 
 class ResizeObserverStub {
   observe() {}
@@ -108,6 +114,13 @@ function renderDeleteDialog(overrides: Partial<React.ComponentProps<typeof Delet
   const view = render(<DeleteEntryDialog {...props} />);
   return { ...view, onConfirm, onCancel };
 }
+
+beforeEach(async () => {
+  // Pin the locale and isolate mock state between cases.
+  await i18n.changeLanguage('en');
+  localStorage.clear();
+  vi.clearAllMocks();
+});
 
 describe('DeleteEntryDialog as AlertDialog (UX-406)', () => {
   afterEach(() => cleanup());
@@ -203,5 +216,38 @@ describe('WorkTimeForm confirmed draft removal (UX-402)', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('textarea[name$=".description"]').length).toBe(1);
     });
+  });
+
+  it('opens the confirmation from the Esc shortcut, stops the running timer and toasts the last removal', async () => {
+    // Seed a running timer on the last entry so the confirm path can stop it.
+    localStorage.setItem('wt_activeTimer', JSON.stringify({ index: 1, startedAt: new Date().toISOString() }));
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <WorkTimeForm />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('textarea[name$=".description"]').length).toBe(2);
+    });
+    expect(localStorage.getItem('wt_activeTimer')).not.toBeNull();
+
+    // The global Esc shortcut opens the same confirmation for the last row.
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    const dialog = screen.getByRole('alertdialog');
+    // Nothing is removed until the confirmation is accepted.
+    expect(container.querySelectorAll('textarea[name$=".description"]').length).toBe(2);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('textarea[name$=".description"]').length).toBe(1);
+    });
+    // The running timer is stopped before the entry disappears.
+    expect(localStorage.getItem('wt_activeTimer')).toBeNull();
+    expect(toastMock.info).toHaveBeenCalledWith(i18n.t('workTimeForm.lastRemoved'));
   });
 });

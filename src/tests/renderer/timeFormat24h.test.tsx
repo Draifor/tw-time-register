@@ -17,15 +17,23 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import '../../renderer/plugins/i18n';
+import i18n from '../../renderer/plugins/i18n';
 // Namespace import so a missing export surfaces as a call-time failure
 // (undefined is not a function) instead of aborting the whole module, which
 // lets both the formatter and the picker assertions report a clean RED.
 import * as timeUtils from '../../renderer/lib/timeUtils';
+import { TimeLogRow } from '../../renderer/components/TimeLogsTable';
+import type { TimeEntry } from '../../renderer/services/timesService';
+import type { Task } from '../../types/tasks';
 
 const TWELVE_HOUR = /^\d{1,2}:\d{2}\s*(AM|PM)$/i;
 
 describe('formatTime24h shared formatter (UX-407)', () => {
+  beforeEach(async () => {
+    // Pin the locale so any translated copy never depends on a persisted default.
+    await i18n.changeLanguage('en');
+  });
+
   it('passes through a 24h "HH:mm" value unchanged', () => {
     expect(timeUtils.formatTime24h('14:30')).toBe('14:30');
   });
@@ -54,6 +62,26 @@ describe('formatTime24h shared formatter (UX-407)', () => {
   it('never emits an AM/PM marker', () => {
     expect(timeUtils.formatTime24h('2:30 PM')).not.toMatch(/[AP]M/i);
     expect(timeUtils.formatTime24h('14:30')).not.toMatch(/[AP]M/i);
+  });
+
+  it('falls back to "00:00" for empty, null and undefined input', () => {
+    expect(timeUtils.formatTime24h('')).toBe('00:00');
+    expect(timeUtils.formatTime24h('   ')).toBe('00:00');
+    expect(timeUtils.formatTime24h(null)).toBe('00:00');
+    expect(timeUtils.formatTime24h(undefined)).toBe('00:00');
+    expect(timeUtils.formatTime24h(new Date('not-a-date'))).toBe('00:00');
+  });
+
+  it('returns the trimmed raw value for input that matches no known time shape', () => {
+    // A fabricated "00:00" here would silently mask whatever was stored.
+    expect(timeUtils.formatTime24h('  garbage  ')).toBe('garbage');
+    expect(timeUtils.formatTime24h('n/a')).toBe('n/a');
+    expect(timeUtils.formatTime24h('half past nine')).toBe('half past nine');
+  });
+
+  it('clamps out-of-range hours and minutes to the 24h bounds', () => {
+    expect(timeUtils.formatTime24h('99:00')).toBe('23:00');
+    expect(timeUtils.formatTime24h('10:99')).toBe('10:59');
   });
 });
 
@@ -96,7 +124,22 @@ vi.mock('../../renderer/services/timesService', () => ({
   saveWorkTimeDraft: vi.fn().mockResolvedValue(undefined),
   clearWorkTimeDraft: vi.fn().mockResolvedValue(undefined),
   addTimeEntries: vi.fn().mockResolvedValue([]),
+  // Pulled in transitively by TimeLogsTable (imported for the row-cell cover);
+  // never invoked by the assertions below, but must exist as named exports.
+  smartSyncEntries: vi.fn().mockResolvedValue({ succeeded: 0, failed: 0, results: [] }),
+  addTimeEntry: vi.fn().mockResolvedValue(undefined),
+  updateTimeEntry: vi.fn().mockResolvedValue(true),
+  deleteEntryAndSync: vi.fn().mockResolvedValue({ localDeleted: true, twDeleted: true, twMessage: '' }),
+  resetTimeEntryToUnsent: vi.fn().mockResolvedValue(undefined),
   minutesToHoursMinutes: (minutes: number) => ({ hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+}));
+
+vi.mock('../../renderer/services/tasksService', () => ({
+  fetchTasks: vi.fn().mockResolvedValue([]),
+  addTask: vi.fn(),
+  editTask: vi.fn(),
+  deleteTask: vi.fn(),
+  fetchTWSubtasks: vi.fn()
 }));
 
 import WorkTimeForm from '../../renderer/components/WorkTimeForm';
@@ -115,7 +158,8 @@ function inputValues(container: HTMLElement): string[] {
 }
 
 describe('WorkTimeForm time pickers render 24h (UX-407)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
     localStorage.clear();
   });
 
@@ -131,5 +175,75 @@ describe('WorkTimeForm time pickers render 24h (UX-407)', () => {
 
     expect(inputValues(container).filter((v) => TWELVE_HOUR.test(v))).toEqual([]);
     expect(container.textContent ?? '').not.toMatch(/\b\d{1,2}:\d{2}\s*(AM|PM)\b/i);
+  });
+});
+
+const NOOP = () => {};
+
+function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
+  return {
+    entryId: 1,
+    taskId: 1,
+    description: 'work',
+    date: '2026-10-01',
+    startTime: '14:30',
+    endTime: '16:45',
+    isBillable: false,
+    isSent: false,
+    taskName: 'Alpha',
+    taskLink: '',
+    ...overrides
+  };
+}
+
+function renderRow(entry: TimeEntry) {
+  return render(
+    <table>
+      <tbody>
+        <TimeLogRow
+          entry={entry}
+          idx={0}
+          isSyncing={false}
+          isRowLocked={false}
+          isDuplicating={false}
+          isDeleting={false}
+          tasksByName={new Map<string, Task>()}
+          onStartEdit={NOOP}
+          onDuplicate={NOOP}
+          onSyncOne={NOOP}
+          onRequestDelete={NOOP}
+          onOpenExternal={NOOP}
+        />
+      </tbody>
+    </table>
+  );
+}
+
+describe('TimeLogsTable start/end cells render 24h (UX-407, R3-005)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it('renders the start/end cells as normalized 24h "HH:mm"', () => {
+    const { container } = renderRow(makeEntry({ startTime: '2:30 PM', endTime: '16:45' }));
+    const cells = container.querySelectorAll('td');
+    // Columns: date, task, description, start, end, …
+    expect(cells[3].textContent).toBe('14:30');
+    expect(cells[4].textContent).toBe('16:45');
+  });
+
+  it('shows an em-dash (never a fabricated 00:00) for empty start/end values', () => {
+    const { container } = renderRow(makeEntry({ startTime: '', endTime: '' }));
+    const cells = container.querySelectorAll('td');
+    expect(cells[3].textContent).toBe('—');
+    expect(cells[4].textContent).toBe('—');
+    expect(container.textContent).not.toContain('00:00');
+  });
+
+  it('shows the raw stored value instead of a fabricated 00:00 for an unknown time', () => {
+    const { container } = renderRow(makeEntry({ startTime: 'unknown', endTime: '16:45' }));
+    const cells = container.querySelectorAll('td');
+    expect(cells[3].textContent).toBe('unknown');
+    expect(container.textContent).not.toContain('00:00');
   });
 });

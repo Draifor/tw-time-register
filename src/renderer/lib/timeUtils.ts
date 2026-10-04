@@ -54,9 +54,14 @@ export function formatMinutesToHHMM(totalMinutes: number): string {
  * This is the single formatting path for the time UI (UX-407): the app shows
  * 24h everywhere ("14:30") and never "h:mm AM/PM". It accepts:
  *   - a `Date` (formatted from its local hours/minutes),
- *   - "HH:mm" / "H:mm" (returned zero-padded),
+ *   - "HH:mm" / "H:mm" (returned zero-padded, hours/minutes clamped),
  *   - a legacy 12h string such as "2:30 PM" (converted to "14:30").
- * Empty or unparseable input falls back to "00:00".
+ *
+ * Empty / null / undefined input — and an invalid `Date` — fall back to
+ * "00:00" because there is genuinely no stored value. A non-empty string that
+ * matches none of the known shapes is returned trimmed and unchanged instead of
+ * being coerced to "00:00": a fabricated midnight would silently mask whatever
+ * unknown value was actually stored and shown in the table.
  */
 export function formatTime24h(input: string | Date | null | undefined): string {
   if (input instanceof Date) {
@@ -76,7 +81,7 @@ export function formatTime24h(input: string | Date | null | undefined): string {
   }
 
   const twentyFourHour = trimmed.match(/^(\d{1,2}):(\d{2})/);
-  if (!twentyFourHour) return '00:00';
+  if (!twentyFourHour) return trimmed;
   const hours = Math.min(23, Number(twentyFourHour[1]));
   const minutes = Math.min(59, Number(twentyFourHour[2]));
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;

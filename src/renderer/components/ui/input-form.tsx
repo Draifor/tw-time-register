@@ -31,6 +31,10 @@ function InputForm({ className, control, name, required, rules, ...rest }: Input
           id={name}
           {...rest}
           {...field}
+          // Preserve the native `required` attribute as well as the ARIA flag:
+          // `required` used to reach the DOM input through `...rest`, and
+          // destructuring it out silently dropped it.
+          required={required || undefined}
           aria-invalid={hasError || undefined}
           aria-describedby={hasError ? errorId : undefined}
           aria-required={required || undefined}

@@ -83,6 +83,14 @@ logic, E2E visual tests.
   - Evaluate `TimeLogsTable`/`WorkTimeForm` mutations case by case; improve perceived latency without desyncing data.
   - Acceptance: frequent actions feel instant without stale data.
 
+- [x] **T9 · Advisory closure (reviews 1–4)** — ✅ 2026-10-04
+  - Code: `input-form` native `required` passthrough; `input-date` symmetric `aria-required` removal;
+    `formatTime24h` returns the raw trimmed value for unknown non-empty shapes (no fabricated `00:00`).
+  - Tests: submit rejection path; daily-load failure + retry success; Esc/timer/lastRemoved; wizard
+    ImportTasksDialog + PullTaskDialog in-flight guards; rejected pull releases busy; deterministic overlay;
+    TimeLogsTable 24h wiring + em-dash; formatter fallback/clamp; TasksTable/TypeTasksTable a11y;
+    locale pinned (`i18n.changeLanguage('en')`) and mocks reset per case.
+
 ## Authorized files
 
 - `src/renderer/components/WorkTimeForm.tsx`
@@ -167,3 +175,5 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   inline-edit save (cache patch + rollback + settle invalidation); other mutations deliberately left
   (destructive/server-authoritative/server-generated ids). Test-first RED→GREEN
   (`useTasksOptimistic.test.tsx`, `optimisticFeedback.test.tsx`). Full suite 63 files / 420 tests green.
+- 2026-10-04 — T9 advisory closure done: 3 code fixes + 16 tests closing the review-1..4 advisories;
+  locale pinned and mocks reset per case. Full suite 63 files / 436 tests green.
