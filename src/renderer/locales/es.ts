@@ -446,6 +446,7 @@ const es = {
       addEntryTooltip: 'Agregar nueva entrada',
       insertEntry: 'Insertar entrada aquí',
       register: 'Guardar en base de datos local',
+      saving: 'Guardando...',
       saveTooltip: 'Guardar entradas localmente (aun no se envían a TeamWork)',
       escHint: 'Presiona Esc para eliminar la última entrada',
       savedTitle: '¡Entradas guardadas!',
