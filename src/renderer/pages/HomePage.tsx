@@ -17,7 +17,7 @@ import {
   DailyTimeInfo
 } from '../services/timesService';
 import { parseDuration, formatDuration } from '../lib/timeUtils';
-import { getTaskProgressInfo, getStatusBarColor } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusBarColor, getStatusDotColor } from '../lib/progressUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { Task } from '../../types/tasks';
@@ -464,19 +464,7 @@ function HomePage() {
                     <div key={idx} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className={`w-2 h-2 rounded-full shrink-0`}
-                            style={{
-                              backgroundColor:
-                                status === 'overtime'
-                                  ? '#ef4444'
-                                  : status === 'warning'
-                                    ? '#f59e0b'
-                                    : status === 'on-time'
-                                      ? '#10b981'
-                                      : '#a1a1aa'
-                            }}
-                          />
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(status)}`} />
                           <span className="font-medium truncate max-w-[65%]" title={task.taskName}>
                             {task.taskName}
                           </span>
@@ -588,19 +576,7 @@ function HomePage() {
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={`w-2 h-2 rounded-full shrink-0 ${barColor.replace('bg-', 'bg-')}`}
-                          style={{
-                            backgroundColor:
-                              status === 'overtime'
-                                ? '#ef4444'
-                                : status === 'warning'
-                                  ? '#f59e0b'
-                                  : status === 'on-time'
-                                    ? '#10b981'
-                                    : '#a1a1aa'
-                          }}
-                        />
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(status)}`} />
                         <span className="font-medium truncate max-w-[65%]" title={task.taskName}>
                           {task.taskName}
                         </span>

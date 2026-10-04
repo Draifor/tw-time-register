@@ -10,7 +10,7 @@ import useDebouncedValue from '../hooks/useDebouncedValue';
 import { Skeleton } from '../components/ui/skeleton';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
-import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusBarColor, getStatusDotColor, formatMinutesToHHMM } from '../lib/progressUtils';
 import { Task } from '../../types/tasks';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -337,19 +337,7 @@ function ReportsPage() {
                       <tr key={row.taskName} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3 max-w-[280px]">
                           <div className="flex items-center gap-2">
-                            <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{
-                                backgroundColor:
-                                  status === 'overtime'
-                                    ? '#ef4444'
-                                    : status === 'warning'
-                                      ? '#f59e0b'
-                                      : status === 'on-time'
-                                        ? '#10b981'
-                                        : '#a1a1aa'
-                              }}
-                            />
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(status)}`} />
                             <div className="font-medium truncate" title={row.taskName}>
                               {row.taskName}
                             </div>
@@ -357,12 +345,8 @@ function ReportsPage() {
                           {/* mini progress bar */}
                           <div className="mt-1 h-1 w-full rounded-full bg-muted">
                             <div
-                              className="h-1 rounded-full"
-                              style={{
-                                width: `${barWidth}%`,
-                                backgroundColor:
-                                  status === 'overtime' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#10b981'
-                              }}
+                              className={`h-1 rounded-full ${getStatusBarColor(status)}`}
+                              style={{ width: `${barWidth}%` }}
                             />
                           </div>
                         </td>

@@ -50,7 +50,7 @@ interface EditData {
 import { parseDuration, formatDuration } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
-import { getTaskProgressInfo } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusDotColor } from '../lib/progressUtils';
 import { Task } from '../../types/tasks';
 
 export interface TimeLogRowProps {
@@ -119,11 +119,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
         <div className="flex items-start gap-2 max-w-[260px]">
           {progress && (
             <div
-              className="mt-1.5 w-2 h-2 rounded-full shrink-0"
-              style={{
-                backgroundColor:
-                  progress.status === 'overtime' ? '#ef4444' : progress.status === 'warning' ? '#f59e0b' : '#10b981'
-              }}
+              className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(progress.status)}`}
               title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
             />
           )}

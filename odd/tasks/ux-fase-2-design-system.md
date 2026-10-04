@@ -78,6 +78,18 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
    - Ajustar `NavBar` (amber/emerald), `LiveTimer` (red), `TotalTimeDay`, `HomePage:610-617`.
    - Aceptación: texto normal ≥4.5:1 en los focos listados (verificado con cálculo de contraste y guard determinista).
 
+- [x] **T6 · Eliminar paleta cruda inline en dots de estado** (UX-201 remanente)
+   - Deuda detectada al cerrar T5: hex crudo inline (`#ef4444`/`#f59e0b`/`#10b981`/`#a1a1aa`)
+     en `HomePage.tsx:467-479,591-603`, `ReportsPage.tsx:340-351,359-365`,
+     `TimeLogsTable.tsx:121-128`, `ui/combobox.tsx:228-234`. El grep de aceptación de T2 solo miraba
+     clases, así que el hex sobrevivió.
+   - Acción: clase de token para el dot (`getStatusDotColor`: overtime→`bg-destructive`,
+     warning→`bg-warning`, on-time→`bg-success`, no-estimate→`bg-muted-foreground`) y `getStatusBarColor`
+     para la barra de ReportsPage; eliminar los `style={{ backgroundColor }}` inline.
+   - Test-first: `progressUtils.test.ts` (mapeo del helper) + `rawPaletteGuard.test.ts` (guard que
+     prohíbe literales hex en `.tsx`/`.ts` del renderer).
+   - Aceptación: 0 literales hex en el renderer fuera de `.css`/`.svg`; guard verde.
+
 ## Criterios de aceptación (global)
 
 1. `pnpm test`, `pnpm lint`, `pnpm type-check` en verde (salvo warnings preexistentes).
@@ -212,6 +224,23 @@ _(se completa por tarea)_
    - **Review nativa (assess):** `medium` / `under_budget` (197 líneas cambiadas vs. boundary `6900332`;
      budget ~400) → `review_due: false`, sin transacción. El slice T5 queda por debajo del budget y no
      dispara review por sí solo (mismo criterio que T2).
+
+- **T6** — commit `refactor(ux): replace inline hex status colors with tokens, add raw-palette guard (UX-201)`.
+   - **Ruta:** delegated direct (1 writer). Trigger: 6 archivos (helper + 4 componentes + 2 tests).
+   - **TDD (RED→GREEN):** `progressUtils.test.ts` (6) y `rawPaletteGuard.test.ts` (1) escritos antes.
+     RED = `getStatusDotColor is not a function` (4 fallos) + el guard reportó los 4 archivos con hex
+     (`TimeLogsTable.tsx`, `HomePage.tsx`, `ReportsPage.tsx`, `ui/combobox.tsx`); luego GREEN.
+   - **Helper nuevo:** `getStatusDotColor(status)` en `progressUtils.ts` — overtime→`bg-destructive`,
+     warning→`bg-warning`, on-time→`bg-success`, no-estimate→`bg-muted-foreground` (el dot va sobre el
+     fondo de página y debe verse; distinto contrato que `getStatusBarColor`, que mantiene `bg-muted`).
+   - **Adopción:** `HomePage` (2 dots, uno con un `barColor.replace('bg-','bg-')` no-op eliminado),
+     `ReportsPage` (dot + mini-barra inline → clases), `TimeLogsTable` (dot), `ui/combobox` (dot; status
+     local `'none'` no es `ProgressStatus`, así que usa `cn(...)` inline en vez del helper).
+   - **Guard nuevo:** `rawPaletteGuard.test.ts` escanea `.ts`/`.tsx` del renderer (resuelto por
+     `import.meta.url`) y falla ante cualquier literal hex; codifica el criterio de T2 como test permanente.
+   - **`pnpm test`:** 51 archivos, **374 tests** verdes (7 nuevos). **`pnpm lint`:** 0 errores, 83 warnings
+     (baseline). **`pnpm type-check`:** exit 0. Spot check del parent: 7/7 en los dos guards.
+   - **Grep:** `rg "#[0-9a-fA-F]{3,8}\b" src/renderer -g "*.tsx" -g "*.ts"` → 0 matches.
 
 ## Review nativa (RDD on) — slice T1
 
