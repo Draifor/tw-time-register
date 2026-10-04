@@ -47,6 +47,7 @@ import {
   type CommentTemplate
 } from '../services/timesService';
 import { TW_SESSION_UPDATED_EVENT } from '../hooks/useTWSession';
+import { loadLanguage } from '../plugins/i18n';
 import { useForm, Controller } from 'react-hook-form';
 import {
   AlertDialog,
@@ -398,6 +399,7 @@ export default function SettingsPage() {
               variant={i18n.language === 'es' ? 'default' : 'outline'}
               className="gap-2"
               onClick={async () => {
+                await loadLanguage('es');
                 i18n.changeLanguage('es');
                 await window.Main.setLanguage('es');
               }}
@@ -409,6 +411,7 @@ export default function SettingsPage() {
               variant={i18n.language === 'en' ? 'default' : 'outline'}
               className="gap-2"
               onClick={async () => {
+                await loadLanguage('en');
                 i18n.changeLanguage('en');
                 await window.Main.setLanguage('en');
               }}

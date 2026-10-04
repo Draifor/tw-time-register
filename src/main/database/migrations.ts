@@ -1,9 +1,16 @@
-import openDb from './database';
+import { app } from 'electron';
+import { openDbRaw } from './database';
 import { isEncryptedValue, encrypt } from '../services/encryptionService';
+
+// Migration messages are useful in development but noise in packaged builds.
+// The integration harness stubs `isPackaged: false`, so its logs stay visible.
+const log = !app.isPackaged ? console.log : () => {};
 
 // Run all pending migrations
 export async function runMigrations(): Promise<void> {
-  const db = await openDb();
+  // Raw opener: migrations run BEFORE `markDbReady()`, so the gated default
+  // `openDb()` would deadlock waiting on the readiness gate.
+  const db = await openDbRaw();
 
   // Migration: Add language setting if it doesn't exist
   const languageSetting = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'language'");
@@ -11,7 +18,7 @@ export async function runMigrations(): Promise<void> {
     await db.run(
       "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('language', 'es', 'UI language (en, es)')"
     );
-    console.log('Migration: Added language setting');
+    log('Migration: Added language setting');
   }
 
   // Migration: Add TeamWork credentials if they don't exist
@@ -20,7 +27,7 @@ export async function runMigrations(): Promise<void> {
     await db.run(
       "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_domain', '', 'TeamWork domain (e.g. mycompany)')"
     );
-    console.log('Migration: Added tw_domain setting');
+    log('Migration: Added tw_domain setting');
   }
 
   const twUsername = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_username'");
@@ -28,7 +35,7 @@ export async function runMigrations(): Promise<void> {
     await db.run(
       "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_username', '', 'TeamWork username / email')"
     );
-    console.log('Migration: Added tw_username setting');
+    log('Migration: Added tw_username setting');
   }
 
   const twPassword = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_password'");
@@ -36,7 +43,7 @@ export async function runMigrations(): Promise<void> {
     await db.run(
       "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_password', '', 'TeamWork password')"
     );
-    console.log('Migration: Added tw_password setting');
+    log('Migration: Added tw_password setting');
   }
 
   const twUserId = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'tw_user_id'");
@@ -44,7 +51,7 @@ export async function runMigrations(): Promise<void> {
     await db.run(
       "INSERT INTO work_settings (setting_key, setting_value, description) VALUES ('tw_user_id', '', 'TeamWork user ID (numeric)')"
     );
-    console.log('Migration: Added tw_user_id setting');
+    log('Migration: Added tw_user_id setting');
   }
 
   // Migration: encrypt existing plain-text TW credentials
@@ -58,7 +65,7 @@ export async function runMigrations(): Promise<void> {
     if (row && row.setting_value && !isEncryptedValue(row.setting_value)) {
       const encrypted = encrypt(row.setting_value);
       await db.run('UPDATE work_settings SET setting_value = ? WHERE setting_key = ?', [encrypted, key]);
-      console.log(`Migration: Encrypted ${key}`);
+      log(`Migration: Encrypted ${key}`);
     }
   }
 
@@ -76,14 +83,14 @@ export async function runMigrations(): Promise<void> {
       FOREIGN KEY (entry_id) REFERENCES time_entries(entry_id) ON DELETE CASCADE
     )
   `);
-  console.log('Migration: sync_history table ensured');
+  log('Migration: sync_history table ensured');
 
   // Indexes backing the sync-history lookups (per-entry history, TW id lookup
   // and the "last successful sync" query). Idempotent like the tables above.
   await db.run('CREATE INDEX IF NOT EXISTS idx_sh_entry ON sync_history(entry_id)');
   await db.run('CREATE INDEX IF NOT EXISTS idx_sh_tw_entry ON sync_history(tw_time_entry_id)');
   await db.run('CREATE INDEX IF NOT EXISTS idx_sh_entry_ok ON sync_history(entry_id, success, synced_at)');
-  console.log('Migration: sync_history indexes ensured');
+  log('Migration: sync_history indexes ensured');
 
   // Migration: create comment_templates table (idempotent)
   await db.run(`
@@ -94,7 +101,7 @@ export async function runMigrations(): Promise<void> {
       created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  console.log('Migration: comment_templates table ensured');
+  log('Migration: comment_templates table ensured');
 
   // Migration: create tw_people cache table (idempotent)
   await db.run(`
@@ -105,7 +112,7 @@ export async function runMigrations(): Promise<void> {
       cached_at  DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  console.log('Migration: tw_people table ensured');
+  log('Migration: tw_people table ensured');
 
   // Migration: create worktime_drafts table (idempotent)
   await db.run(`
@@ -115,5 +122,5 @@ export async function runMigrations(): Promise<void> {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  console.log('Migration: worktime_drafts table ensured');
+  log('Migration: worktime_drafts table ensured');
 }

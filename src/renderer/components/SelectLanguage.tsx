@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { loadLanguage } from '../plugins/i18n';
 
 const languages = [
   {
@@ -22,21 +23,23 @@ function SelectLanguage() {
 
   // Load language from DB on mount (only once)
   useEffect(() => {
-    const loadLanguage = async () => {
+    const loadSavedLanguage = async () => {
       try {
         const savedLanguage = await window.Main.getLanguage();
         if (savedLanguage && savedLanguage !== i18n.language) {
+          await loadLanguage(savedLanguage);
           i18n.changeLanguage(savedLanguage);
         }
       } catch (error) {
         console.error('Error loading language:', error);
       }
     };
-    loadLanguage();
+    loadSavedLanguage();
     // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, []);
 
   const languageHandler = async (lang: string) => {
+    await loadLanguage(lang);
     i18n.changeLanguage(lang);
     try {
       await window.Main.setLanguage(lang);
