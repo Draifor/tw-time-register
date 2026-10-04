@@ -48,8 +48,8 @@ function AppBar() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleCheckForUpdates}>{t('menu.help.checkForUpdates')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAboutOpen(true)}>{t('menu.help.about')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleCheckForUpdates}>{t('menu.help.checkForUpdates')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAboutOpen(true)}>{t('menu.help.about')}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button
