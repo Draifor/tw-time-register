@@ -62,7 +62,7 @@ i18n dead-string sweep (Fase 6), visual redesign. Home's silent-error handling s
 
 ## Tasks
 
-- [ ] **T1 · UX-002 — Section map & routes**
+- [x] **T1 · UX-002 — Section map & routes**
   - `src/renderer/App.tsx`: add lazy `HistoryPage` + `CatalogPage`; routes `/` Home, `/worktime` Register,
     `/history` **(new)**, `/reports`, `/catalog` (rename of `/tasks`), `/settings`.
   - `src/renderer/components/NavBar.tsx`: `navItems` → 6 items in order
@@ -74,7 +74,7 @@ i18n dead-string sweep (Fase 6), visual redesign. Home's silent-error handling s
   - HomePage secondary link: `/tasks` → `/catalog`.
   - **Acceptance:** nav shows exactly 6 first-level sections; `/history` and `/catalog` resolve; no logs tab.
 
-- [ ] **T2 · UX-001 — Operational Home ("Foco operativo")**
+- [x] **T2 · UX-001 — Operational Home ("Foco operativo")**
   - `src/renderer/pages/HomePage.tsx`: header keeps a single `<h1>`; replace the two CTA cards with a hero:
     primary Button "Register time" → `/worktime` + `ActiveTimerChip`; keep **Quick Stats** and **Today's Log**;
     **remove** the Monthly and Weekly sections and their now-unused state/effect (`monthEntries`, `weekEntries`,
@@ -86,7 +86,7 @@ i18n dead-string sweep (Fase 6), visual redesign. Home's silent-error handling s
     state + elapsed + a link to `/worktime`.
   - **Acceptance:** from the landing, register time is ≤ 1 click; a running timer is visible on Home.
 
-- [ ] **T3 · UX-003 — Naming glossary applied**
+- [x] **T3 · UX-003 — Naming glossary applied**
   - Locales `src/renderer/locales/en.ts` + `es.ts` (keep en/es mirrored):
     - `nav.workTime` → **`nav.register`** (`Register` / `Registrar`)
     - `nav.tasks` → **`nav.catalog`** (`Catalog` / `Catálogo`)
@@ -102,12 +102,12 @@ i18n dead-string sweep (Fase 6), visual redesign. Home's silent-error handling s
     - remove `tasks.tabTimeLogs`
   - **Acceptance:** no synonym for the same section/action; en/es mirrored.
 
-- [ ] **T4 · UX-004 — Branding & heading hierarchy**
+- [x] **T4 · UX-004 — Branding & heading hierarchy**
   - Remove the brand `<h1>TW Time Register</h1>` from `NavBar.tsx:35` (AppBar titlebar keeps the brand).
   - Exactly one `<h1>` per route (verify Home, Register, History, Catalog, Reports, Settings).
   - **Acceptance:** one `<h1>` per route; no brand heading in the nav.
 
-- [ ] **T5 · UX-005 — Landmarks**
+- [x] **T5 · UX-005 — Landmarks**
   - `App.tsx`: content wrapper becomes `<main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">`.
   - `NavBar.tsx`: `<nav aria-label={t('nav.primary')}>`.
   - **Acceptance:** `<main>` wraps page content; `<nav>` has an accessible name.
@@ -140,8 +140,22 @@ resolve; running timer shows on Home.
 ## Progress log
 
 - 2026-10-04 — Decisions 1/2 + Home composition approved by user; task doc created; branch `feat/ux-fase-0-ia`.
-- Next: delegate T1–T5 to the writer.
+- 2026-10-04 — T1–T5 implemented (delegated writer). Commands green: lint, type-check, `npm run test`
+  (384 passed), build. TDD where runnable (RED→GREEN for `useActiveTimer` + nav).
+- 2026-10-04 — Work-unit commit `85bd5d7`. RDD assess: medium, `review_due_reason = slice_budget_reached`.
+  Native review (lens `review-reliability`, lineage `review-8329f5952c57dce2`): **approved**; acknowledgement
+  burned authority.
+
+## Non-blocking review advisories (separate later work)
+
+- **R3-1** — `useActiveTimer` snapshots `wt_activeTimer` once (no storage/focus re-read); stale only if storage
+  is cleared while Home stays mounted (normal flow remounts Home).
+- **R3-2** — `ActiveTimerChip` has no direct component test (null path, elapsed formatting, link).
+- **R3-3** — `navIa.test.tsx` asserts link text/count but not link targets/routes.
+- **R3-4** — the old `/tasks` URL now matches no route (no redirect/catch-all); the missing catch-all is
+  base-only, the newly dead URL is introduced here.
 
 ## Next step
 
-Delegate the writer (T1–T5) with test-first where runnable; then per-commit RDD assessment + native review.
+Delivery is the user's decision (push + PR to `staging`). The advisories above are separate later work and are
+never a reason to re-review this candidate.
