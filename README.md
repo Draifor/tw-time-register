@@ -302,12 +302,16 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [x] Rendimiento Fase 2 — timer aislado, tarjetas memoizadas, lookups O(1) y atajos registrados una vez (`docs/PERFORMANCE-ROADMAP.md`)
 - [x] Gate de release R4 — un release por tag y URLs del updater verificadas
 
-### v1.13.0 — Actualizaciones amigables & relanzado confiable
+### ✅ v1.13.0 — Actualizaciones amigables, rendimiento Fases 3–6 & relanzado confiable (PUBLICADA - Oct 2026)
 
 - [x] Progreso real de descarga: barra determinada con porcentaje (evento `download-progress` reenviado al renderer)
 - [x] Overlay bloqueante "Instalando / la app se reiniciará" antes de cerrar, con delay acotado
 - [x] Confirmación post-reinicio "Actualizado a vX" (marcador one-shot en `userData`, consumido al arrancar)
 - [x] Fix del relanzado en el instalador asistido: hook NSIS `customFinishPage` (`build/installer.nsh`) que fuerza el arranque cuando `${isUpdated}` (electron-builder #2179 / #5792), manteniendo `oneClick: false` y el selector de carpeta
+- [x] Rendimiento Fase 3 — tabla de time-logs virtualizada y tablas de reportes acotadas (`docs/PERFORMANCE-ROADMAP.md`)
+- [x] Rendimiento Fase 4 — sync con concurrencia acotada, escrituras por lotes y reintentos seguros
+- [x] Rendimiento Fase 5 — ventana antes de migrar (sin flash blanco), rutas y locale `es` lazy, chunk inicial ~464 kB
+- [x] Rendimiento Fase 6 — cancelación de fetches obsoletos, scroll con rAF y CSV de importación por chunks
 - [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
   - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 

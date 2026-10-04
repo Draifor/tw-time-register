@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-10-03
+
+### Added
+
+- **Progreso y confirmación de actualizaciones (Update UX)**: al descargar una actualización la barra de progreso pasa a ser determinada con porcentaje real (se reenvía el evento `download-progress` al renderer), antes de cerrar aparece un overlay bloqueante "Instalando / la app se reiniciará" con un delay acotado, y tras el reinicio la app muestra una confirmación "Actualizado a vX" mediante un marcador one-shot en `userData` que se consume al arrancar (`590bbc5`; `odd/tasks/update-ux.md`)
+
+### Changed
+
+- **Rendimiento (Fase 3, PERF-301..PERF-302)**: `TimeLogsTable` se virtualiza con `@tanstack/react-virtual` (el DOM conserva solo la ventana visible más filas espaciadoras, con header sticky) y las tablas de agregación por tarea y por día de los reportes se acotan con un "Mostrar más"; los totales siguen calculándose sobre la agregación completa, así que no cambian (`8bc9928`, `17f964b`; `odd/tasks/performance-fase-3.md`)
+- **Rendimiento (Fase 4, PERF-401..PERF-404)**: el sync limita la concurrencia a 5, agrupa las escrituras de historial y flags en lotes y el pull en una sola transacción, y agrega reintento seguro ante `429` en cualquier método y `5xx` solo en métodos idempotentes (`a1fb7f1`; `odd/tasks/performance-fase-4.md`)
+- **Rendimiento (Fase 5, PERF-501..PERF-505)**: la ventana se muestra antes de correr las migraciones con un gate de readiness por IPC (adiós al flash blanco), las rutas y el locale `es` se cargan de forma perezosa con imports profundos de `date-fns`, el chunk inicial del renderer baja a ~464 kB y la ventana usa su título real (`c317af9`, `2a40341`, `82af06e`; `odd/tasks/performance-fase-5.md`)
+- **Rendimiento (Fase 6, PERF-601..PERF-606)**: se cancelan los fetches obsoletos de `TotalTimeDay` —que podían pisar el total con un valor viejo—, el scroll de `NavBar` se limita con `requestAnimationFrame`, la búsqueda de reportes se debounce a 200 ms y el parseo del CSV de importación trabaja por chunks sin bloquear la UI (`2be7216`, `a8af83a`; `odd/tasks/performance-fase-6.md`)
+- **Cobertura**: la suite pasa de 203 a **285** tests
+
+### Fixed
+
+- **Relanzado tras una actualización asistida**: el instalador NSIS agrega un hook `customFinishPage` (`build/installer.nsh`) que fuerza el arranque cuando `${isUpdated}`, manteniendo `oneClick: false` y el selector de carpeta; el fix se validó por código y compilación del instalador, pero la prueba end-to-end en un build empaquetado queda pendiente (`a0d317b`; `odd/tasks/update-ux.md`)
+- **Publicación del release (R-7)**: el workflow pre-crea el release de GitHub del tag antes de electron-builder (`scripts/ensure-github-release.ps1`), de modo que los publishers concurrentes del `.exe` y su `.blockmap` reutilicen el release existente en vez de encolar dos `POST /releases` — el `422 already_exists` que abortó la publicación de `v1.12.0`; además `EP_GH_IGNORE_TIME` permite republicar en re-runs (`0f49a57`, `dc6c4a4`; `odd/tasks/release-publish-race.md`)
+
 ## [1.12.0] - 2026-10-03
 
 ### Added
