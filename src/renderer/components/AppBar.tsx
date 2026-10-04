@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Minus, Square, X, Maximize2 } from 'lucide-react';
+import { Minus, Square, X, Maximize2, HelpCircle } from 'lucide-react';
 
 import Icon from '../assets/icons/Icon-Electron.png';
-import MenuBar from './MenuBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 function AppBar() {
   const [isMaximize, setMaximize] = useState(false);
@@ -25,60 +25,10 @@ function AppBar() {
     window.Main.Maximize();
   };
 
-  const toggleDevTools = () => {
-    window.Main.ToggleDevTools();
+  const handleCheckForUpdates = () => {
+    sessionStorage.setItem('manualUpdateCheck', '1');
+    window.Main.checkForUpdates?.();
   };
-
-  const menuItems = [
-    {
-      label: t('menu.file.file'),
-      items: [
-        { label: t('menu.file.new'), action: () => {} },
-        { label: t('menu.file.open'), action: () => {} },
-        { label: t('menu.file.save'), action: () => {} },
-        {
-          label: t('menu.file.export'),
-          items: [
-            { label: 'PDF', action: () => {} },
-            { label: 'HTML', action: () => {} }
-          ]
-        }
-      ]
-    },
-    {
-      label: t('menu.edit.edit'),
-      items: [
-        { label: t('menu.edit.undo'), action: () => {} },
-        { label: t('menu.edit.redo'), action: () => {} },
-        { label: t('menu.edit.cut'), action: () => {} },
-        { label: t('menu.edit.copy'), action: () => {} },
-        { label: t('menu.edit.paste'), action: () => {} }
-      ]
-    },
-    {
-      label: t('menu.view.view'),
-      items: [
-        { label: t('menu.view.toggleDevTools'), action: () => toggleDevTools() },
-        { label: t('menu.view.zoomIn'), action: () => {} },
-        { label: t('menu.view.zoomOut'), action: () => {} },
-        { label: t('menu.view.fullscreen'), action: () => {} }
-      ]
-    },
-    {
-      label: t('menu.help.help'),
-      items: [
-        { label: t('menu.help.documentation'), action: () => {} },
-        {
-          label: t('menu.help.checkForUpdates'),
-          action: () => {
-            sessionStorage.setItem('manualUpdateCheck', '1');
-            window.Main.checkForUpdates?.();
-          }
-        },
-        { label: t('menu.help.about'), action: () => setAboutOpen(true) }
-      ]
-    }
-  ];
 
   return (
     <div className="fixed top-0 w-full z-50">
@@ -88,6 +38,20 @@ function AppBar() {
           <span className="text-sm font-medium">TW Time Register</span>
         </div>
         <div className="inline-flex h-full">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="undraggable w-10 h-full flex items-center justify-center hover:bg-slate-700 transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label={t('menu.help.help')}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleCheckForUpdates}>{t('menu.help.checkForUpdates')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAboutOpen(true)}>{t('menu.help.about')}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             onClick={window.Main.Minimize}
             className="undraggable w-12 h-full flex items-center justify-center hover:bg-slate-700 transition-colors"
@@ -111,7 +75,6 @@ function AppBar() {
           </button>
         </div>
       </div>
-      <MenuBar items={menuItems} />
 
       <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
         <DialogContent className="sm:max-w-sm">

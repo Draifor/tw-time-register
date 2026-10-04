@@ -421,36 +421,12 @@ const en = {
       sunday: 'Sunday'
     },
     menu: {
-      file: {
-        file: 'File',
-        new: 'New',
-        open: 'Open',
-        save: 'Save',
-        export: 'Export'
-      },
-      edit: {
-        edit: 'Edit',
-        undo: 'Undo',
-        redo: 'Redo',
-        cut: 'Cut',
-        copy: 'Copy',
-        paste: 'Paste'
-      },
-      view: {
-        view: 'View',
-        toggleDevTools: 'Toggle Dev Tools',
-        zoomIn: 'Zoom +',
-        zoomOut: 'Zoom -',
-        fullscreen: 'Full Screen'
-      },
       help: {
         help: 'Help',
-        documentation: 'Documentation',
         checkForUpdates: 'Check for updates',
         about: 'About',
         aboutDialogTitle: 'About TW Time Register',
         aboutDesc: 'Desktop application to register and sync work hours with TeamWork.',
-        versionLabel: 'Version',
         builtWith: 'Built with Electron + React'
       }
     },
