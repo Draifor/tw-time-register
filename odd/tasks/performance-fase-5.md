@@ -159,8 +159,8 @@ npm run build
 
 ## Delivery
 
-Single PR into `staging` (branch `feat/performance-fase-5`). PR creation and
-merge are user-owned.
+Single PR into `staging`: **PR #17** (`feat/performance-fase-5` -> `staging`),
+https://github.com/Draifor/tw-time-register/pull/17. Merge is user-owned.
 
 ## Review outcome
 
