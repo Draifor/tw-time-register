@@ -286,7 +286,7 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 ### v1.11.0 — Distribución & Actualizaciones
 
 - [ ] **Actualizaciones silenciosas estilo VS Code**: instalar sin el asistente NSIS (`/S`) al pulsar "Actualizar" o al cerrar la app, con relanzado automático
-  - Publicado en la release `1.11.0` (`src/main/updater.ts`); **pendiente la verificación en un build empaquetado**: un cliente `1.10.0` que reciba `1.11.0` todavía corre el updater viejo, así que el instalado silencioso recién se observa con un cliente ya en `1.11.0` recibiendo una versión posterior (verificación programada). Detalle y evidencia en `odd/tasks/silent-updates.md`.
+  - Publicado en la release `1.11.0` (`src/main/updater.ts`). Verificado en un build empaquetado (cliente `1.11.0` → `1.12.0`): el instalado silencioso funciona, pero el **relanzado no** con el instalador asistido. Causa raíz y fix en `v1.13.0` (ver `odd/tasks/update-ux.md`). Detalle original en `odd/tasks/silent-updates.md`.
   - Pulsar "Instalar" → `/S --force-run`: instala en silencio y **relanza** la app en la versión nueva.
   - Cerrar la app con una actualización ya descargada → `/S` sin `--force-run`: instala en silencio y **no** relanza. Relanzar una app que el usuario acaba de cerrar sería intrusivo, así que ese comportamiento se deja como lo entrega `electron-updater`.
   - El upgrade silencioso respeta la carpeta elegida en la instalación original: el instalador lee `InstallLocation` del registro y la reutiliza.
@@ -301,6 +301,15 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [x] React Compiler evaluado y descartado como no-go medido
 - [x] Rendimiento Fase 2 — timer aislado, tarjetas memoizadas, lookups O(1) y atajos registrados una vez (`docs/PERFORMANCE-ROADMAP.md`)
 - [x] Gate de release R4 — un release por tag y URLs del updater verificadas
+
+### v1.13.0 — Actualizaciones amigables & relanzado confiable
+
+- [x] Progreso real de descarga: barra determinada con porcentaje (evento `download-progress` reenviado al renderer)
+- [x] Overlay bloqueante "Instalando / la app se reiniciará" antes de cerrar, con delay acotado
+- [x] Confirmación post-reinicio "Actualizado a vX" (marcador one-shot en `userData`, consumido al arrancar)
+- [x] Fix del relanzado en el instalador asistido: hook NSIS `customFinishPage` (`build/installer.nsh`) que fuerza el arranque cuando `${isUpdated}` (electron-builder #2179 / #5792), manteniendo `oneClick: false` y el selector de carpeta
+- [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
+  - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 
 ### v2.0.0 — Multi-plataforma
 
