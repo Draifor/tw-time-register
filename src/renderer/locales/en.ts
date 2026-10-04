@@ -23,7 +23,9 @@ const en = {
       errorOccurred: 'An error occurred',
       loading: 'Loading...',
       retry: 'Retry',
-      backToTop: 'Back to top'
+      backToTop: 'Back to top',
+      stepProgress: 'Progress',
+      stepOf: 'Step {{current}} of {{total}}'
     },
     table: {
       searchPlaceholder: 'Search...',
@@ -89,6 +91,9 @@ const en = {
         trigger: 'Import from TW',
         title: 'Import entries from TW',
         subtitle: 'Download your TeamWork time entries into the local history. Only new entries will be imported.',
+        stepConfig: 'Period',
+        stepResult: 'Result',
+        stepTasks: 'Tasks',
         periodLabel: 'Period to import',
         lastWeek: 'Last week',
         lastMonth: 'Last month',
@@ -340,6 +345,9 @@ const en = {
       importTW: {
         trigger: 'Import from TW',
         title: 'Import Tasks from TeamWork',
+        stepForm: 'Form',
+        stepPreview: 'Preview',
+        stepDone: 'Done',
         parentLinkRequired: 'Parent TW link is required',
         prefixRequired: 'Prefix is required',
         typeRequired: 'Task type is required',

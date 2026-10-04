@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { WizardStepIndicator } from './ui/wizard-step-indicator';
 import { useQuery } from '@tanstack/react-query';
 import { addTask, editTask, fetchTasks, fetchTWSubtasks } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
@@ -57,6 +58,13 @@ const TEMPLATE_SUFFIXES: Record<Template, { pattern: RegExp; suffix: string }[]>
 type Step = 'form' | 'preview' | 'resolve' | 'done';
 type ConflictDecision = 'keep' | 'update';
 
+/**
+ * Resolve is a conditional sub-step of the preview step, so it shares position 1
+ * in the visible stepper. The user always sees three conceptual steps:
+ * form → preview (with duplicate resolution when needed) → done (UX-404).
+ */
+const STEP_INDEX: Record<Step, number> = { form: 0, preview: 1, resolve: 1, done: 2 };
+
 const normalizeLink = (value: string | null | undefined) => (value ?? '').trim();
 
 const extractTwTaskId = (taskLink: string | null | undefined): string | null => {
@@ -84,9 +92,14 @@ function ImportTasksDialog() {
   const [conflictDecisions, setConflictDecisions] = useState<Record<number, ConflictDecision>>({});
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
+  const firstControlRef = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+
+  // True while a long operation runs: the dialog must not be dismissible
+  // (overlay / Escape / close button) until it settles (UX-404).
+  const isBusy = fetchingPreview || importing;
 
   const { data: typeTasksList = [] } = useQuery({
     queryKey: queryKeys.typeTasks.all,
@@ -108,6 +121,7 @@ function ImportTasksDialog() {
   }
 
   function handleOpenChange(isOpen: boolean) {
+    if (!isOpen && isBusy) return;
     if (!isOpen) resetDialog();
     setOpen(isOpen);
   }
@@ -296,13 +310,35 @@ function ImportTasksDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          firstControlRef.current?.focus();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
             {t('tasks.importTW.title')}
           </DialogTitle>
         </DialogHeader>
+
+        <WizardStepIndicator
+          labels={[t('tasks.importTW.stepForm'), t('tasks.importTW.stepPreview'), t('tasks.importTW.stepDone')]}
+          currentIndex={STEP_INDEX[step]}
+          progressLabel={t('common.stepOf', { current: STEP_INDEX[step] + 1, total: 3 })}
+          ariaLabel={t('common.stepProgress')}
+        />
 
         {/* ── Step 1: Form ──────────────────────────────────── */}
         {step === 'form' && (
@@ -311,6 +347,7 @@ function ImportTasksDialog() {
               <Label htmlFor="parentLink">{t('tasks.importTW.parentLinkLabel')}</Label>
               <Input
                 id="parentLink"
+                ref={firstControlRef}
                 placeholder="https://yourcompany.teamwork.com/app/tasks/123456"
                 value={parentLink}
                 onChange={(e) => setParentLink(e.target.value)}
@@ -453,7 +490,7 @@ function ImportTasksDialog() {
             )}
 
             <div className="flex justify-between pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setStep('form')}>
+              <Button variant="ghost" size="sm" onClick={() => setStep('form')} disabled={importing}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 {t('tasks.importTW.backBtn')}
               </Button>
@@ -569,7 +606,7 @@ function ImportTasksDialog() {
             </ul>
 
             <div className="flex justify-between pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setStep('preview')}>
+              <Button variant="ghost" size="sm" onClick={() => setStep('preview')} disabled={importing}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 {t('tasks.importTW.backBtn')}
               </Button>
