@@ -8,7 +8,7 @@ import renderer from 'vite-plugin-electron-renderer';
 
 const root = join(__dirname);
 const srcRoot = join(__dirname, 'src/renderer');
-rmSync('dist-electron', { recursive: true, force: true });
+rmSync(join(root, 'dist-electron'), { recursive: true, force: true });
 
 const buildElectron = (isDev: boolean) => ({
   sourcemap: isDev,
