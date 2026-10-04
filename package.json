@@ -138,7 +138,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "TW Time Register"
+      "shortcutName": "TW Time Register",
+      "include": "build/installer.nsh"
     },
     "publish": {
       "provider": "github",
