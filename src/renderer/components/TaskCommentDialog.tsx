@@ -5,6 +5,13 @@ import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Label } from './ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from './ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import {
   addCommentToTWTask,
@@ -40,8 +47,6 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
 
   // Templates
   const [templates, setTemplates] = useState<CommentTemplate[]>([]);
-  const [templateOpen, setTemplateOpen] = useState(false);
-  const templateRef = useRef<HTMLDivElement>(null);
 
   // Notify people
   const [people, setPeople] = useState<TWPerson[]>([]);
@@ -49,7 +54,6 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [loadingPeople, setLoadingPeople] = useState(false);
   const [peopleSearch, setPeopleSearch] = useState('');
-  const notifyRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load templates when dialog opens ────────────────────────────────────────
@@ -60,18 +64,6 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
         .catch(() => {});
     }
   }, [open]);
-
-  // ── Close dropdowns on outside click ────────────────────────────────────────
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (templateRef.current && !templateRef.current.contains(e.target as Node)) setTemplateOpen(false);
-      if (notifyRef.current && !notifyRef.current.contains(e.target as Node)) setNotifyOpen(false);
-    }
-    if (templateOpen || notifyOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [templateOpen, notifyOpen]);
 
   // ── File helpers ────────────────────────────────────────────────────────────
   const addFiles = useCallback(
@@ -119,14 +111,17 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   };
 
   // ── Load people lazily when notify panel opens ───────────────────────────────
-  const handleOpenNotify = async () => {
-    setNotifyOpen((v) => !v);
-    if (people.length === 0 && !loadingPeople) {
-      setLoadingPeople(true);
-      const result = await fetchTWPeopleForTask(twTaskId);
-      if (result.success && result.people) setPeople(result.people);
-      setLoadingPeople(false);
-    }
+  const handleOpenNotify = useCallback(async () => {
+    if (people.length > 0 || loadingPeople) return;
+    setLoadingPeople(true);
+    const result = await fetchTWPeopleForTask(twTaskId);
+    if (result.success && result.people) setPeople(result.people);
+    setLoadingPeople(false);
+  }, [people.length, loadingPeople, twTaskId]);
+
+  const handleNotifyOpenChange = (nextOpen: boolean) => {
+    setNotifyOpen(nextOpen);
+    if (nextOpen) void handleOpenNotify();
   };
 
   const toggleNotify = (id: string) => {
@@ -183,7 +178,6 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setAttachments([]);
       setDragOver(false);
       setNotifyIds(new Set());
-      setTemplateOpen(false);
       setNotifyOpen(false);
       setPeopleSearch('');
       setPeople([]); // reset so next task fetches fresh project members
@@ -224,35 +218,30 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
           <div className="space-y-4 py-2">
             {/* ── Template picker ──────────────────────────────────────── */}
             {templates.length > 0 && (
-              <div className="relative" ref={templateRef}>
-                <button
-                  type="button"
-                  onClick={() => setTemplateOpen((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  disabled={sending}
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                  {t('taskComment.useTemplate')}
-                </button>
-                {templateOpen && (
-                  <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-md border bg-popover shadow-md">
-                    {templates.map((tpl) => (
-                      <button
-                        key={tpl.templateId}
-                        type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                        onClick={() => {
-                          setBody(tpl.body);
-                          setTemplateOpen(false);
-                        }}
-                      >
-                        <span className="font-medium">{tpl.title}</span>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{tpl.body}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    disabled={sending}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    {t('taskComment.useTemplate')}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72 max-h-52 overflow-y-auto">
+                  {templates.map((tpl) => (
+                    <DropdownMenuItem
+                      key={tpl.templateId}
+                      onSelect={() => setBody(tpl.body)}
+                      className="flex-col items-start gap-0.5"
+                    >
+                      <span className="font-medium">{tpl.title}</span>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5 w-full">{tpl.body}</p>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
             {/* ── Comment textarea ─────────────────────────────────────── */}
@@ -270,62 +259,58 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
 
             {/* ── Notify people picker ─────────────────────────────────── */}
             <div className="space-y-1.5">
-              <div className="relative" ref={notifyRef}>
-                <button
-                  type="button"
-                  onClick={handleOpenNotify}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  disabled={sending}
-                >
-                  <Bell className="h-3.5 w-3.5" />
-                  {notifyIds.size > 0
-                    ? t('taskComment.notifyCount', { count: notifyIds.size })
-                    : t('taskComment.notifyNone')}
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-
-                {notifyOpen && (
-                  <div className="absolute z-50 mt-1 w-72 rounded-md border bg-popover shadow-md">
-                    <div className="p-2 border-b">
-                      <input
-                        type="text"
-                        autoFocus
-                        className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
-                        placeholder={t('taskComment.notifySearch')}
-                        value={peopleSearch}
-                        onChange={(e) => setPeopleSearch(e.target.value)}
-                      />
-                    </div>
-                    <div className="max-h-48 overflow-y-auto">
-                      {loadingPeople ? (
-                        <div className="flex items-center justify-center py-6">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : filteredPeople.length === 0 ? (
-                        <p className="py-4 text-center text-xs text-muted-foreground">{t('taskComment.notifyEmpty')}</p>
-                      ) : (
-                        filteredPeople.map((person) => (
-                          <label
-                            key={person.id}
-                            className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-accent transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-3.5 w-3.5 accent-primary"
-                              checked={notifyIds.has(person.id)}
-                              onChange={() => toggleNotify(person.id)}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{person.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{person.email}</p>
-                            </div>
-                          </label>
-                        ))
-                      )}
-                    </div>
+              <DropdownMenu open={notifyOpen} onOpenChange={handleNotifyOpenChange}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    disabled={sending}
+                  >
+                    <Bell className="h-3.5 w-3.5" />
+                    {notifyIds.size > 0
+                      ? t('taskComment.notifyCount', { count: notifyIds.size })
+                      : t('taskComment.notifyNone')}
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72 p-0">
+                  <div className="p-2 border-b">
+                    <input
+                      type="text"
+                      autoFocus
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                      placeholder={t('taskComment.notifySearch')}
+                      value={peopleSearch}
+                      onChange={(e) => setPeopleSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
                   </div>
-                )}
-              </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {loadingPeople ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : filteredPeople.length === 0 ? (
+                      <p className="py-4 text-center text-xs text-muted-foreground">{t('taskComment.notifyEmpty')}</p>
+                    ) : (
+                      filteredPeople.map((person) => (
+                        <DropdownMenuCheckboxItem
+                          key={person.id}
+                          checked={notifyIds.has(person.id)}
+                          onSelect={(e) => e.preventDefault()}
+                          onCheckedChange={() => toggleNotify(person.id)}
+                          className="items-start"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate">{person.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{person.email}</p>
+                          </div>
+                        </DropdownMenuCheckboxItem>
+                      ))
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Selected people chips */}
               {notifyIds.size > 0 && (

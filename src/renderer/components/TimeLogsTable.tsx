@@ -22,6 +22,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import Combobox from './ui/combobox';
+import { Switch } from './ui/switch';
 import TimePickerInput from './ui/time-picker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTimeLogs from '../hooks/useTimeLogs';
@@ -757,15 +758,11 @@ function TimeLogsTable() {
                     </td>
                     {/* Billable */}
                     <td className="px-2 py-2 text-center">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editData.isBillable}
-                          onChange={(e) => setEditData((d) => ({ ...d, isBillable: e.target.checked }))}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
-                      </label>
+                      <Switch
+                        checked={editData.isBillable}
+                        onCheckedChange={(v) => setEditData((d) => ({ ...d, isBillable: v }))}
+                        aria-label={t('common.billable')}
+                      />
                     </td>
                     {/* Status — unchanged */}
                     <td className="px-4 py-2 text-center">

@@ -62,7 +62,7 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
   - Aceptación: grep sin `bg-slate-*`/`text-emerald-*`/`text-amber-*`/`text-red-*`/`text-green-*`
     fuera de `index.css`.
 
-- [ ] **T3 · Primitivas en vez de controles caseros** (UX-202)
+- [x] **T3 · Primitivas en vez de controles caseros** (UX-202)
   - Switches caseros → `Switch`. Dropdowns propios de `TaskCommentDialog.tsx:227-327` →
     `DropdownMenu`/`Combobox`. `<select>` nativo de `TasksTable.tsx:172-187` → `Select`.
   - Aceptación: sin `peer-checked:*` en vetos de switch ni dropdowns posicionados a mano.
@@ -124,6 +124,34 @@ _(se completa por tarea)_
   - **Review nativa (assess):** `medium` / `under_budget` (271 líneas cambiadas vs. boundary 73d944a;
     budget ~400). Sin transacción aún — el slice sigue pendiente y se revisará al llegar al budget
     (o en el próximo commit de alto riesgo).
+
+- **T3** — commit `refactor(ux): use Switch/Select/DropdownMenu primitives instead of handmade controls (UX-202)`.
+  - **`ui/switch.tsx` (review finding R3-SWITCH-PROP-OVERRIDE):** `{...props}` ahora se esparce ANTES de
+    `type/role/aria-checked/data-state` (el contrato gana en runtime) y el tipo se angostó con
+    `Omit<..., 'onChange' | 'type' | 'role' | 'aria-checked'>` (no-override en TypeScript).
+  - **Switches:** `WorkTimeForm` `afterLunch`/`isBillable` → `Controller` + `Switch` (se elimina el
+    `register` del `EntryCard`); `TimeLogsTable` billable → `Switch` con `aria-label`. Clic en el `Label`
+    de texto sigue togleando (activación nativa de `<label>` sobre `<button>`, cubierta por test).
+  - **Dropdowns:** `TaskCommentDialog` template picker → `DropdownMenu` + `DropdownMenuItem`; notify
+    picker multi-select con búsqueda → `DropdownMenu` controlado + `DropdownMenuCheckboxItem`
+    (`onSelect preventDefault` mantiene abierto y `onCheckedChange` dispara; el input de búsqueda
+    detiene el `keydown` para no chocar con el typeahead de Radix). Se eliminan `templateRef`,
+    `notifyRef`, `templateOpen` y el efecto de outside-click manual.
+  - **`<select>` → `Select`:** `TasksTable` tipo de tarea usa Radix `Select` con `SelectValue placeholder`;
+    `id="new-task-type"` y el borde de error preservados.
+  - **`InsertDivider`:** `<button>` casero → `Button variant="outline"` con clases de paridad visual.
+  - **TDD (RED→GREEN):** tests nuevos antes; RED = override de contrato en `Switch` y ausencia de
+    `role="switch"` en `WorkTimeForm` (3 fallos); luego GREEN. El memo PERF-202 sigue verde.
+  - **Archivos:** `ui/switch.tsx`, `WorkTimeForm.tsx`, `TimeLogsTable.tsx`, `TasksTable.tsx`,
+    `TaskCommentDialog.tsx`; tests `switch.test.tsx` (editado) y `workTimeFormSwitches.test.tsx` (nuevo).
+  - **Grep aceptación:** `peer-checked` 0 matches; `absolute z-50` en `TaskCommentDialog` 0; `<select>`
+    en `TasksTable` 0.
+  - **`pnpm test`:** 45 archivos, **310 tests** verdes. **`pnpm lint`:** 0 errores, 83 warnings
+    (baseline). **`pnpm type-check`:** exit 0.
+  - **Excepción de test justificada:** `TimeLogsTable`/`TasksTable`/`TaskCommentDialog` no tienen harness
+    determinista propio (tabla virtualizada / portal Radix); swaps presentacionales a primitivas ya
+    cubiertas, sin tests frágiles inventados.
+  - **Pendiente de ojo:** paridad visual de `InsertDivider` y ancho de los menús (no hay E2E de render).
 
 ## Review nativa (RDD on) — slice T1
 

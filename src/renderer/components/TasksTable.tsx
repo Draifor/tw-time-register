@@ -13,6 +13,7 @@ import fetchTypeTasks from '../services/typeTasksService';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent } from './ui/card';
 
 function TasksTable() {
@@ -169,22 +170,24 @@ function TasksTable() {
                 <Label htmlFor="new-task-type" className="text-xs">
                   {t('tasks.form.typeLabel')} <span className="text-destructive">*</span>
                 </Label>
-                <select
-                  id="new-task-type"
+                <Select
                   value={typeName}
-                  onChange={(e) => {
-                    setTypeName(e.target.value);
+                  onValueChange={(v) => {
+                    setTypeName(v);
                     setTypeError(false);
                   }}
-                  className={`flex h-9 w-full rounded-md border bg-background text-foreground px-3 py-1 text-sm shadow-xs focus:outline-hidden focus:ring-1 focus:ring-ring ${typeError ? 'border-destructive' : 'border-input'}`}
                 >
-                  <option value="">{t('tasks.form.selectType')}</option>
-                  {typeTasksList.map((tt) => (
-                    <option key={tt.id} value={tt.typeName}>
-                      {tt.typeName}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="new-task-type" className={typeError ? 'border-destructive' : ''}>
+                    <SelectValue placeholder={t('tasks.form.selectType')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeTasksList.map((tt) => (
+                      <SelectItem key={tt.id} value={tt.typeName}>
+                        {tt.typeName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {typeError && <p className="text-xs text-destructive">{t('tasks.form.typeRequired')}</p>}
               </div>
 

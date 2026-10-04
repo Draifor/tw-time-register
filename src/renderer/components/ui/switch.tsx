@@ -2,7 +2,10 @@ import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
-export interface SwitchProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
+export interface SwitchProps extends Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  'onChange' | 'type' | 'role' | 'aria-checked'
+> {
   /** Controlled checked state. */
   checked?: boolean;
   /** Called with the next checked value when the switch is toggled. */
@@ -29,6 +32,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
     return (
       <button
         ref={ref}
+        {...props}
         type="button"
         role="switch"
         aria-checked={checked}
@@ -40,7 +44,6 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
           checked ? 'bg-primary' : 'bg-input',
           className
         )}
-        {...props}
       >
         <span
           className={cn(

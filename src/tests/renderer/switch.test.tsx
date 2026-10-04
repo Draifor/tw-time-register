@@ -54,6 +54,24 @@ describe('Switch (UX-202)', () => {
     expect(on).toHaveAttribute('data-state', 'checked');
   });
 
+  it('does not let consumer props override the accessible contract', () => {
+    // Cast through ComponentProps to bypass the type-level Omit, so the runtime
+    // spread order is what is actually under test.
+    const hostileProps = {
+      role: 'checkbox',
+      type: 'submit',
+      'aria-checked': true
+    } as unknown as React.ComponentProps<typeof Switch>;
+
+    const { container } = render(<Switch checked={false} {...hostileProps} />);
+    const el = container.querySelector('button') as HTMLButtonElement;
+
+    expect(el).toHaveAttribute('role', 'switch');
+    expect(el).toHaveAttribute('type', 'button');
+    expect(el).toHaveAttribute('aria-checked', 'false');
+    expect(el).toHaveAttribute('data-state', 'unchecked');
+  });
+
   it('calls onCheckedChange with the toggled value on click', async () => {
     const onCheckedChange = vi.fn();
     const user = userEvent.setup();
