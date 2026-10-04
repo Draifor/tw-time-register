@@ -138,6 +138,9 @@ Anything else needs the user's authorization first.
 - 2026-10-03 — Work-unit commits on `feat/update-ux`: `590bbc5`
   (feat: download progress + post-restart confirmation + tests), `a0d317b`
   (fix: NSIS assisted-installer relaunch), `fb76412` (docs: track + roadmap).
+- 2026-10-04 — **V6 verified (manual, real client):** on the `1.13.0` update the user waited without acting
+  and the packaged app relaunched by itself after a few seconds — the assisted-installer relaunch the NSIS
+  fix targets, observed end to end. No further E2E release is required.
 
 ## Findings during implementation
 | ID | Finding | Evidence | Disposition |
@@ -154,4 +157,4 @@ Anything else needs the user's authorization first.
 | V3 | Lint | `npm run lint` | 0 errors, 82 pre-existing warnings |
 | V4 | Production build | `npm run build` | success |
 | V5 | NSIS installer compiles with the custom include | `npx electron-builder --win --publish never` | `TW Time Register Setup 1.12.0.exe` built; no makensis or resource error |
-| V6 | Packaged relaunch, end to end | manual: update a real `1.13.0` client | **pending** |
+| V6 | Packaged relaunch, end to end | manual: update a real client to `1.13.0` | **PASS** (2026-10-04): the user updated a packaged client to `1.13.0`, waited without acting, and the app relaunched by itself after a few seconds |
