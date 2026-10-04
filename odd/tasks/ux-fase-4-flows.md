@@ -44,11 +44,11 @@ logic, E2E visual tests.
 
 ## Tasks
 
-- [ ] **T1 · UX-405 — Remove "Debug API" from the UI**
+- [x] **T1 · UX-405 — Remove "Debug API" from the UI** — ✅ 2026-10-04, commit `b9a02a1`
   - Remove the debug panel + `handleDebug`/`isDebugging`/`debugData`/`debugRawTWEntries` import from `PullFromTWDialog.tsx`.
   - Acceptance: no debug panel or debug state remains; no unused import/state (lint clean).
 
-- [ ] **T2 · UX-401 — Robust submit in WorkTimeForm**
+- [x] **T2 · UX-401 — Robust submit in WorkTimeForm** — ✅ 2026-10-04, commit `c231492`
   - `isSubmitting` state around the save handler; primary button `disabled` + spinner while pending; guard double submit.
   - Test-first: renderer test asserting the primary button is disabled / shows pending during an in-flight save.
   - Acceptance: double click cannot create duplicates; the button reflects the pending state.
@@ -111,7 +111,23 @@ pnpm build
 Task-specific: submit button disabled during pending (T2); delete requires confirmation (T3); Home error
 state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + described-by (T7).
 
+## Review (RDD on)
+
+- **Slice T1+T2** (base `1bb6d48`, commits `b9a02a1`+`c231492`, 7 paths / 416 lines): `review_due_reason =
+  slice_budget_reached`. Consent granted; lens `review-reliability`; lineage `review-bf4b0951e0f684a9`.
+  Result **approved**; acknowledgement burned authority. Reviewed boundary now `c231492`.
+  - **R3-001 (WARNING, informational)** — the new submit test only settles the deferred save with success;
+    the failure path of the `finally` reset (`isSubmittingRef`/`isSubmitting` after a rejected save) is
+    unproved. Follow-up: add a rejection-path test case.
+  - **R3-002 (SUGGESTION, informational)** — the pending-label assertion matches English text only and does
+    not pin the active locale. Follow-up: pin the language in the test.
+
 ## Progress log
 
 - 2026-10-04 — User merged PR #27 (Fase 0) into `staging`; authorized Fase 4. Product decision UX-407 resolved
   (24h everywhere). Branch `feat/ux-fase-4-flows` created from `origin/staging` (`1bb6d48`). Task doc created.
+- 2026-10-04 — T1 (UX-405) done: removed the Debug API panel/trigger/handler/state/import from
+  `PullFromTWDialog.tsx` (no debug-only locale keys existed); added a regression guard. Commit `b9a02a1`.
+- 2026-10-04 — T2 (UX-401) done: `isSubmitting` state + sync ref guard, disabled/spinner button, `saving`
+  locale key. Test-first RED→GREEN (`workTimeFormSubmit.test.tsx`); full suite 57 files / 393 tests green.
+  Commit `c231492`. Native review approved (see above).
