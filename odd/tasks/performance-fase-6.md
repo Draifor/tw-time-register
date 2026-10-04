@@ -4,7 +4,7 @@
 - **Roadmap:** `docs/PERFORMANCE-ROADMAP.md` §Fase 6 (PERF-601..606)
 - **Branch:** `feat/performance-fase-6` (off `origin/staging` @ `b378811`, PR #17 merged)
 - **Delivery strategy:** `single-pr` into `staging` (small phase, well under ~400 authored lines)
-- **Status:** Implemented (verification green; pending native review)
+- **Status:** Implemented and verified; native review approved (delivery pending)
 
 ## Objective
 
@@ -170,4 +170,19 @@ Single PR into `staging` (user-owned merge).
 
 ## Review outcome
 
-_(to be filled after the native review)_
+- Native review `review-7940257f0e125c99` (medium risk, single lens
+  `review-reliability`) against target `sha256:42baed68…` (tree `daec784`):
+  **approved** and acknowledged; authority **burned**.
+- Non-blocking advisory findings (they do NOT reopen this candidate — treat as
+  separate later work):
+  - `R3-1` (WARNING, `src/renderer/hooks/useScrollPastThreshold.ts:19-36`): on a
+    `threshold` change the immediate sync is a no-op (`lastValue` is initialized
+    from the same expression), so the returned boolean can stay stale until the
+    next qualifying scroll. Harmless here (threshold is a constant `300`); fix
+    if the threshold ever becomes dynamic.
+  - `R3-2` (WARNING, `src/renderer/components/ImportCSVTasksDialog.tsx:65`): the
+    now-async `reader.onload` has no generation guard, so two rapid file
+    selections could let an older chunked parse overwrite the newer preview.
+  - `R3-3` (SUGGESTION, `src/renderer/components/DataTable.tsx:175`): the new
+    attach-once scroll lifecycle is structurally verified only; no test asserts
+    attach-once / unmount timer cleanup.
