@@ -21,6 +21,8 @@ const en = {
       done: 'Done',
       back: 'Back',
       errorOccurred: 'An error occurred',
+      loading: 'Loading...',
+      retry: 'Retry',
       backToTop: 'Back to top'
     },
     table: {
@@ -173,6 +175,9 @@ const en = {
       pendingEntries: 'Pending Entries',
       dailyView: "Today's Log",
       noEntriesYet: 'No entries yet today. Start tracking!',
+      statsErrorTitle: 'Could not load your stats',
+      dailyErrorTitle: "Could not load today's log",
+      loadErrorDescription: 'Something went wrong while loading. Please try again.',
       remaining: '{{time}} remaining',
       margin: 'Margin'
     },

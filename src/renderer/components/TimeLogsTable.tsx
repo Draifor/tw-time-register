@@ -13,7 +13,8 @@ import {
   Trash2,
   Copy,
   SlidersHorizontal,
-  ExternalLink
+  ExternalLink,
+  SearchX
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -673,8 +674,8 @@ function TimeLogsTable() {
           <tbody>
             {hasActiveFilters && filteredData.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
-                  {t('timeLogs.noFilterResults')}
+                <td colSpan={9}>
+                  <EmptyState icon={SearchX} title={t('timeLogs.noFilterResults')} />
                 </td>
               </tr>
             )}

@@ -21,6 +21,8 @@ const es = {
       done: 'Listo',
       back: 'Atrás',
       errorOccurred: 'Ha ocurrido un error',
+      loading: 'Cargando...',
+      retry: 'Reintentar',
       backToTop: 'Volver arriba'
     },
     table: {
@@ -173,6 +175,9 @@ const es = {
       pendingEntries: 'Entradas Pendientes',
       dailyView: 'Registro del Día',
       noEntriesYet: 'Sin entradas hoy. ¡Empieza a registrar!',
+      statsErrorTitle: 'No se pudieron cargar tus estadísticas',
+      dailyErrorTitle: 'No se pudo cargar el registro de hoy',
+      loadErrorDescription: 'Algo salió mal al cargar. Inténtalo de nuevo.',
       remaining: 'Faltan {{time}}',
       margin: 'Margen'
     },

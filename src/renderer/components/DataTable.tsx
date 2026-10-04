@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useEffect } from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Plus, Loader2, Inbox } from 'lucide-react';
+import { Plus, Loader2, Inbox, SearchX } from 'lucide-react';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -222,12 +222,15 @@ function DataTable<T extends FieldValues>({
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-32">
                     {globalFilter ? (
-                      <div className="flex flex-col items-center justify-center text-center">
-                        <p className="text-muted-foreground mb-1">{t('table.noResults', { query: globalFilter })}</p>
-                        <Button variant="ghost" size="sm" onClick={() => setGlobalFilter('')}>
-                          {t('table.clearSearch')}
-                        </Button>
-                      </div>
+                      <EmptyState
+                        icon={SearchX}
+                        title={t('table.noResults', { query: globalFilter })}
+                        action={
+                          <Button variant="ghost" size="sm" onClick={() => setGlobalFilter('')}>
+                            {t('table.clearSearch')}
+                          </Button>
+                        }
+                      />
                     ) : (
                       <EmptyState
                         icon={Inbox}

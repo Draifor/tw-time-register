@@ -53,12 +53,12 @@ logic, E2E visual tests.
   - Test-first: renderer test asserting the primary button is disabled / shows pending during an in-flight save.
   - Acceptance: double click cannot create duplicates; the button reflects the pending state.
 
-- [ ] **T3 · UX-402 + UX-406 — Confirm deletion (AlertDialog)**
+- [x] **T3 · UX-402 + UX-406 — Confirm deletion (AlertDialog)** — ✅ 2026-10-04, commit `17841cd`
   - Delete entry and the `Ctrl+Escape` bulk delete go through an `AlertDialog` confirmation; `DeleteEntryDialog` migrates from `Dialog` to `AlertDialog` (`role="alertdialog"`, initial focus on confirm, `AlertDialogDescription`).
   - Test-first: renderer test asserting delete is not committed until confirmed.
   - Acceptance: no entry is lost by an accidental click/key; every deletion path uses `AlertDialog`.
 
-- [ ] **T4 · UX-403 — Consistent, translated empty/loading/error states**
+- [x] **T4 · UX-403 — Consistent, translated empty/loading/error states** — ✅ 2026-10-04
   - Add a shared `LoadingState` to `ui/empty-state.tsx`; adopt `EmptyState`/`ErrorState`/`LoadingState` in HomePage, DataTable and TimeLogsTable with i18n copy.
   - `HomePage`: replace silent `catch` with a real error state (surface the failure, offer retry).
   - Test-first: Home error path renders `ErrorState` (not zeros).
@@ -131,3 +131,11 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
 - 2026-10-04 — T2 (UX-401) done: `isSubmitting` state + sync ref guard, disabled/spinner button, `saving`
   locale key. Test-first RED→GREEN (`workTimeFormSubmit.test.tsx`); full suite 57 files / 393 tests green.
   Commit `c231492`. Native review approved (see above).
+- 2026-10-04 — T3 (UX-402+UX-406) done: one reusable `AlertDialog` confirms draft-row removal in
+  `WorkTimeForm` (per-row + Esc shortcut); `DeleteEntryDialog` migrated `Dialog`→`AlertDialog`
+  (`role="alertdialog"`, description, focus on confirm, in-flight non-dismissible). Test-first RED→GREEN
+  (`deleteConfirm.test.tsx`, 4 tests). Commit `17841cd`.
+- 2026-10-04 — T4 (UX-403) done: shared `LoadingState` + optional `ErrorState.action`; `HomePage` surfaces
+  load failures with `ErrorState` + retry (no more silent zeros) and uses `LoadingState`; both tables'
+  filtered-empty variants use the shared `EmptyState` (both already had empty/loading/error). Test-first
+  RED→GREEN (`homeErrorState.test.tsx`). Full suite 59 files / 402 tests green.

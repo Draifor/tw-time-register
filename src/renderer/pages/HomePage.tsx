@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Clock, ArrowRight, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Skeleton } from '../components/ui/skeleton';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/empty-state';
 import ActiveTimerChip from '../components/ActiveTimerChip';
 import {
   getTimeStats,
@@ -25,9 +25,11 @@ import { Task } from '../../types/tasks';
 function HomePage() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<TimeStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
   const [dailyInfo, setDailyInfo] = useState<DailyTimeInfo | null>(null);
+  const [dailyError, setDailyError] = useState<string | null>(null);
   const [isDailyLoading, setIsDailyLoading] = useState(true);
   // Reuse the cached task list (same key as useTasks) instead of bypassing the cache.
   const { data: tasksData } = useQuery<Task[]>({
@@ -36,35 +38,43 @@ function HomePage() {
   });
   const tasks = useMemo(() => tasksData ?? [], [tasksData]);
 
-  useEffect(() => {
+  // Both loads surface their failure instead of swallowing it, so a broken
+  // fetch can never be mistaken for a real "0h 00m" day. `retry` re-runs them.
+  const loadStats = useCallback(async () => {
+    setIsLoading(true);
+    setStatsError(null);
+    try {
+      const data = await getTimeStats();
+      setStats(data);
+    } catch (err) {
+      setStats(null);
+      setStatsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadDailyData = useCallback(async () => {
+    setIsDailyLoading(true);
+    setDailyError(null);
     const today = new Date().toISOString().split('T')[0];
+    try {
+      const [entries, info] = await Promise.all([fetchTimeEntriesByDate(today), getDailyTimeInfo(today)]);
+      setTodayEntries(entries);
+      setDailyInfo(info);
+    } catch (err) {
+      setTodayEntries([]);
+      setDailyInfo(null);
+      setDailyError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsDailyLoading(false);
+    }
+  }, []);
 
-    const loadStats = async () => {
-      try {
-        const data = await getTimeStats();
-        setStats(data);
-      } catch {
-        // silent
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const loadDailyData = async () => {
-      try {
-        const [entries, info] = await Promise.all([fetchTimeEntriesByDate(today), getDailyTimeInfo(today)]);
-        setTodayEntries(entries);
-        setDailyInfo(info);
-      } catch {
-        // silent
-      } finally {
-        setIsDailyLoading(false);
-      }
-    };
-
+  useEffect(() => {
     loadStats();
     loadDailyData();
-  }, []);
+  }, [loadStats, loadDailyData]);
 
   const formatTime = (minutes: number) => {
     const { hours, minutes: mins } = minutesToHoursMinutes(minutes);
@@ -137,34 +147,36 @@ function HomePage() {
           <CardDescription>{t('home.statsSummary')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="text-center p-4 rounded-lg bg-muted">
-              {isLoading ? (
-                <Skeleton className="h-8 w-16 mx-auto mb-1" />
-              ) : (
+          {isLoading ? (
+            <LoadingState title={t('common.loading')} />
+          ) : statsError ? (
+            <ErrorState
+              title={t('home.statsErrorTitle')}
+              message={t('home.loadErrorDescription')}
+              action={
+                <Button variant="outline" size="sm" onClick={loadStats}>
+                  {t('common.retry')}
+                </Button>
+              }
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="text-center p-4 rounded-lg bg-muted">
                 <div className="text-2xl font-bold">{formatTime(stats?.todayMinutes || 0)}</div>
-              )}
-              <div className="text-sm text-muted-foreground">{t('home.today')}</div>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted">
-              {isLoading ? (
-                <Skeleton className="h-8 w-16 mx-auto mb-1" />
-              ) : (
+                <div className="text-sm text-muted-foreground">{t('home.today')}</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted">
                 <div className="text-2xl font-bold">{formatTime(stats?.weekMinutes || 0)}</div>
-              )}
-              <div className="text-sm text-muted-foreground">{t('home.thisWeek')}</div>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted">
-              {isLoading ? (
-                <Skeleton className="h-8 w-20 mx-auto mb-1" />
-              ) : (
+                <div className="text-sm text-muted-foreground">{t('home.thisWeek')}</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted">
                 <div className={`text-2xl font-bold ${(stats?.pendingEntries || 0) > 0 ? 'text-warning' : ''}`}>
                   {stats?.pendingEntries || 0}
                 </div>
-              )}
-              <div className="text-sm text-muted-foreground">{t('home.pendingEntries')}</div>
+                <div className="text-sm text-muted-foreground">{t('home.pendingEntries')}</div>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -203,22 +215,30 @@ function HomePage() {
         </CardHeader>
         <CardContent>
           {isDailyLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-3/4" />
-            </div>
-          ) : taskSummary.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Clock className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">{t('home.noEntriesYet')}</p>
-              <Link to="/worktime">
-                <Button variant="outline" size="sm" className="mt-4">
-                  {t('workTimeForm.title')}
-                  <ArrowRight className="h-3 w-3 ml-1" />
+            <LoadingState title={t('common.loading')} />
+          ) : dailyError ? (
+            <ErrorState
+              title={t('home.dailyErrorTitle')}
+              message={t('home.loadErrorDescription')}
+              action={
+                <Button variant="outline" size="sm" onClick={loadDailyData}>
+                  {t('common.retry')}
                 </Button>
-              </Link>
-            </div>
+              }
+            />
+          ) : taskSummary.length === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title={t('home.noEntriesYet')}
+              action={
+                <Link to="/worktime">
+                  <Button variant="outline" size="sm">
+                    {t('workTimeForm.title')}
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </Link>
+              }
+            />
           ) : (
             <div className="space-y-3">
               {taskSummary.map((task, idx) => {

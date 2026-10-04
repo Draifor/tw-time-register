@@ -11,7 +11,7 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Inbox } from 'lucide-react';
-import { EmptyState, ErrorState } from '../../renderer/components/ui/empty-state';
+import { EmptyState, ErrorState, LoadingState } from '../../renderer/components/ui/empty-state';
 
 describe('EmptyState (UX-204)', () => {
   it('renders the title and description', () => {
@@ -49,5 +49,31 @@ describe('ErrorState (UX-204)', () => {
     expect(icon).not.toBeNull();
     expect(icon).toHaveClass('text-destructive');
     expect(icon?.parentElement).toHaveClass('bg-destructive/10');
+  });
+});
+
+describe('LoadingState (UX-403)', () => {
+  it('renders the title and description', () => {
+    render(<LoadingState title="Loading..." description="Fetching your data." />);
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('Fetching your data.')).toBeInTheDocument();
+  });
+
+  it('renders an animated spinner consistent with the muted icon circle', () => {
+    const { container } = render(<LoadingState title="Loading..." />);
+    const spinner = container.querySelector('svg');
+
+    expect(spinner).not.toBeNull();
+    expect(spinner).toHaveClass('animate-spin');
+    expect(spinner).toHaveClass('text-muted-foreground');
+    expect(spinner?.parentElement).toHaveClass('bg-muted');
+  });
+
+  it('renders without a description when none is provided', () => {
+    render(<LoadingState title="Loading..." />);
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.queryByText('Fetching your data.')).not.toBeInTheDocument();
   });
 });
