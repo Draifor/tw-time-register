@@ -135,6 +135,9 @@ Anything else needs the user's authorization first.
   installer build succeeded with the custom include, proving `build/installer.nsh`
   compiles and is picked up by electron-builder. Only the packaged, end-to-end
   relaunch check remains (manual, needs a real update).
+- 2026-10-03 — Work-unit commits on `feat/update-ux`: `590bbc5`
+  (feat: download progress + post-restart confirmation + tests), `a0d317b`
+  (fix: NSIS assisted-installer relaunch), `fb76412` (docs: track + roadmap).
 
 ## Findings during implementation
 | ID | Finding | Evidence | Disposition |
