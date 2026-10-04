@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download, ArrowUp } from 'lucide-react';
@@ -16,7 +17,7 @@ function NavBar() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { isConfigured, username, domain, isLoading } = useTWSession();
-  const { status: updateStatus, version: updateVersion, installUpdate } = useAutoUpdater();
+  const { status: updateStatus, version: updateVersion, percent: updatePercent, installUpdate } = useAutoUpdater();
   const showBackToTop = useScrollPastThreshold(300);
 
   const navItems = [
@@ -103,22 +104,38 @@ function NavBar() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant={updateStatus === 'downloaded' ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn(
-                      'gap-2 text-sm animate-pulse',
-                      updateStatus === 'downloaded'
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-0'
-                        : 'border-amber-500 text-amber-500 hover:bg-amber-500/10'
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      variant={updateStatus === 'downloaded' ? 'default' : 'outline'}
+                      size="sm"
+                      className={cn(
+                        'gap-2 text-sm',
+                        updateStatus === 'downloaded' || updatePercent == null ? 'animate-pulse' : '',
+                        updateStatus === 'downloaded'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-0'
+                          : 'border-amber-500 text-amber-500 hover:bg-amber-500/10'
+                      )}
+                      onClick={updateStatus === 'downloaded' ? installUpdate : undefined}
+                    >
+                      <Download className="h-4 w-4" />
+                      {updateStatus === 'downloaded'
+                        ? t('nav.installing', { version: updateVersion })
+                        : updatePercent != null
+                          ? t('nav.downloadProgress', {
+                              version: updateVersion,
+                              percent: Math.round(updatePercent)
+                            })
+                          : t('nav.updating')}
+                    </Button>
+                    {updateStatus === 'available' && updatePercent != null && (
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-amber-500"
+                          style={{ width: `${Math.round(updatePercent)}%` }}
+                        />
+                      </div>
                     )}
-                    onClick={updateStatus === 'downloaded' ? installUpdate : undefined}
-                  >
-                    <Download className="h-4 w-4" />
-                    {updateStatus === 'downloaded'
-                      ? t('nav.installing', { version: updateVersion })
-                      : t('nav.updating')}
-                  </Button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end">
                   {updateStatus === 'downloaded'
@@ -128,6 +145,24 @@ function NavBar() {
               </Tooltip>
             </TooltipProvider>
           )}
+
+          {/* Blocking install overlay — shown for a bounded moment before the app quits.
+              Rendered through a portal so it is not trapped in NavBar's z-40 stacking
+              context and can cover the fixed AppBar (z-50). */}
+          {updateStatus === 'installing' &&
+            createPortal(
+              <div
+                role="alert"
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm"
+              >
+                <div className="flex flex-col items-center gap-3 px-6 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                  <p className="text-lg font-semibold">{t('nav.installingTitle')}</p>
+                  <p className="text-sm text-muted-foreground">{t('nav.installingDesc', { version: updateVersion })}</p>
+                </div>
+              </div>,
+              document.body
+            )}
         </div>
       </div>
 

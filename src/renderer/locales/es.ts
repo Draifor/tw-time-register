@@ -138,7 +138,12 @@ const es = {
       updateReadyAction: 'Reiniciar ahora',
       upToDateToast: 'Ya tienes la última versión',
       upToDateDesc: 'No hay actualizaciones disponibles.',
-      updateError: 'Error al buscar actualizaciones'
+      updateError: 'Error al buscar actualizaciones',
+      downloadProgress: 'Descargando v{{version}} — {{percent}}%',
+      installingTitle: 'Instalando actualización…',
+      installingDesc: 'La app se reiniciará automáticamente cuando termine la instalación.',
+      updatedSuccess: 'Actualizado a v{{version}}',
+      updatedSuccessDesc: 'Ya estás ejecutando la última versión.'
     },
     home: {
       title: 'Bienvenido a TW Time Register',

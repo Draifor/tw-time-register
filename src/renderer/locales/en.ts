@@ -138,7 +138,12 @@ const en = {
       updateReadyAction: 'Restart now',
       upToDateToast: 'You are up to date',
       upToDateDesc: 'No updates available.',
-      updateError: 'Error checking for updates'
+      updateError: 'Error checking for updates',
+      downloadProgress: 'Downloading v{{version}} — {{percent}}%',
+      installingTitle: 'Installing update…',
+      installingDesc: 'The app will restart automatically when the installation finishes.',
+      updatedSuccess: 'Updated to v{{version}}',
+      updatedSuccessDesc: 'You are now running the latest version.'
     },
     home: {
       title: 'Welcome to TW Time Register',

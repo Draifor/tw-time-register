@@ -48,7 +48,8 @@ describe('initAutoUpdater', () => {
     const channels = handleMock.mock.calls.map((call) => call[0]);
     expect(channels.filter((channel) => channel === 'install-update')).toHaveLength(1);
     expect(channels.filter((channel) => channel === 'check-for-updates')).toHaveLength(1);
-    expect(handleMock).toHaveBeenCalledTimes(2);
+    expect(channels.filter((channel) => channel === 'get-update-result')).toHaveLength(1);
+    expect(handleMock).toHaveBeenCalledTimes(3);
   });
 
   it('forwards a dev update check to the most recently created window', async () => {
