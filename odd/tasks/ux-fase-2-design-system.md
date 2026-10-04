@@ -207,3 +207,21 @@ _(se completa por tarea)_
     `TaskCommentDialog`, el `Select` de `TasksTable` ni el toggle de `TimeLogsTable`.
   - `R3-003` (SUGGESTION, introduced): `workTimeFormSwitches.test.tsx:101-113` consulta el `document`
     global en vez del `container` de `render()`; endurecer con `within(container)`.
+
+## Review nativa (RDD on) — slice T4
+
+- **Lineage:** `review-4bab417793659aec`, 1 lente (`review-reliability`), riesgo medium,
+  **aprobado** y authority quemada (`authority: burned`). Candidato: 13 paths / 596 líneas
+  (T4: 2 primitivas nuevas + 4 tablas + 2 locales + 3 tests + docs de decisión).
+- **Disparo:** `review_due: true` / `slice_budget_reached` (596 > budget ~400); base `29ef53a`.
+- **Hallazgos advisory (no bloqueantes — trabajo posterior, NO re-review de este candidato):**
+  - `R3-GUARD-CWD` (WARNING, introduced): `tableI18nGuard.test.ts:32` resuelve cada fuente desde
+    `process.cwd()`; corrido desde otro directorio (o con otro `vitest root`) el guard lanza en vez de
+    escanear y no verifica nada. Mismo patrón que `R3-I18N-GUARD-LITERAL-ONLY` (T1). Endurecer resolviendo
+    desde `import.meta.url`/`__dirname`.
+  - `R3-GUARD-DENYLIST` (SUGGESTION, introduced): el guard solo afirma ausencia de 10 literales; no afirma
+    que las keys `table.*` existan y resuelvan en ambos locales. Agregar un assert de existencia/paridad de keys.
+  - `R3-SEARCH-WIDTH` (SUGGESTION, introduced): `TableToolbarSearch` fija `max-w-sm`; al adoptarlo,
+    `TimeLogsTable` pasa de `flex-1` sin tope a un ancho acotado. Confirmar si es deseado o exponer el ancho.
+  - `R3-CLEAR-LABEL` (SUGGESTION, introduced): el botón de limpiar deriva su nombre accesible solo de
+    `clearLabel`; con `showClear` sin label queda sin nombre. El test ejercita ese caso sin fijar el nombre.
