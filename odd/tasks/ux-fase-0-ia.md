@@ -155,7 +155,32 @@ resolve; running timer shows on Home.
 - **R3-4** — the old `/tasks` URL now matches no route (no redirect/catch-all); the missing catch-all is
   base-only, the newly dead URL is introduced here.
 
+## Follow-up before PR (advisory closure + docs)
+
+- **Authorized:** user, 2026-10-04 ("cerremos esos puntos pendientes antes del PR").
+- **Route:** delegated direct (one writer) for code + tests; parent for tracking docs.
+- **Trigger:** 2+ non-trivial files (`useActiveTimer.ts`, `App.tsx`, 3 test files) → Writer trigger.
+- **Note:** closing advisories creates new commits → a new candidate for the RDD assess (does not reuse the
+  already-acknowledged review of `85bd5d7`).
+
+- [ ] **T6 · Close review advisories R3-1..R3-4**
+  - **R3-1 (behavior):** `src/renderer/hooks/useActiveTimer.ts` re-reads `wt_activeTimer` on `storage` and
+    `focus`/`visibilitychange`, not just once on mount. Test: change storage + fire the event → `startedAt`
+    updates.
+  - **R3-2 (test):** new `ActiveTimerChip` test — null path renders nothing; running path shows elapsed and
+    links to `/worktime`.
+  - **R3-3 (test):** `src/tests/renderer/navIa.test.tsx` asserts the six link `href`s
+    (`/`, `/worktime`, `/history`, `/reports`, `/catalog`, `/settings`), not just text/count.
+  - **R3-4 (behavior):** add `/tasks` → `/catalog` redirect (`<Navigate replace />`) in `src/renderer/App.tsx`;
+    cover it deterministically if the App/router harness allows, otherwise report why not.
+  - **Acceptance:** lint, type-check, test and build green; each advisory demonstrably closed or reported.
+
+- [ ] **T7 · Docs: Fase 0 done + Reports debt**
+  - `docs/UX-ROADMAP.md`: mark UX-001..UX-005 `[x]` with date/branch; refresh §Estado general; add a Reports
+    backlog section (month/week presets, sent-vs-local minutes, weekly day bars) recording the gap left by
+    removing the Home monthly/weekly blocks.
+
 ## Next step
 
-Delivery is the user's decision (push + PR to `staging`). The advisories above are separate later work and are
-never a reason to re-review this candidate.
+Run T6 + T7, commit the follow-up as a work unit, and let delivery (push + PR to `staging`) remain the user's
+decision.

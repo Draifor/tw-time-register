@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AppBar from './components/AppBar';
 import NavBar from './components/NavBar';
 import { Toaster } from './components/ui/sonner';
@@ -49,6 +49,7 @@ function App() {
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/catalog" element={<CatalogPage />} />
+              <Route path="/tasks" element={<Navigate to="/catalog" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Suspense>

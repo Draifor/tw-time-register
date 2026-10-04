@@ -73,6 +73,14 @@ describe('NavBar information architecture (UX-002/004/005)', () => {
       'Catalog',
       'Settings'
     ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/',
+      '/worktime',
+      '/history',
+      '/reports',
+      '/catalog',
+      '/settings'
+    ]);
   });
 
   it('does not duplicate the brand as a heading in the nav', () => {

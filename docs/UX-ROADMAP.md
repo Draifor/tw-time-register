@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `En progreso` — Fases 1–3 implementadas (PR #24, #25, #26); Fase 0 (IA/landing) y Fases 4–6 pendientes
+- **Estado general:** `En progreso` — Fases 0–3 implementadas (PR #24, #25, #26 y rama `feat/ux-fase-0-ia`); Fases 4–6 y el backlog de Reportes (Fase 7) pendientes
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -102,30 +102,30 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 0 — Arquitectura de información y decisiones de producto
 > Objetivo: definir **qué secciones existen y cuál es la acción primaria** antes de tocar UI. Todo lo demás depende de esto. Requiere tu decisión (ver §6).
 
-- [ ] **UX-001 · 🔴 Hacer de "Registrar tiempo" el centro del producto**
+- [x] **UX-001 · 🔴 Hacer de "Registrar tiempo" el centro del producto** — ✅ 2026-10-04, rama `feat/ux-fase-0-ia` (opción b: Home operativo)
   - **Ubicación:** `App.tsx:43-49`, `NavBar.tsx:23-29`, `HomePage.tsx`
   - **Problema:** el landing es un dashboard; el flujo primario vive detrás de un CTA.
   - **Acción:** elegir una de las dos estrategias (§6, Decisión 1) y aplicarla: **(a)** que `/worktime` sea la ruta inicial y el dashboard pase a un secundario, o **(b)** mantener el dashboard pero convertirlo en un verdadero "home" operativo con la acción de registrar siempre a un click y el timer visible.
   - **Aceptación:** desde el arranque, registrar tiempo requiere como máximo **1 click**.
 
-- [ ] **UX-002 · 🔴 Definir el mapa de secciones definitivo**
+- [x] **UX-002 · 🔴 Definir el mapa de secciones definitivo** — ✅ 2026-10-04, rama `feat/ux-fase-0-ia` (6 secciones)
   - **Ubicación:** `App.tsx:43-49`, `NavBar.tsx:23-29`, `TasksPage.tsx:15-42`
   - **Problema:** 5 ítems de primer nivel sin agrupación; catálogos (tasks/types) ya agrupados por tabs pero desconectados del resto.
   - **Acción:** proponer un mapa (p. ej. `Registrar` · `Historial` · `Reportes` · `Catálogo` (tareas+tipos) · `Ajustes`, con Home/dashboard integrado o como inicio). Definir qué es sección y qué es tab.
   - **Aceptación:** un mapa de IA escrito y aprobado; el nav refleja solo secciones de primer nivel.
 
-- [ ] **UX-003 · 🔴 Unificar nombres de sección y jerga**
+- [x] **UX-003 · 🔴 Unificar nombres de sección y jerga** — ✅ 2026-10-04, rama `feat/ux-fase-0-ia` (glosario aplicado)
   - **Ubicación:** `en.ts:122`, `es.ts:122`, `en.ts:458`, `WorkTimeForm.tsx:1342-1363`
   - **Problema:** "Work Time"/"Registro" (nav) vs "Time Registration" (página); "Add Entry" + "Register" como acciones; "Register" no se usa en ningún otro lado.
   - **Acción:** glosario de copy (una sección = un nombre; una acción = un verbo) y aplicarlo.
   - **Aceptación:** sin sinónimos para la misma sección/acción en la app.
 
-- [ ] **UX-004 · 🟡 Branding único y jerarquía de encabezados**
+- [x] **UX-004 · 🟡 Branding único y jerarquía de encabezados** — ✅ 2026-10-04, rama `feat/ux-fase-0-ia` (un `<h1>` por ruta)
   - **Ubicación:** `AppBar.tsx:85-88,122`, `NavBar.tsx:35`, páginas (`HomePage.tsx:237`, `TasksPage.tsx:15`, `ReportsPage.tsx:192`, `SettingsPage.tsx:382`, `WorkTimeForm.tsx:1294`)
   - **Acción:** quitar el `<h1>` de marca del NavBar; AppBar solo logo/ícono; **un solo `<h1>` por página**; `CardTitle`/`CardHeader` como `h2`/`h3` reales.
   - **Aceptación:** 1 `<h1>` por ruta y jerarquía h1→h2→h3 sin saltos.
 
-- [ ] **UX-005 · 🟡 Landmarks y estructura semántica**
+- [x] **UX-005 · 🟡 Landmarks y estructura semántica** — ✅ 2026-10-04, rama `feat/ux-fase-0-ia` (`<main>` + `<nav aria-label>`)
   - **Ubicación:** `App.tsx:37` (div de contenido), `NavBar.tsx:36` (nav sin nombre)
   - **Acción:** envolver el contenido en `<main>`; `aria-label` en `<nav>`; considerar skip-link.
   - **Aceptación:** landmarks presentes en todas las rutas.
@@ -342,6 +342,29 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 
 ---
 
+### Fase 7 — Reportes (backlog)
+> Objetivo: recuperar y superar lo que el dashboard ofrecía antes de UX Fase 0, y hacer fáciles los cortes
+> semanal/mensual desde Reportes.
+>
+> **Contexto:** UX Fase 0 quitó de Home las tarjetas Monthly/Weekly (`HomePage.tsx`, commit `85bd5d7`) con el
+> rationale "ya viven en Reports". Eso es parcial: `ReportsPage.tsx` permite reconstruir un rango con
+> `dateFrom`/`dateTo`, pero pierde los presets mes/semana, el desglose por **minutos** enviados vs locales
+> (hoy "Sent to TW" cuenta entradas) y la barra semanal por día.
+
+- [ ] **UX-701 · 🔴 Reportes: presets de rango (mes/semana)**
+  - **Acción:** presets "Este mes" / "Esta semana" / "Mes anterior" + rango custom; recordar el último rango.
+  - **Aceptación:** ver un mes o una semana es 1 click.
+
+- [ ] **UX-702 · 🟡 Reportes: horas enviadas vs locales**
+  - **Acción:** desglose por minutos enviados/locales (por tarea y por día) y su ratio, además del total.
+  - **Aceptación:** las horas enviadas vs locales se leen sin cruzar tablas.
+
+- [ ] **UX-703 · 🟡 Reportes: vista semanal por día**
+  - **Acción:** agrupación por semana con barras por día, total semanal y estado de envío.
+  - **Aceptación:** el avance de la semana se lee de un vistazo.
+
+---
+
 ## 6. Decisiones abiertas (requieren tu input)
 
 Antes de implementar la Fase 0:
@@ -349,6 +372,7 @@ Antes de implementar la Fase 0:
 1. **Acción primaria / landing**
    - **(a)** `/worktime` es la ruta inicial; el dashboard pasa a ser secundario.
    - **(b)** El dashboard sigue siendo Home, pero se rediseña como "home operativo" (timer + registrar + resumen) y el dashboard actual se simplifica.
+   - **Resuelto (2026-10-04):** opción **(b)** — Home operativo con registrar a 1 click, `ActiveTimerChip` y Quick Stats + Today's Log; los bloques Monthly/Weekly salen de Home (ver Fase 7).
 
 2. **Menús**
    - **(a)** Eliminar el menú del renderer y redistribuir sus 3 acciones (engranaje/settings).
@@ -356,6 +380,7 @@ Antes de implementar la Fase 0:
    - **(c)** Reemplazar por un menú nativo real de Electron (pierde el look integrado con la titlebar custom).
 
 3. **Mapa de secciones** (UX-002): ¿cuántos ítems de primer nivel y cuáles? ¿`Catálogo` = Tasks + Types?
+   - **Resuelto (2026-10-04):** 6 secciones — `Inicio · Registrar · Historial · Reportes · Catálogo · Ajustes`; `Catálogo` = Tasks + Types (tabs).
 
 4. **Tamaño mínimo de ventana** (UX-301): ¿fijamos `minWidth` (p. ej. 900px) o priorizamos un layout adaptable a ventanas chicas?
 
