@@ -32,7 +32,7 @@ function Layout() {
   const navigate = useNavigate();
   return (
     <div>
-      <Link to="/worktime">{t('nav.workTime')}</Link>
+      <Link to="/worktime">{t('nav.register')}</Link>
       <button type="button" onClick={() => navigate('/settings')}>
         {t('nav.settings')}
       </button>
@@ -48,7 +48,7 @@ function renderApp(initialEntry = '/') {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Section labelKey="nav.home" />} />
-            <Route path="/worktime" element={<Section labelKey="nav.workTime" />} />
+            <Route path="/worktime" element={<Section labelKey="nav.register" />} />
             <Route path="/settings" element={<Section labelKey="nav.settings" />} />
           </Route>
         </Routes>
@@ -61,14 +61,14 @@ describe('react-router-dom 7 + i18next 26 / react-i18next 17', () => {
   it('renders translated labels from the real i18n instance', () => {
     renderApp();
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Work Time' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Register' })).toBeInTheDocument();
   });
 
   it('navigates with Link and useNavigate', () => {
     renderApp();
 
-    fireEvent.click(screen.getByRole('link', { name: 'Work Time' }));
-    expect(screen.getByRole('heading', { name: 'Work Time' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Register' }));
+    expect(screen.getByRole('heading', { name: 'Register' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();

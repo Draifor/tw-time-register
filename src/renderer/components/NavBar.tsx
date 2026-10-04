@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download, ArrowUp } from 'lucide-react';
+import { Clock, ListTodo, History, Home, Settings, WifiOff, Loader2, BarChart2, Download, ArrowUp } from 'lucide-react';
 import SwitchDarkMode from './SwitchDarkMode';
 import SelectLanguage from './SelectLanguage';
 import { Button } from './ui/button';
@@ -22,9 +22,10 @@ function NavBar() {
 
   const navItems = [
     { to: '/', label: t('nav.home'), icon: Home },
-    { to: '/worktime', label: t('nav.workTime'), icon: Clock },
-    { to: '/tasks', label: t('nav.tasks'), icon: ListTodo },
+    { to: '/worktime', label: t('nav.register'), icon: Clock },
+    { to: '/history', label: t('nav.history'), icon: History },
     { to: '/reports', label: t('nav.reports'), icon: BarChart2 },
+    { to: '/catalog', label: t('nav.catalog'), icon: ListTodo },
     { to: '/settings', label: t('nav.settings'), icon: Settings }
   ];
 
@@ -32,8 +33,7 @@ function NavBar() {
     <div className="sticky top-8 z-40 border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80">
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-6">
-          <h1 className="text-lg font-semibold">TW Time Register</h1>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1" aria-label={t('nav.primary')}>
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.to;

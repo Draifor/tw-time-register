@@ -133,10 +133,12 @@ const es = {
     },
     nav: {
       home: 'Inicio',
-      workTime: 'Registro',
-      tasks: 'Tareas',
+      register: 'Registrar',
+      history: 'Historial',
       reports: 'Reportes',
-      settings: 'Configuración',
+      catalog: 'Catálogo',
+      settings: 'Ajustes',
+      primary: 'Navegación principal',
       noSession: 'Sin sesión TW',
       verifying: 'Verificando credenciales...',
       connectedAs: 'Conectado como {{username}} · {{domain}}.teamwork.com',
@@ -160,14 +162,10 @@ const es = {
       updatedSuccessDesc: 'Ya estás ejecutando la última versión.'
     },
     home: {
-      title: 'Bienvenido a TW Time Register',
+      title: 'Inicio',
       subtitle: 'Registra tus horas de trabajo y sincronízalas con TeamWork fácilmente.',
-      timeRegistration: 'Registro de Tiempo',
-      timeRegistrationDesc: 'Registra tus horas de trabajo diarias con cálculos automáticos de hora de fin.',
-      startRegistering: 'Empezar a Registrar',
-      taskManagement: 'Gestión de Tareas',
-      taskManagementDesc: 'Gestiona tus tareas de TeamWork y tipos de tarea para registros rápidos.',
-      viewTasks: 'Ver Tareas',
+      viewHistory: 'Ver historial',
+      timerRunning: 'Timer en curso',
       quickStats: 'Estadísticas Rápidas',
       statsSummary: 'Resumen de registro de tiempo',
       today: 'Hoy',
@@ -176,23 +174,11 @@ const es = {
       dailyView: 'Registro del Día',
       noEntriesYet: 'Sin entradas hoy. ¡Empieza a registrar!',
       remaining: 'Faltan {{time}}',
-      weeklyReport: 'Reporte semanal',
-      weeklyReportDesc: 'Resumen de tiempos registrados en los últimos 7 días',
-      weekPeriod: 'Últimos 7 días',
-      weekNoEntries: 'No hay registros para la última semana.',
-      weekEntriesCount: '{{count}} registro(s)',
-      weekSentEntries: '{{count}} enviado(s) a TW',
-      weekTotal: 'Total de la semana: {{total}}',
-      margin: 'Margen',
-      monthlyReport: 'Reporte del Mes',
-      monthlyReportDesc: 'Resumen de tiempos registrados en {{month}}',
-      monthNoEntries: 'No hay registros para este mes.',
-      monthSent: 'Enviado a TeamWork',
-      monthLocalOnly: 'Solo local',
-      monthEntriesCount: '{{count}} registro(s)',
-      monthTotal: 'Total del mes: {{total}}',
-      monthDailyChart: 'Horas registradas por día',
-      monthNoDailyData: 'No hay datos diarios para mostrar.'
+      margin: 'Margen'
+    },
+    history: {
+      title: 'Historial',
+      subtitle: 'Consulta, edita y sincroniza tus registros de tiempo.'
     },
     reports: {
       title: 'Reportes',
@@ -307,9 +293,8 @@ const es = {
       }
     },
     tasks: {
-      pageTitle: 'Gestión de Tareas',
-      pageSubtitle: 'Gestiona tus tipos de tarea, tareas de TeamWork y registros de tiempo.',
-      tabTimeLogs: 'Registros',
+      pageTitle: 'Catálogo',
+      pageSubtitle: 'Gestiona tus tareas de TeamWork y tipos de tarea.',
       tabTasks: 'Tareas',
       tabTypes: 'Tipos',
       taskCount: '{{count}} tareas',
@@ -445,7 +430,7 @@ const es = {
       }
     },
     workTimeForm: {
-      title: 'Registro de Tiempo',
+      title: 'Registrar tiempo',
       subtitle: 'Registra tus horas de trabajo para TeamWork',
       entryN: 'Entrada {{num}}',
       descPlaceholder: '¿en qué trabajaste?',

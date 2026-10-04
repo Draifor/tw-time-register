@@ -133,10 +133,12 @@ const en = {
     },
     nav: {
       home: 'Home',
-      workTime: 'Work Time',
-      tasks: 'Tasks',
+      register: 'Register',
+      history: 'History',
       reports: 'Reports',
+      catalog: 'Catalog',
       settings: 'Settings',
+      primary: 'Primary navigation',
       noSession: 'No TW session',
       verifying: 'Verifying credentials...',
       connectedAs: 'Connected as {{username}} · {{domain}}.teamwork.com',
@@ -160,14 +162,10 @@ const en = {
       updatedSuccessDesc: 'You are now running the latest version.'
     },
     home: {
-      title: 'Welcome to TW Time Register',
+      title: 'Home',
       subtitle: 'Track your work hours and sync them with TeamWork effortlessly.',
-      timeRegistration: 'Time Registration',
-      timeRegistrationDesc: 'Register your daily work hours with automatic calculations for end times.',
-      startRegistering: 'Start Registering',
-      taskManagement: 'Task Management',
-      taskManagementDesc: 'Manage your TeamWork tasks and task types for quick time entry selection.',
-      viewTasks: 'View Tasks',
+      viewHistory: 'View history',
+      timerRunning: 'Timer running',
       quickStats: 'Quick Stats',
       statsSummary: 'Your time tracking summary',
       today: 'Today',
@@ -176,23 +174,11 @@ const en = {
       dailyView: "Today's Log",
       noEntriesYet: 'No entries yet today. Start tracking!',
       remaining: '{{time}} remaining',
-      monthlyReport: 'Monthly Report',
-      monthlyReportDesc: 'Summary of time logged in {{month}}',
-      monthNoEntries: 'No entries for this month.',
-      monthSent: 'Sent to TeamWork',
-      monthLocalOnly: 'Local only',
-      monthEntriesCount: '{{count}} entries',
-      monthTotal: 'Month total: {{total}}',
-      monthDailyChart: 'Hours logged per day',
-      monthNoDailyData: 'No daily data to display.',
-      weeklyReport: 'Weekly Report',
-      weeklyReportDesc: 'Summary of time logged in the last 7 days',
-      weekPeriod: 'Last 7 days',
-      weekNoEntries: 'No entries for the last week.',
-      weekEntriesCount: '{{count}} entries',
-      weekSentEntries: '{{count}} sent to TW',
-      weekTotal: 'Week total: {{total}}',
       margin: 'Margin'
+    },
+    history: {
+      title: 'History',
+      subtitle: 'Browse, edit, and sync your time logs.'
     },
     reports: {
       title: 'Reports',
@@ -307,9 +293,8 @@ const en = {
       }
     },
     tasks: {
-      pageTitle: 'Task Management',
-      pageSubtitle: 'Manage your task types, TeamWork tasks, and time logs.',
-      tabTimeLogs: 'Time Logs',
+      pageTitle: 'Catalog',
+      pageSubtitle: 'Manage your TeamWork tasks and task types.',
       tabTasks: 'Tasks',
       tabTypes: 'Types',
       taskCount: '{{count}} tasks',
@@ -445,7 +430,7 @@ const en = {
       }
     },
     workTimeForm: {
-      title: 'Time Registration',
+      title: 'Register time',
       subtitle: 'Register your work hours for TeamWork',
       entryN: 'Entry {{num}}',
       descPlaceholder: 'What did you work on?',
