@@ -58,8 +58,8 @@ doc). Under the ~400-line delivery budget, so one work unit.
 | R-2b | Sync `pnpm-lock.yaml` for `@tanstack/react-virtual` (release blocker surfaced by R-3) | `pnpm-lock.yaml` | direct inline | [x] — +20 lines |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (verify) | [x] — all green after R-2b (see evidence) |
 | R-4 | Commit `chore(release): 1.13.0` | — | direct inline | [x] — `f87cdd4` + `ea6b51e` |
-| R-5 | Promote to `main` + tag `v1.13.0` | — | direct (user-approved) | [ ] |
-| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
+| R-5 | Promote to `main` + tag `v1.13.0` | — | direct (user-approved) | [x] — `main`/`staging` FF `8025e6d`/`41bf2a1`..`4b9a255`; tag `v1.13.0` at `4b9a255` |
+| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [x] — run `37172485898` green, first attempt |
 
 ## Acceptance criteria
 
@@ -89,7 +89,18 @@ an `INEFFECTIVE_DYNAMIC_IMPORT` in `apiService.ts`, and a `PLUGIN_TIMINGS` notic
 
 ## Release outcome
 
-_To be filled by R-6._
+- `main` fast-forwarded `8025e6d..4b9a255`; `staging` fast-forwarded `41bf2a1..4b9a255`; annotated tag
+  `v1.13.0` pushed at `4b9a255`. Run
+  [37172485898](https://github.com/Draifor/tw-time-register/actions/runs/37172485898) — **green on the first
+  attempt**, with the `Pre-create the GitHub release (tag push)` step doing its job and the R4 gate passing.
+- **Contrast with `v1.12.0`:** that publish failed on the publisher create race (`422 already_exists`) and
+  needed a rerun. The R-7 pre-create fix (`scripts/ensure-github-release.ps1`) prevented the race here, so
+  `v1.13.0` published in one pass — no `422`, no rerun.
+- **Verified final state (parent spot check, not just the workflow):** exactly **1** release for `v1.13.0`
+  (not draft, not prerelease); 3 assets — `latest.yml` (364 B),
+  `TW-Time-Register-Setup-1.13.0.exe` (126,307,662 B), `TW-Time-Register-Setup-1.13.0.exe.blockmap`
+  (133,576 B); all three updater tag URLs return **HTTP 200** with sizes matching the API;
+  `latest.yml` reports `version: 1.13.0`.
 
 ## Progress
 
@@ -108,3 +119,6 @@ _To be filled by R-6._
   `ea6b51e` `chore(release): 1.13.0`. RDD assessment (`--base-ref origin/staging --committed-only` after
   excluding the untracked `package-lock.json`): **medium** (`configuration_change: package.json`),
   `review_due: false` — `under_budget` (5 paths, 153 lines). No native review required for this work unit.
+- 2026-10-04 — **R-5/R-6 done:** `main` and `staging` FF'd to `4b9a255`; tag `v1.13.0` pushed. Publish run
+  `37172485898` green on the first attempt (R-7 pre-create held; no `422`, no rerun). Release verified:
+  1 release, 3 assets, all updater URLs HTTP 200, `latest.yml` `1.13.0`.
