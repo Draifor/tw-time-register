@@ -163,7 +163,7 @@ resolve; running timer shows on Home.
 - **Note:** closing advisories creates new commits → a new candidate for the RDD assess (does not reuse the
   already-acknowledged review of `85bd5d7`).
 
-- [ ] **T6 · Close review advisories R3-1..R3-4**
+- [x] **T6 · Close review advisories R3-1..R3-4**
   - **R3-1 (behavior):** `src/renderer/hooks/useActiveTimer.ts` re-reads `wt_activeTimer` on `storage` and
     `focus`/`visibilitychange`, not just once on mount. Test: change storage + fire the event → `startedAt`
     updates.
@@ -175,12 +175,24 @@ resolve; running timer shows on Home.
     cover it deterministically if the App/router harness allows, otherwise report why not.
   - **Acceptance:** lint, type-check, test and build green; each advisory demonstrably closed or reported.
 
-- [ ] **T7 · Docs: Fase 0 done + Reports debt**
+- [x] **T7 · Docs: Fase 0 done + Reports debt**
   - `docs/UX-ROADMAP.md`: mark UX-001..UX-005 `[x]` with date/branch; refresh §Estado general; add a Reports
     backlog section (month/week presets, sent-vs-local minutes, weekly day bars) recording the gap left by
     removing the Home monthly/weekly blocks.
 
+## Follow-up progress (2026-10-04)
+
+- T6 + T7 done in work-unit commit `0a37bc7` (`fix(ux): close UX Fase 0 review advisories (R3-1..R3-4)`),
+  8 files, +298/-10.
+- Writer verification (RDD on): lint 0 errors / 83 pre-existing warnings; type-check pass; `npm run test`
+  55 files / 391 tests pass (was 384); build pass. TDD: R3-1 RED (`2 failed | 5 passed`) → GREEN (7 passed);
+  R3-4 RED (`1 failed | 1 passed`) → GREEN (2 passed). Parent spot check: 4 files / 13 tests pass.
+- RDD assess on `85bd5d7..0a37bc7`: risk **medium**, `review_due = false` (`under_budget`, 332 changed lines).
+  No native review for this commit; the reviewed boundary stays at `85bd5d7` until the slice reaches ~400 lines.
+- R3-1 residual (accepted): the re-read relies on in-document `storage`/focus events; same-document
+  `localStorage` writes do not fire `storage` in the normal flow, but Home remounts on navigation.
+
 ## Next step
 
-Run T6 + T7, commit the follow-up as a work unit, and let delivery (push + PR to `staging`) remain the user's
-decision.
+Delivery is the user's decision (push + PR to `staging`). The RDD boundary stays at `85bd5d7` for a future
+review when the slice reaches the budget.
