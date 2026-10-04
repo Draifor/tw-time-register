@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `Pendiente` — sin cambios de UI aplicados todavía
+- **Estado general:** `En progreso` — Fases 0–2 implementadas (PR #23, #24, #25); Fase 3 en curso
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -160,27 +160,27 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 2 — Design system y consistencia visual
 > Objetivo: una sola fuente de verdad visual. Base: `index.css` (tokens shadcn) + `components/ui`.
 
-- [ ] **UX-201 · 🔴 Migrar colores crudos a tokens semánticos**
+- [x] **UX-201 · 🔴 Migrar colores crudos a tokens semánticos** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `AppBar.tsx:85` (`bg-slate-800`), `MenuHandler.tsx:28-29`, `LiveTimer.tsx:54` (`text-red-500`), `TotalTimeDay.tsx:131-135`, `TimeLogsTable.tsx:186,193,776,783`, `NavBar.tsx:66,115-116`, `WorkTimeForm.tsx:359-362`, diálogos Pull/Import
   - **Acción:** reemplazar por `background/foreground/card/muted/destructive/success` (agregar tokens `success`/`warning` si faltan en `index.css`); badges de estado como variantes de un componente único.
   - **Aceptación:** grep sin `bg-slate-800`, `text-red-500`, `emerald-*`, `amber-*` fuera de `index.css`/tokens.
 
-- [ ] **UX-202 · 🟡 Usar primitivas en vez de controles caseros**
+- [x] **UX-202 · 🟡 Usar primitivas en vez de controles caseros** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `WorkTimeForm.tsx:448-482` (switch), `TaskCommentDialog.tsx:226-327` (dropdowns)
   - **Acción:** `Switch` (o `role="switch"`), `DropdownMenu`/`Select`; `InsertDivider` con `Button`.
   - **Aceptación:** sin `<input type=checkbox>` con estilos `peer` ni dropdowns propios.
 
-- [ ] **UX-203 · 🟡 Componente de estado/badge y patrones únicos**
+- [x] **UX-203 · 🟡 Componente de estado/badge y patrones únicos** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `TimeLogsTable.tsx:185-198` y `:775-788` (badge duplicado), `TasksTable.tsx:131` vs `WorkTimeForm.tsx:1343,1361`
   - **Acción:** extraer `StatusBadge`; unificar spacing (`gap-*` sobre `space-y-*`), tamaño de iconos, `Button variant/size`.
   - **Aceptación:** un componente de badge; spacing consistente en tablas y forms.
 
-- [ ] **UX-204 · 🔴 Unificar las cuatro tablas**
+- [x] **UX-204 · 🔴 Unificar las cuatro tablas** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `TimeLogsTable.tsx:577-673`, `TasksTable.tsx:103-141`, `TypeTasksTable.tsx:60-73`, `DataTable.tsx:210-226`
   - **Acción:** `TableToolbar` + `EmptyState` compartidos; una implementación compartida de edición inline **por forma de dato** (fila para `TimeLogsTable`, celda para catálogos vía `DataTable`), no un único paradigma forzado; traducir los estados de `DataTable`.
   - **Aceptación:** un toolbar y un empty-state reutilizados; sin copy hardcodeado en inglés.
 
-- [ ] **UX-205 · 🟡 Repaso de contraste y tipografía**
+- [x] **UX-205 · 🟡 Repaso de contraste y tipografía** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `NavBar.tsx:66` (`emerald-600`), `:116` (`amber-500`), `HomePage.tsx:610-617`
   - **Acción:** medir y ajustar a AA (≥4.5:1 en texto normal); fijar escala tipográfica y radios.
   - **Aceptación:** todos los textos normales ≥4.5:1 (verificado).

@@ -2,7 +2,7 @@
 
 - **Rama:** `feat/ux-fase-2-design-system` (base `origin/staging`; incluye el follow-up de Fase 1: commits `ba59888`, `43785ed`, `2224e8f`)
 - **Roadmap:** [`docs/UX-ROADMAP.md`](../../docs/UX-ROADMAP.md) §Fase 2 (UX-201..UX-205)
-- **Estado:** `[x]` tareas completas (T1–T7) y review nativa aprobada; **pendiente: PR a `staging`** (`single-pr` + `size:exception`).
+- **Estado:** `[x]` tareas completas (T1–T7) y review nativa aprobada; **PR #25 abierto a `staging`** (`single-pr` + `size:exception`).
 - **Runner de tests:** `pnpm test` (Vitest) · verificación: `pnpm test`, `pnpm lint`, `pnpm type-check`
 - **Estrategia de entrega:** `single-pr` a `staging` con `size:exception` (precedente de Fase 2 de Performance, PR #13). Pronóstico: >400 líneas autoradas → un solo PR con excepción de tamaño, no encadenado.
 
