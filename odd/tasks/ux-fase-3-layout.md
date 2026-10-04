@@ -56,7 +56,7 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
     es manual (la ventana no baja de 900×600) y se documenta.
   - Aceptación: `minWidth`/`minHeight` presentes; default ≥ mínimo.
 
-- [ ] **T2 · Shell: reserva, ancho compartido y responsive** (UX-302, UX-303, UX-304, UX-307)
+- [x] **T2 · Shell: reserva, ancho compartido y responsive** (UX-302, UX-303, UX-304, UX-307)
   - `App.tsx`: reservar la altura real del AppBar (`h-8`); `min-h-screen` en el root; contenido
     `flex-1` con el mismo ancho máximo y padding que el nav (`max-w-7xl mx-auto px-4 py-6`).
   - `NavBar.tsx`: `sticky top-8`; labels de los links ocultas debajo de `lg` (icon-only) con
@@ -92,3 +92,14 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
   - `src/main/index.ts`: `minWidth: 900`, `minHeight: 600`; defaults `width = 1000`, `height = 640`.
   - Test-first: excepción justificada — `BrowserWindow` no es instanciable en Vitest.
   - **`pnpm type-check`:** exit 0. **Pendiente de ojo:** la ventana no baja de 900×600 (manual).
+
+- **T2** — commit `fix(layout): align shell height and widths, responsive navbar (UX-302..304, UX-307)`.
+  - **Ruta:** direct inline (edición mecánica ya-entendida sobre archivos en contexto; sin investigación nueva).
+  - `App.tsx`: root `flex min-h-screen flex-col bg-background`; reserva del AppBar `h-8` (altura real);
+    contenido `mx-auto w-full max-w-7xl flex-1 px-4 py-6` (mismo ancho/padding que el nav).
+  - `NavBar.tsx`: `sticky top-8` (antes `top-14`); labels de los links ocultas debajo de `lg`
+    (`<span className="hidden lg:inline">`) con `aria-label`/`title` para el nombre accesible;
+    username con `max-w-[12rem] truncate` para no desbordar a 900px.
+  - Test-first: excepción justificada — clases presentacionales, sin test determinista.
+  - **`pnpm type-check`:** exit 0. **`pnpm lint`:** 0 errores, 83 warnings (baseline).
+  - **Pendiente de ojo:** sin hueco AppBar/NavBar; sin overflow a 900px (manual).

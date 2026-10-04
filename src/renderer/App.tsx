@@ -26,15 +26,17 @@ function App() {
 
   return (
     <Router>
-      <div className="flex flex-col">
+      <div className="flex min-h-screen flex-col bg-background">
         {window.Main && (
-          <div className="flex-none h-14">
+          // Reserve the AppBar's real height (h-8 = 32px) so the sticky NavBar
+          // (top-8) sits flush under it with no gap.
+          <div className="flex-none h-8">
             <AppBar />
           </div>
         )}
         <NavBar />
 
-        <div className="container mx-auto p-6">
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">Loading...</div>
