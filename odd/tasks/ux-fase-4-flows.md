@@ -177,3 +177,14 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   (`useTasksOptimistic.test.tsx`, `optimisticFeedback.test.tsx`). Full suite 63 files / 420 tests green.
 - 2026-10-04 — T9 advisory closure done: 3 code fixes + 16 tests closing the review-1..4 advisories;
   locale pinned and mocks reset per case. Full suite 63 files / 436 tests green.
+- 2026-10-04 — T9 slice reviewed: lineage `review-f6bb1cdc0cc3a0a9`, **approved** (two malformed/empty
+  captures; slot re-offered twice and relaunched), boundary `93638bc`. Advisories (non-blocking):
+  - **R3-001 (WARNING)** — reintroducing the native `required` on `input-form` activates browser
+    constraint validation inside a form without `noValidate`. Blast radius: `InputForm` is only used by
+    `FormField`/`DynamicForm`, which Fase 6 (UX-603) flags as likely dead code; the RHF forms should set
+    `noValidate`. Accepted follow-up.
+  - **R3-002 (WARNING)** — `formatTime24h` now passes unknown non-empty strings through raw, so it no
+    longer guarantees `HH:mm`; documented deliberate tradeoff (never fabricate `00:00`). Only the
+    TimeLogsTable consumer is exercised. Accepted.
+  - **R3-003 (SUGGESTION)** — `deleteConfirm.test.tsx` uses `clearAllMocks()` without `mockReset()`; weaker
+    per-case isolation than sibling suites. Accepted follow-up.
