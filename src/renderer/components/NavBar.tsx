@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Clock, ListTodo, Home, Settings, WifiOff, Loader2, BarChart2, Download, ArrowUp } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 import { cn } from '../lib/utils';
 import useTWSession from '../hooks/useTWSession';
 import { useAutoUpdater } from '../hooks/useAutoUpdater';
+import useScrollPastThreshold from '../hooks/useScrollPastThreshold';
 
 function NavBar() {
   const location = useLocation();
@@ -16,14 +17,7 @@ function NavBar() {
   const { t } = useTranslation();
   const { isConfigured, username, domain, isLoading } = useTWSession();
   const { status: updateStatus, version: updateVersion, installUpdate } = useAutoUpdater();
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setShowBackToTop(window.scrollY > 300);
-    handleScroll();
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const showBackToTop = useScrollPastThreshold(300);
 
   const navItems = [
     { to: '/', label: t('nav.home'), icon: Home },
