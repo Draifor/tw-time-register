@@ -65,7 +65,7 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
   - Test-first: excepción justificada — cambios de clases presentacionales sin test determinista
     (se deja "pendiente de ojo" + verificación manual a 900px).
 
-- [ ] **T3 · Toolbars y tablas a 900px** (UX-305)
+- [x] **T3 · Toolbars y tablas a 900px** (UX-305)
   - Toolbars con wrap; revisar `min-w-[960px]` de `TimeLogsTable` y anchos fijos de entradas en
     `WorkTimeForm`/`TasksTable`.
   - Aceptación: usable sin scroll horizontal forzado en 900px.
@@ -103,3 +103,12 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
   - Test-first: excepción justificada — clases presentacionales, sin test determinista.
   - **`pnpm type-check`:** exit 0. **`pnpm lint`:** 0 errores, 83 warnings (baseline).
   - **Pendiente de ojo:** sin hueco AppBar/NavBar; sin overflow a 900px (manual).
+
+- **T3** — commit `fix(layout): wrap table toolbars and lower TimeLogs min width (UX-305)`.
+  - **Ruta:** delegated direct (1 writer). Trigger: requería inspeccionar los internals de 4 componentes de tabla.
+  - `ui/table-toolbar.tsx`: `TableToolbar` con `flex-wrap`; `TableToolbarSearch` con `min-w-0` (el search cede antes que el cluster de acciones). Compartido por las cuatro tablas.
+  - `TimeLogsTable.tsx`: `min-w-[960px]` → `min-w-[840px]` (contenido útil a 900px ≈ 868px). El virtualizer mide filas dinámicamente, así que el `min-w` era piso de legibilidad, no requisito de virtualización.
+  - **Revisados sin cambios:** `TasksTable` (grid ya responsive), `WorkTimeForm` (entry grid ya `flex flex-wrap` con anchos <200px), `TypeTasksTable`/`DataTable` (heredan el toolbar).
+  - Test-first: excepción justificada (presentacional, sin harness de render).
+  - **`pnpm type-check`:** exit 0. **`pnpm lint`:** 0 errores, 83 warnings. **`pnpm exec vitest run src/tests/renderer`:** 31 archivos, 156 tests verdes.
+  - **Pendiente de ojo:** a 900px sin scroll horizontal en las cuatro tablas (manual).

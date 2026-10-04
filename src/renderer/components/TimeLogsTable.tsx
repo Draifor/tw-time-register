@@ -656,7 +656,7 @@ function TimeLogsTable() {
 
       {/* Table */}
       <div ref={scrollRef} className="rounded-md border overflow-auto" style={{ maxHeight: '70vh' }}>
-        <table className="w-full min-w-[960px] text-sm">
+        <table className="w-full min-w-[840px] text-sm">
           <thead className="sticky top-0 z-10 bg-muted/50">
             <tr className="border-b bg-muted/50">
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
