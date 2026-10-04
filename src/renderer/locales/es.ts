@@ -23,7 +23,9 @@ const es = {
       errorOccurred: 'Ha ocurrido un error',
       loading: 'Cargando...',
       retry: 'Reintentar',
-      backToTop: 'Volver arriba'
+      backToTop: 'Volver arriba',
+      stepProgress: 'Progreso',
+      stepOf: 'Paso {{current}} de {{total}}'
     },
     table: {
       searchPlaceholder: 'Buscar...',
@@ -89,6 +91,9 @@ const es = {
         trigger: 'Importar desde TW',
         title: 'Importar registros de TW',
         subtitle: 'Descarga tus time entries de TeamWork al historial local. Solo se importan entradas nuevas.',
+        stepConfig: 'Período',
+        stepResult: 'Resultado',
+        stepTasks: 'Tareas',
         periodLabel: 'Período a importar',
         lastWeek: 'Última semana',
         lastMonth: 'Último mes',
@@ -340,6 +345,9 @@ const es = {
       importTW: {
         trigger: 'Importar desde TW',
         title: 'Importar Tareas desde TeamWork',
+        stepForm: 'Formulario',
+        stepPreview: 'Vista previa',
+        stepDone: 'Listo',
         parentLinkRequired: 'El enlace del padre en TW es obligatorio',
         prefixRequired: 'El prefijo es obligatorio',
         typeRequired: 'El tipo de tarea es obligatorio',

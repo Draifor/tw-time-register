@@ -4,8 +4,10 @@
 - **Branch:** `feat/ux-fase-4-flows` (base: `origin/staging` @ PR #27 merge `1bb6d48`)
 - **Started:** 2026-10-04
 - **Route:** delegated direct (one writer per work unit); parent owns tracking docs and review orchestration
-- **Delivery strategy:** `ask-on-risk` (default). Forecast ≈ 600 authored changed lines across 9 tasks. If the
-  running count reaches ~400 at a work-unit commit, ask once before the next commit whether to chain PRs.
+- **Delivery strategy:** `feature-branch-chain` (user-approved 2026-10-04). Tracker branch
+  `feat/ux-fase-4-flows`; child PRs target the tracker/parent branch. Planned slices:
+  (1) UX-405+UX-401, (2) UX-402/406+UX-403, (3) UX-404+UX-407, (4) UX-408+UX-409+advisory closure.
+  Final line counts confirmed at PR time with one honest slicing pass (≤400 lines per PR where cohesive).
 - **RDD:** on (global). Assessment + native review apply per work unit; reviewed boundary advances on acknowledgement.
 - **Runner:** `pnpm test` (Vitest). Checks: `pnpm lint`, `pnpm type-check`, `pnpm test`, `pnpm build`.
 
@@ -64,7 +66,7 @@ logic, E2E visual tests.
   - Test-first: Home error path renders `ErrorState` (not zeros).
   - Acceptance: every data view has the three states, translated.
 
-- [ ] **T5 · UX-404 — Wizards: step indicator and safe close**
+- [x] **T5 · UX-404 — Wizards: step indicator and safe close** — ✅ 2026-10-04
   - Visible stepper in `PullFromTWDialog` + `ImportTasksDialog` (+ `PullTaskDialog` where it has steps); block overlay/ESC while an operation is in flight; initial focus on the first control.
   - Acceptance: the user knows the step and cannot close a destructive in-flight operation.
 
@@ -139,3 +141,10 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   load failures with `ErrorState` + retry (no more silent zeros) and uses `LoadingState`; both tables'
   filtered-empty variants use the shared `EmptyState` (both already had empty/loading/error). Test-first
   RED→GREEN (`homeErrorState.test.tsx`). Full suite 59 files / 402 tests green.
+- 2026-10-04 — T4 slice reviewed: lineage `review-ed2b0b52fadcee35`, **approved**, boundary `1f41ea1`.
+  Advisories: R3-001 (daily-load failure branch unproved), R3-002 (tests don't pin locale),
+  R3-003 (Esc/timer/lastRemoved sub-paths unpinned). Queued for advisory closure.
+- 2026-10-04 — T5 (UX-404) done: accessible `WizardStepIndicator` + in-flight close guards
+  (Escape/overlay/close-X) + initial focus in `PullFromTWDialog`, `ImportTasksDialog`, `PullTaskDialog`;
+  the stepper was then extracted to shared `ui/wizard-step-indicator.tsx`. Test-first RED→GREEN
+  (`wizardStepper.test.tsx`). Full suite 60 files / 405 tests green.
