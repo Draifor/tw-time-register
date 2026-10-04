@@ -387,10 +387,10 @@ function ReportsPage() {
                                 variant="outline"
                                 className={`text-[10px] ${
                                   status === 'overtime'
-                                    ? 'text-red-600 border-red-300 dark:text-red-400 dark:border-red-800'
+                                    ? 'text-destructive border-destructive/40'
                                     : status === 'warning'
-                                      ? 'text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700'
-                                      : 'text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-800'
+                                      ? 'text-warning border-warning/40'
+                                      : 'text-success border-success/40'
                                 }`}
                               >
                                 {status === 'overtime'
@@ -406,19 +406,14 @@ function ReportsPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {row.billableMinutes > 0 ? (
-                            <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                              {formatDuration(row.billableMinutes)}
-                            </span>
+                            <span className="font-mono text-success">{formatDuration(row.billableMinutes)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {pct === 100 ? (
-                            <Badge
-                              variant="outline"
-                              className="text-emerald-600 border-emerald-300 dark:text-emerald-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-success border-success/40 gap-1">
                               <CheckCircle2 className="h-3 w-3" />
                               {t('common.sent')}
                             </Badge>
@@ -428,10 +423,7 @@ function ReportsPage() {
                               {t('common.pending')}
                             </Badge>
                           ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-amber-600 border-amber-300 dark:text-amber-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-warning border-warning/40 gap-1">
                               <CircleDot className="h-3 w-3" />
                               {pct}%
                             </Badge>
@@ -484,10 +476,7 @@ function ReportsPage() {
                         <td className="px-4 py-3 text-center font-mono font-medium">{formatDuration(row.minutes)}</td>
                         <td className="px-4 py-3 text-center">
                           {pct === 100 ? (
-                            <Badge
-                              variant="outline"
-                              className="text-emerald-600 border-emerald-300 dark:text-emerald-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-success border-success/40 gap-1">
                               <CheckCircle2 className="h-3 w-3" />
                               {t('common.sent')}
                             </Badge>
@@ -497,10 +486,7 @@ function ReportsPage() {
                               {t('common.pending')}
                             </Badge>
                           ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-amber-600 border-amber-300 dark:text-amber-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-warning border-warning/40 gap-1">
                               <CircleDot className="h-3 w-3" />
                               {pct}%
                             </Badge>

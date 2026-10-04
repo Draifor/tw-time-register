@@ -51,7 +51,7 @@ export default function LiveTimer({ startedAt, onStop, onElapsedMinutesChange }:
             type="button"
             variant="ghost"
             size="sm"
-            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors font-mono tabular-nums"
+            className="text-destructive hover:bg-destructive/10 transition-colors font-mono tabular-nums"
             onClick={onStop}
           >
             <TimerOff className="h-4 w-4 mr-1.5 animate-pulse" />

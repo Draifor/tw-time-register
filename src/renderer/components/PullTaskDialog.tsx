@@ -118,7 +118,7 @@ export default function PullTaskDialog({ task }: Props) {
           <DialogTitle className="flex items-center gap-2">
             {result ? (
               <>
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CheckCircle2 className="h-5 w-5 text-success" />
                 {t('timeLogs.pull.taskTitle', { name: task.taskName })}
               </>
             ) : (
@@ -163,7 +163,7 @@ export default function PullTaskDialog({ task }: Props) {
               </div>
 
               {mode === 'all' && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-3 py-2">
+                <p className="text-xs text-warning rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
                   {t('timeLogs.pull.allHistoryWarning')}
                 </p>
               )}
@@ -226,9 +226,9 @@ export default function PullTaskDialog({ task }: Props) {
               </p>
 
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 p-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-green-700 dark:text-green-400">{result.imported}</p>
+                <div className="rounded-lg border bg-success/10 p-3">
+                  <CheckCircle2 className="h-5 w-5 text-success mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-success">{result.imported}</p>
                   <p className="text-xs text-muted-foreground">{t('timeLogs.pull.imported')}</p>
                 </div>
                 <div className="rounded-lg border bg-muted/50 p-3">
@@ -236,9 +236,9 @@ export default function PullTaskDialog({ task }: Props) {
                   <p className="text-2xl font-bold">{result.skippedExisting}</p>
                   <p className="text-xs text-muted-foreground">{t('timeLogs.pull.alreadyExisted')}</p>
                 </div>
-                <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{result.skippedNoTask}</p>
+                <div className="rounded-lg border bg-warning/10 p-3">
+                  <AlertCircle className="h-5 w-5 text-warning mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-warning">{result.skippedNoTask}</p>
                   <p className="text-xs text-muted-foreground">{t('timeLogs.pull.noTask')}</p>
                 </div>
               </div>

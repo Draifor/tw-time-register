@@ -128,11 +128,11 @@ function TotalTimeDay({ control }: TotalTimeDayProps) {
               const remaining = maxMin > 0 ? Math.max(0, maxMin - totalMin) : null;
 
               const statusColor = isOver
-                ? 'text-red-600 dark:text-red-400'
+                ? 'text-destructive'
                 : isComplete
-                  ? 'text-green-600 dark:text-green-400'
+                  ? 'text-success'
                   : remaining !== null && remaining <= maxMin * 0.25
-                    ? 'text-yellow-600 dark:text-yellow-400'
+                    ? 'text-warning'
                     : 'text-muted-foreground';
 
               return (

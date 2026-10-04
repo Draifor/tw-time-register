@@ -356,10 +356,10 @@ const EntryCard = React.memo(function EntryCard({
                       <div
                         className={`text-[10px] px-1.5 py-0.5 rounded ${
                           taskInfo.status === 'overtime'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            ? 'bg-destructive/10 text-destructive'
                             : taskInfo.status === 'warning'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                              : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-success/10 text-success'
                         }`}
                       >
                         {t(draftMinutes > 0 ? 'workTimeForm.progressInfoProjected' : 'workTimeForm.progressInfo', {
@@ -455,7 +455,7 @@ const EntryCard = React.memo(function EntryCard({
                   {...register(`entries.${index}.afterLunch`)}
                   className="sr-only peer"
                 />
-                <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
+                <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
               </label>
             </div>
           </div>

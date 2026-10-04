@@ -390,7 +390,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                     <span className="flex-1 truncate">{att.file.name}</span>
                     {att.uploading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />}
                     {att.error && <span className="text-xs text-destructive shrink-0">{att.error}</span>}
-                    {att.ref && <span className="text-xs text-green-600 dark:text-green-400 shrink-0">✓</span>}
+                    {att.ref && <span className="text-xs text-success shrink-0">✓</span>}
                     {!att.uploading && (
                       <button
                         type="button"

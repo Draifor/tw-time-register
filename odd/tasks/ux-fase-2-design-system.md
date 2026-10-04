@@ -54,7 +54,7 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
   - `ui/switch.tsx`: `<button role="switch" aria-checked>` accesible, sin Radix (evita dep/lockfile).
   - Aceptación: tokens resuelven; componentes con semántica accesible.
 
-- [ ] **T2 · Migrar paleta cruda a tokens** (UX-201)
+- [x] **T2 · Migrar paleta cruda a tokens** (UX-201)
   - Reemplazar por `success/warning/info/destructive/muted-*` en: `useTasks.tsx`,
     `lib/progressUtils.ts`, `AppBar.tsx`, `pages/HomePage.tsx`, `pages/ReportsPage.tsx`,
     `pages/SettingsPage.tsx`, `components/NavBar.tsx`, `LiveTimer.tsx`, `TotalTimeDay.tsx`,
@@ -89,6 +89,9 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
 
 - **Entrega:** `single-pr` + `size:exception` a `staging` (precedente PR #13).
 - **Switch:** sin Radix; `<button role="switch">` (evita dependencia + gate de lockfile).
+- **AppBar (barra de título):** theme-adaptive — `bg-card text-card-foreground border-b border-border`,
+  hover de botones `hover:bg-accent`, botón cerrar `hover:bg-destructive hover:text-destructive-foreground`.
+  Decisión del usuario (seguir el tema), no tokens de chrome dedicados.
 - **T4 edición inline:** PENDIENTE — ver §Decisiones abiertas del roadmap; se resolverá con el usuario
   antes de T4.
 
@@ -105,3 +108,35 @@ _(se completa por tarea)_
   - **`pnpm type-check`:** exit 0.
   - **Archivos:** `index.css` (tokens), `ui/status-badge.tsx` (nuevo), `ui/switch.tsx` (nuevo),
     tests `statusBadge.test.tsx`/`switch.test.tsx` (nuevos).
+
+- **T2** — commit `refactor(ux): migrate raw palette to semantic tokens (UX-201)`.
+  - **TDD:** excepción justificada — migración presentacional de class strings; ningún test
+    determinista asertaba esas clases (verificado). Sin tests inventados.
+  - **Archivos (16):** `AppBar`, `ImportCSVTasksDialog`, `ImportTasksDialog`, `LiveTimer`, `NavBar`,
+    `PullFromTWDialog`, `PullTaskDialog`, `TaskCommentDialog`, `TimeLogsTable`, `TotalTimeDay`,
+    `WorkTimeForm`, `hooks/useTasks`, `lib/progressUtils`, `pages/HomePage`, `pages/ReportsPage`,
+    `pages/SettingsPage`.
+  - **Extra (fuera del regex de aceptación, dentro de UX-201):** `ImportCSVTasksDialog` `text-orange-500`
+    → `text-warning`; `WorkTimeForm` switch `peer-checked:bg-orange-500` → `peer-checked:bg-primary`.
+  - **Grep aceptación:** 0 matches. **Grep ampliado (cualquier hue crudo):** 0 matches fuera de `index.css`.
+  - **`pnpm test`:** 44 archivos, **307 tests** verdes. **`pnpm lint`:** 0 errores, 83 warnings
+    (preexistentes). **`pnpm type-check`:** exit 0.
+  - **Review nativa (assess):** `medium` / `under_budget` (271 líneas cambiadas vs. boundary 73d944a;
+    budget ~400). Sin transacción aún — el slice sigue pendiente y se revisará al llegar al budget
+    (o en el próximo commit de alto riesgo).
+
+## Review nativa (RDD on) — slice T1
+
+- **Lineage:** `review-439b39e1d244269a`, 1 lente (`review-reliability`), riesgo medium,
+  **aprobado** y authority quemada. Candidato: 11 paths / 480 líneas (follow-up Fase 1 + T1).
+- **Wrinkle de runtime:** `gentle-ai review` tipa por defecto `agent: claude-code` (no detecta
+  `OPENCODE=1`). El comando que devuelve `review assess` **omite** `--agent`, así que la primera
+  transacción quedó mal tipada (collect sin `provider_task`). Se corrigió re-ejecutando el
+  preflight canónico con `--agent=opencode`; el mismo lineage se re-ofreció (`replayed`) y el
+  collect ya trajo el `provider_task`. **Siempre pasar `--agent=opencode`.**
+- **Hallazgos advisory (no bloqueantes — trabajo posterior, NO re-review de este candidato):**
+  - `R3-SWITCH-PROP-OVERRIDE` (WARNING): en `ui/switch.tsx:30-44` `{...props}` se esparce después
+    de `type/role/aria-*`, permitiendo override del contrato accesible. Resolver en T3 (al cablear
+    el Switch) omitiendo esos atributos del tipo o esparciendo primero.
+  - `R3-BADGE-VARIANT-COVERAGE` (SUGGESTION): faltan asserts de `warning/info/secondary/outline`.
+  - `R3-I18N-GUARD-LITERAL-ONLY` (SUGGESTION): el guard solo matchea keys literales y usa `process.cwd()`.

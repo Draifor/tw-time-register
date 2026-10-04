@@ -183,15 +183,12 @@ export const TimeLogRow = React.memo(function TimeLogRow({
       </td>
       <td className="px-4 py-3 text-center">
         {entry.isSent ? (
-          <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-500/20">
+          <Badge className="gap-1 bg-success/15 text-success border-success/30 hover:bg-success/20">
             <CheckCircle2 className="h-3 w-3" />
             {t('common.sent')}
           </Badge>
         ) : (
-          <Badge
-            variant="outline"
-            className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-          >
+          <Badge variant="outline" className="gap-1 text-warning border-warning/40">
             <Clock className="h-3 w-3" />
             {t('common.pending')}
           </Badge>
@@ -773,15 +770,12 @@ function TimeLogsTable() {
                     {/* Status — unchanged */}
                     <td className="px-4 py-2 text-center">
                       {entry.isSent ? (
-                        <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                        <Badge className="gap-1 bg-success/15 text-success border-success/30">
                           <CheckCircle2 className="h-3 w-3" />
                           {t('common.sent')}
                         </Badge>
                       ) : (
-                        <Badge
-                          variant="outline"
-                          className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-                        >
+                        <Badge variant="outline" className="gap-1 text-warning border-warning/40">
                           <Clock className="h-3 w-3" />
                           {t('common.pending')}
                         </Badge>
@@ -796,7 +790,7 @@ function TimeLogsTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700"
+                                className="h-8 w-8 p-0 text-success hover:text-success/80"
                                 disabled={savingEdit}
                                 onClick={() => handleSaveEdit(entry)}
                               >
