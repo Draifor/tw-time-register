@@ -70,7 +70,7 @@ logic, E2E visual tests.
   - Visible stepper in `PullFromTWDialog` + `ImportTasksDialog` (+ `PullTaskDialog` where it has steps); block overlay/ESC while an operation is in flight; initial focus on the first control.
   - Acceptance: the user knows the step and cannot close a destructive in-flight operation.
 
-- [ ] **T6 · UX-407 — Unify time format to 24h**
+- [x] **T6 · UX-407 — Unify time format to 24h** — ✅ 2026-10-04
   - Replace all 12h (`h:i K`) usage with 24h (`H:i`/`HH:mm`); one formatter path; align `time-picker`, `WorkTimeForm`, `TimeLogsTable`, `PullFromTWDialog`.
   - Test-first: a formatter/entry test asserting 24h output (e.g. `14:30`, never `2:30 PM`).
   - Acceptance: one format and one picker across the app.
@@ -148,3 +148,7 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   (Escape/overlay/close-X) + initial focus in `PullFromTWDialog`, `ImportTasksDialog`, `PullTaskDialog`;
   the stepper was then extracted to shared `ui/wizard-step-indicator.tsx`. Test-first RED→GREEN
   (`wizardStepper.test.tsx`). Full suite 60 files / 405 tests green.
+- 2026-10-04 — T6 (UX-407) done: shared `formatTime24h()` in `lib/timeUtils.ts`; `WorkTimeForm` start/end
+  flatpickr pickers `h:i K`+`time_24hr:false` → `H:i`+`time_24hr:true`; `toTimeEntryInputs` drops
+  locale-dependent `toLocaleTimeString`; `TimeLogsTable` start/end cells use the helper. Test-first
+  RED→GREEN (`timeFormat24h.test.tsx`, 8 tests). Full suite 61 files / 413 tests green.

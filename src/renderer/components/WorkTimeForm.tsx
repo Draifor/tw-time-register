@@ -35,6 +35,7 @@ import {
   AlertDialogTitle
 } from './ui/alert-dialog';
 import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
+import { formatTime24h } from '../lib/timeUtils';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import {
@@ -114,10 +115,7 @@ const getEntryMinutes = (entry?: WorkTimeEntry): number => {
  * Map form entries to the payload accepted by the batch time-entry endpoint.
  */
 export function toTimeEntryInputs(entries: WorkTimeEntry[]): TimeEntryInput[] {
-  const formatTime = (date: Date) => {
-    if (!date) return '00:00';
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatTime = (date: Date) => formatTime24h(date);
 
   return entries.map((entry) => {
     const taskId = typeof entry.task === 'object' ? Number(entry.task.value) : Number(entry.task);
@@ -420,7 +418,8 @@ const EntryCard = React.memo(function EntryCard({
               options={{
                 enableTime: true,
                 noCalendar: true,
-                dateFormat: 'h:i K',
+                time_24hr: true,
+                dateFormat: 'H:i',
                 defaultDate: '09:00',
                 onChange: () => {
                   setValue(`entries.${index}.manualStartTime`, true, { shouldDirty: true });
@@ -438,8 +437,8 @@ const EntryCard = React.memo(function EntryCard({
               options={{
                 enableTime: true,
                 noCalendar: true,
-                dateFormat: 'h:i K',
-                time_24hr: false,
+                time_24hr: true,
+                dateFormat: 'H:i',
                 defaultDate: '09:00',
                 clickOpens: false
               }}

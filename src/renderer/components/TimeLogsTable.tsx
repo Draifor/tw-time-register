@@ -48,7 +48,7 @@ interface EditData {
   isBillable: boolean;
 }
 
-import { parseDuration, formatDuration } from '../lib/timeUtils';
+import { parseDuration, formatDuration, formatTime24h } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo, getStatusDotColor } from '../lib/progressUtils';
@@ -168,8 +168,10 @@ export const TimeLogRow = React.memo(function TimeLogRow({
           </Tooltip>
         </TooltipProvider>
       </td>
-      <td className="px-4 py-3 text-center font-mono text-xs">{entry.startTime || '—'}</td>
-      <td className="px-4 py-3 text-center font-mono text-xs">{entry.endTime || '—'}</td>
+      <td className="px-4 py-3 text-center font-mono text-xs">
+        {entry.startTime ? formatTime24h(entry.startTime) : '—'}
+      </td>
+      <td className="px-4 py-3 text-center font-mono text-xs">{entry.endTime ? formatTime24h(entry.endTime) : '—'}</td>
       <td className="px-4 py-3 text-center font-mono text-xs font-medium">{formatDuration(hours, minutes)}</td>
       <td className="px-4 py-3 text-center">
         {entry.isBillable ? (
