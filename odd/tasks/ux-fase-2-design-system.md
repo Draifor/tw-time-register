@@ -168,3 +168,19 @@ _(se completa por tarea)_
     el Switch) omitiendo esos atributos del tipo o esparciendo primero.
   - `R3-BADGE-VARIANT-COVERAGE` (SUGGESTION): faltan asserts de `warning/info/secondary/outline`.
   - `R3-I18N-GUARD-LITERAL-ONLY` (SUGGESTION): el guard solo matchea keys literales y usa `process.cwd()`.
+
+## Review nativa (RDD on) — slice T2+T3
+
+- **Lineage:** `review-8561b95cead7d5c2`, 1 lente (`review-reliability`), riesgo medium,
+  **aprobado** y authority quemada (target `sha256:cb5e9e42…0788`; base de la transacción
+  `2025f117…7534`). Candidato: 21 paths / 753 líneas (T2 palette + T3 primitivas + follow-up Fase 1 + T1).
+- **Cierre del advisory de T1:** `R3-SWITCH-PROP-OVERRIDE` resuelto en `ui/switch.tsx` (spread order +
+  `Omit`) y cubierto por `switch.test.tsx` (caso de props hostiles).
+- **Hallazgos advisory (no bloqueantes — trabajo posterior, NO re-review de este candidato):**
+  - `R3-001` (WARNING, **pre-existing**, carry-over): en `TaskCommentDialog.tsx:114-125` el loader de
+    notify no maneja el rechazo de `fetchTWPeopleForTask`; el guard `loadingPeople` podría quedar trabado.
+    Mismo comportamiento que el handler anterior al refactor.
+  - `R3-002` (WARNING, introduced): sin tests deterministas para los pickers Radix de
+    `TaskCommentDialog`, el `Select` de `TasksTable` ni el toggle de `TimeLogsTable`.
+  - `R3-003` (SUGGESTION, introduced): `workTimeFormSwitches.test.tsx:101-113` consulta el `document`
+    global en vez del `container` de `render()`; endurecer con `within(container)`.
