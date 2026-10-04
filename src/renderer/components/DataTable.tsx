@@ -129,8 +129,22 @@ function DataTable<T extends FieldValues>({
     isEditable,
     onPersist
   });
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the latest values available to the identity-stable scroll handler so
+  // the listener can attach once instead of on every data change.
+  const hasMoreRowsRef = useRef(hasMoreRows);
+  const loadMoreRowsRef = useRef(loadMoreRows);
+
+  useEffect(() => {
+    hasMoreRowsRef.current = hasMoreRows;
+  }, [hasMoreRows]);
+
+  useEffect(() => {
+    loadMoreRowsRef.current = loadMoreRows;
+  }, [loadMoreRows]);
 
   // When filtering: show all matching rows; when not: respect the infinite-scroll window
   const allRows = table.getRowModel().rows;
@@ -139,29 +153,48 @@ function DataTable<T extends FieldValues>({
   // Handle scroll to load more rows
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
-    if (!container || loadingRef.current || !hasMoreRows) return;
+    if (!container || loadingRef.current || !hasMoreRowsRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = container;
     const scrollThreshold = 100; // pixels from bottom
 
     if (scrollHeight - scrollTop - clientHeight < scrollThreshold) {
       loadingRef.current = true;
-      loadMoreRows();
+      loadMoreRowsRef.current();
       // Reset loading flag after a short delay
-      setTimeout(() => {
+      if (resetTimerRef.current !== null) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => {
         loadingRef.current = false;
+        resetTimerRef.current = null;
       }, 100);
     }
-  }, [hasMoreRows, loadMoreRows]);
+  }, []);
 
-  // Attach scroll listener
+  // Attach the listener to the scroll container once per mount. Using a ref
+  // callback means the listener is not re-attached when data changes.
+  const attachScrollContainer = useCallback(
+    (node: HTMLDivElement | null) => {
+      const previous = scrollContainerRef.current;
+      if (previous && previous !== node) {
+        previous.removeEventListener('scroll', handleScroll);
+      }
+      scrollContainerRef.current = node;
+      if (node) {
+        node.addEventListener('scroll', handleScroll);
+      }
+    },
+    [handleScroll]
+  );
+
+  // Clear any pending "reset loadingRef" timer on unmount.
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-      return () => container.removeEventListener('scroll', handleScroll);
-    }
-  }, [handleScroll]);
+    return () => {
+      if (resetTimerRef.current !== null) {
+        clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (isLoading) return <SkeletonTable title={title} columnCount={columns.length} showAddButton={isEditable} />;
   if (error) return <ErrorState message={error.message} />;
@@ -192,7 +225,7 @@ function DataTable<T extends FieldValues>({
           )}
         </div>
 
-        <div ref={scrollContainerRef} className="rounded-md border max-h-[60vh] overflow-auto">
+        <div ref={attachScrollContainer} className="rounded-md border max-h-[60vh] overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               {table.getHeaderGroups().map((headerGroup) => (

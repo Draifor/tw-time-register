@@ -45,11 +45,25 @@ function TotalTimeDay({ control }: TotalTimeDayProps) {
   const datesKey = uniqueDates.join(',');
   useEffect(() => {
     if (uniqueDates.length === 0) return;
+    // Guard against stale responses: if the dates change before this batch
+    // resolves, its result must not overwrite the newer map.
+    let cancelled = false;
     setLoading(true);
     Promise.all(uniqueDates.map((d) => getDailyTimeInfo(d).then((info) => [d, info] as [string, DailyTimeInfo])))
-      .then((pairs) => setDbInfo(new Map(pairs)))
-      .catch(() => setDbInfo(new Map()))
-      .finally(() => setLoading(false));
+      .then((pairs) => {
+        if (cancelled) return;
+        setDbInfo(new Map(pairs));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDbInfo(new Map());
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [datesKey]);
 

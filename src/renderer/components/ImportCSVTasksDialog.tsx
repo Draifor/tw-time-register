@@ -7,14 +7,10 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { importTasksFromCSV } from '../services/tasksService';
+import { parseTasksCsvChunked } from '../lib/csvTasks';
+import type { CSVRow } from '../lib/csvTasks';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CSVRow {
-  taskName: string;
-  typeName: string;
-  taskLink: string;
-}
 
 interface ImportCSVResult {
   created: number;
@@ -24,48 +20,6 @@ interface ImportCSVResult {
 }
 
 type Step = 'upload' | 'preview' | 'result';
-
-// ─── CSV parser ───────────────────────────────────────────────────────────────
-
-/**
- * Minimal CSV parser that handles quoted fields and trims whitespace.
- * Returns an array of row arrays (strings).
- */
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = [];
-  const lines = text.split(/\r?\n/);
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const cols: string[] = [];
-    let inQuotes = false;
-    let current = '';
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === ',' && !inQuotes) {
-        cols.push(current.trim());
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-    cols.push(current.trim());
-    rows.push(cols);
-  }
-  return rows;
-}
-
-/** Detect if the first row looks like a header row (non-numeric values typical of labels). */
-function isHeaderRow(row: string[]): boolean {
-  const HEADER_HINTS = /^(tarea|task|tipo|type|link|url|nombre|name)$/i;
-  return row.some((cell) => HEADER_HINTS.test(cell.trim()));
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -104,50 +58,15 @@ function ImportCSVTasksDialog() {
     setParseError(null);
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const text = ev.target?.result as string;
       try {
-        const rawRows = parseCSV(text);
-        if (rawRows.length === 0) {
-          setParseError('The file appears to be empty.');
-          return;
-        }
+        // Parse in chunks so large files do not block the renderer thread.
+        const { rows: parsedRows, error } = await parseTasksCsvChunked(text);
+        if (error) setParseError(error);
+        if (parsedRows.length === 0) return;
 
-        // Skip header if present
-        const dataRows = isHeaderRow(rawRows[0]) ? rawRows.slice(1) : rawRows;
-
-        if (dataRows.length === 0) {
-          setParseError('No data rows found after skipping the header.');
-          return;
-        }
-
-        const parsed: CSVRow[] = [];
-        const malformed: number[] = [];
-
-        dataRows.forEach((row, idx) => {
-          if (row.length < 2) {
-            malformed.push(idx + 1);
-            return;
-          }
-          parsed.push({
-            taskName: row[0] ?? '',
-            typeName: row[1] ?? '',
-            taskLink: row[2] ?? ''
-          });
-        });
-
-        if (malformed.length > 0) {
-          setParseError(
-            `${malformed.length} row(s) have fewer than 2 columns and will be skipped (rows: ${malformed.join(', ')}).`
-          );
-        }
-
-        if (parsed.length === 0) {
-          setParseError('No valid rows to import.');
-          return;
-        }
-
-        setRows(parsed);
+        setRows(parsedRows);
         setStep('preview');
       } catch {
         setParseError('Failed to parse the CSV file. Please check the format.');

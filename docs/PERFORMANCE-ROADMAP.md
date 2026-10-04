@@ -269,19 +269,20 @@ Estos son bugs funcionales (no solo lentitud) y conviene resolverlos temprano.
 ---
 
 ### Fase 6 — Otros medios y limpieza
-- [ ] **PERF-601 · 🟡 `TotalTimeDay` N+1 + race**
+- [x] **PERF-601 · 🟡 `TotalTimeDay` N+1 + race**
   - **Ubicación:** `src/renderer/components/TotalTimeDay.tsx:45-53`
-  - **Acción:** guard de cancelación o IPC batch `getDailyTimeInfoForDates`.
-- [ ] **PERF-602 · 🟡 `ReportsPage`: debounce de búsqueda y memo del `Map`**
+  - **Acción:** guard de cancelación. _(IPC batch `getDailyTimeInfoForDates` descartado: el N+1 está acotado por fechas únicas y expandiría la superficie IPC.)_
+- [x] **PERF-602 · 🟡 `ReportsPage`: debounce de búsqueda y memo del `Map`**
   - **Ubicación:** `src/renderer/pages/ReportsPage.tsx:112-162`
-- [ ] **PERF-603 · 🟡 `NavBar` scroll sin throttle**
-  - **Ubicación:** `src/renderer/components/NavBar.tsx:21-26` → `requestAnimationFrame` o set-state solo si cambia el booleano.
-- [ ] **PERF-604 · ⚪ `useTable` limpieza**
+  - **Nota:** el memo del `Map` (`tasksByName`) ya estaba implementado (fila obsoleta); en Fase 6 sólo se agregó el debounce (`useDebouncedValue`, 200 ms) sobre `matchingTaskCount`/`filtered`.
+- [x] **PERF-603 · 🟡 `NavBar` scroll sin throttle**
+  - **Ubicación:** `src/renderer/components/NavBar.tsx:21-26` → `requestAnimationFrame` o set-state solo si cambia el booleano. _(Extraído a `useScrollPastThreshold`.)_
+- [x] **PERF-604 · ⚪ `useTable` limpieza**
   - **Ubicación:** `src/renderer/hooks/useTable.tsx:24-26,68,101` → quitar memo identidad, consolidar resets, estabilizar `defaultColumn`.
-- [ ] **PERF-605 · ⚪ `DataTable` scroll**
+- [x] **PERF-605 · ⚪ `DataTable` scroll**
   - **Ubicación:** `src/renderer/components/DataTable.tsx:151,158-164` → limpiar `setTimeout` y estabilizar listener.
-- [ ] **PERF-606 · ⚪ CSV parse en worker**
-  - **Ubicación:** `src/renderer/components/ImportCSVTasksDialog.tsx:34-62,107-155` → parseo por chunks/worker.
+- [x] **PERF-606 · ⚪ CSV parse en worker**
+  - **Ubicación:** `src/renderer/components/ImportCSVTasksDialog.tsx:34-62,107-155` → parseo por chunks/worker. _(Chunks async con yield al event loop; sin Web Worker.)_
 
 ---
 

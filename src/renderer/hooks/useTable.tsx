@@ -65,16 +65,13 @@ const defaultColumn = <T,>(isEditable: boolean): Partial<ColumnDef<T>> => ({
 });
 
 function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist }: UseTableProps<T>) {
-  const memoColumns = useMemo(() => columns, [columns]);
   const [localData, setLocalData] = useState(data || []);
   const { shouldSkip: autoResetPageIndex, skip: skipAutoResetPageIndex } = useSkipper();
   const [globalFilter, setGlobalFilter] = useState('');
   const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
 
-  // When the user clears/changes the filter, reset the scroll window
-  useEffect(() => {
-    setVisibleRowCount(INITIAL_ROWS);
-  }, [globalFilter]);
+  // Stable across renders as long as editability does not change.
+  const defaultColumnDef = useMemo(() => defaultColumn<T>(isEditable ?? false), [isEditable]);
 
   // Infinite scroll: only relevant when no filter is active
   const hasMoreRows = !globalFilter && visibleRowCount < localData.length;
@@ -85,10 +82,10 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
     }
   }, [hasMoreRows, localData.length]);
 
-  // Reset visible count when data changes
+  // Reset the visible window when either the filter or the data set changes.
   useEffect(() => {
     setVisibleRowCount(INITIAL_ROWS);
-  }, [data]);
+  }, [globalFilter, data]);
 
   // Sync localData when external data changes (e.g. after query loads)
   useEffect(() => {
@@ -97,8 +94,8 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
 
   const table = useReactTable<T>({
     data: localData,
-    columns: memoColumns as ColumnDef<T>[],
-    defaultColumn: defaultColumn(isEditable ?? false),
+    columns: columns as ColumnDef<T>[],
+    defaultColumn: defaultColumnDef,
     state: {
       globalFilter
     },

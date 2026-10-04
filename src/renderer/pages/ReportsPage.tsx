@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import useTimeLogs from '../hooks/useTimeLogs';
 import useIncrementalRows from '../hooks/useIncrementalRows';
+import useDebouncedValue from '../hooks/useDebouncedValue';
 import { Skeleton } from '../components/ui/skeleton';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
@@ -96,6 +97,9 @@ function ReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [taskSearch, setTaskSearch] = useState('');
+  // The input stays controlled by the raw term; only the expensive recomputes
+  // below consume the debounced term.
+  const debouncedTaskSearch = useDebouncedValue(taskSearch, 200);
 
   const taskOptions = useMemo(() => {
     const uniqueNames = new Set<string>();
@@ -106,14 +110,14 @@ function ReportsPage() {
   }, [data, t]);
 
   const matchingTaskCount = useMemo(() => {
-    const query = taskSearch.trim().toLowerCase();
+    const query = debouncedTaskSearch.trim().toLowerCase();
     if (!query) return taskOptions.length;
     return taskOptions.filter((taskName) => taskName.toLowerCase().includes(query)).length;
-  }, [taskOptions, taskSearch]);
+  }, [taskOptions, debouncedTaskSearch]);
 
   // Apply date range and task filters
   const filtered = useMemo(() => {
-    const taskQuery = taskSearch.trim().toLowerCase();
+    const taskQuery = debouncedTaskSearch.trim().toLowerCase();
     return data.filter((e) => {
       if (dateFrom && e.date < dateFrom) return false;
       if (dateTo && e.date > dateTo) return false;
@@ -121,7 +125,7 @@ function ReportsPage() {
       if (taskQuery && !taskName.toLowerCase().includes(taskQuery)) return false;
       return true;
     });
-  }, [data, dateFrom, dateTo, taskSearch, t]);
+  }, [data, dateFrom, dateTo, debouncedTaskSearch, t]);
 
   // ── aggregations ──────────────────────────────────────────────────────────
 
