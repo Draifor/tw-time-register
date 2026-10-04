@@ -135,22 +135,22 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 1 — Sistema de menús (elimina la duplicidad)
 > Objetivo: que exista **un** modelo de menú claro, intencional, accesible y documentado.
 
-- [ ] **UX-101 · 🔴 Decidir el destino del menú del renderer**
+- [x] **UX-101 · 🔴 Decidir el destino del menú del renderer** — ✅ 2026-10-04, PR #24 (opción a: menú renderer eliminado; acciones útiles a un dropdown compacto)
   - **Ubicación:** `AppBar.tsx:32-81`, `MenuBar.tsx`, `MenuHandler.tsx`, `MenuItem.tsx`
   - **Acción:** según §6 Decisión 2: **(a)** eliminar el menú completo y mover sus 3 acciones útiles a un botón/engranaje o a Ajustes; **(b)** conservarlo como menú real (solo acciones vivas); o **(c)** reemplazarlo por un menú nativo real.
   - **Aceptación:** cero ítems `() => {}` visibles en la app.
 
-- [ ] **UX-102 · 🔴 Menú nativo de Electron explícito y documentado**
+- [x] **UX-102 · 🔴 Menú nativo de Electron explícito y documentado** — ✅ 2026-10-04, PR #24 (`src/main/menu.ts` con roles reales; reload/DevTools solo en dev)
   - **Ubicación:** `src/main/index.ts` (no hay `Menu`)
   - **Acción:** construir un `Menu` mínimo con roles reales (reload, DevTools, zoom, fullscreen, quit/close) o `Menu.setApplicationMenu(null)` si se decide que no haya menú; en macOS proveer el menú de aplicación requerido.
   - **Aceptación:** aceleradores intencionales y listados en el README; comportamiento consistente en Windows/macOS.
 
-- [ ] **UX-103 · 🔴 Menú accesible (si se conserva en renderer)**
+- [ ] **UX-103 · 🔴 Menú accesible (si se conserva en renderer)** — *No aplica: el menú del renderer se eliminó (UX-101 opción a).*
   - **Ubicación:** `MenuHandler.tsx:26-33`, `MenuItem.tsx:22-34`
   - **Acción:** `role="menu"/"menuitem"`, `aria-haspopup`, `aria-expanded`, navegación con flechas/Home/End/Escape/Enter, foco visible (`ring`), un solo menú abierto. Evaluar usar `DropdownMenu`/`Menubar` de Radix (ya en dependencias) en vez del componente casero.
   - **Aceptación:** menú 100% operable solo con teclado y anunciado por lector de pantalla.
 
-- [ ] **UX-104 · 🟡 Atajos reales y documentados**
+- [x] **UX-104 · 🟡 Atajos reales y documentados** — ✅ 2026-10-04, PR #24 (README "Atajos de teclado" con los aceleradores reales)
   - **Ubicación:** `AppBar.tsx:61-64`, `useKeyboardShortcuts.ts`
   - **Acción:** exponer/alinear atajos (DevTools, zoom, fullscreen) con los roles nativos y mostrarlos en la UI (p. ej. junto al ítem).
   - **Aceptación:** todo atajo visible o documentado coincide con el comportamiento real.
