@@ -43,7 +43,14 @@ New `.github/workflows/ci.yml`: on `pull_request` (+ `workflow_dispatch`), set u
 `pnpm install --frozen-lockfile`. Scope is deliberately just the lockfile gate, per request; type-check /
 lint / test / build can be added later.
 
-## M3 detail (relaunch E2E) — blocked on a decision
+## M3 detail (relaunch E2E) — VERIFIED (2026-10-04)
+
+**Outcome:** the user updated a real packaged client to `1.13.0` from an earlier version, waited without
+acting, and the app **relaunched by itself after a few seconds**. That is exactly the assisted-installer
+relaunch the NSIS fix targets, observed end to end on a real build — `V6` in `odd/tasks/update-ux.md` is now
+**PASS**, so no newer release or VM was needed.
+
+Original analysis of why a *newer* target would otherwise have been required (retained for context):
 
 The E2E needs an update **target newer than the installed version**. Current facts (2026-10-04):
 
@@ -68,7 +75,7 @@ explicit decision.
 |---|---|---|---|---|
 | M1 | Refresh stale README stack/test lines | `README.md` | delegated (one writer) | [x] — `118ffd2` |
 | M2 | Add CI lockfile gate | `.github/workflows/ci.yml` (new) | delegated (same writer) | [x] — `3e7e96f` |
-| M3 | Relaunch E2E verification | `odd/tasks/update-ux.md` | manual (needs decision) | [ ] blocked |
+| M3 | Relaunch E2E verification | `odd/tasks/update-ux.md` | manual (user-observed) | [x] — PASS, 2026-10-04 |
 
 ## Acceptance criteria
 
@@ -92,3 +99,6 @@ explicit decision.
   review locks were orphaned, not held. **Per the user's decision, M1 + M2 are delivered under ordinary
   policy without review closure.** M3 remains pending its own decision (needs a version newer than `1.13.0`
   or a disposable VM).
+- 2026-10-04 — **M3 done (user-observed):** on the real `1.13.0` update the user waited without acting and
+  the packaged app relaunched by itself after a few seconds. `V6` in `odd/tasks/update-ux.md` is now PASS;
+  no newer release or VM was needed. All three follow-ups are closed.
