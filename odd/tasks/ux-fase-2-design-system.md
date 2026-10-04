@@ -67,11 +67,11 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
     `DropdownMenu`/`Combobox`. `<select>` nativo de `TasksTable.tsx:172-187` → `Select`.
   - Aceptación: sin `peer-checked:*` en vetos de switch ni dropdowns posicionados a mano.
 
-- [ ] **T4 · Unificar las cuatro tablas + StatusBadge** (UX-204, UX-203)
-  - Extraer `ui/empty-state.tsx` (empty/error/loading) y toolbar `TableToolbar`.
-  - Traducir el copy hardcodeado de `DataTable.tsx` (en/es).
+- [x] **T4 · Unificar las cuatro tablas + StatusBadge** (UX-204, UX-203)
+  - Extraer `ui/empty-state.tsx` (empty/error) y toolbar `TableToolbar`/`TableToolbarSearch`.
+  - Traducir el copy hardcodeado de `DataTable.tsx` (en/es) → namespace `table.*`.
   - Usar `StatusBadge` en `TimeLogsTable` (reemplaza los dos bloques duplicados).
-  - Un paradigma único de edición inline — **decisión de producto pendiente** (§Decisiones).
+  - Edición inline **por forma de dato** (RESUELTA): fila en `TimeLogsTable`, celda en `DataTable` (§Decisiones).
   - Aceptación: un toolbar y un empty-state reutilizados; sin copy inglés hardcodeado.
 
 - [ ] **T5 · Contraste y tipografía** (UX-205)
@@ -92,8 +92,10 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
 - **AppBar (barra de título):** theme-adaptive — `bg-card text-card-foreground border-b border-border`,
   hover de botones `hover:bg-accent`, botón cerrar `hover:bg-destructive hover:text-destructive-foreground`.
   Decisión del usuario (seguir el tema), no tokens de chrome dedicados.
-- **T4 edición inline:** PENDIENTE — ver §Decisiones abiertas del roadmap; se resolverá con el usuario
-  antes de T4.
+- **T4 edición inline:** RESUELTA (2026-10-04) — **una implementación compartida por forma de dato**:
+  edición **por fila** en `TimeLogsTable` (campos acoplados + duración derivada) y edición **por celda**
+  en los catálogos (`TasksTable`/`TypeTasksTable` vía `DataTable`). Ambas salen de una misma capa `ui/`,
+  sin reinvención por tabla. No se fuerza un único paradigma para las cuatro.
 
 ## Evidencia / progreso
 
@@ -152,6 +154,27 @@ _(se completa por tarea)_
     determinista propio (tabla virtualizada / portal Radix); swaps presentacionales a primitivas ya
     cubiertas, sin tests frágiles inventados.
   - **Pendiente de ojo:** paridad visual de `InsertDivider` y ancho de los menús (no hay E2E de render).
+
+- **T4** — commit `refactor(ux): unify table toolbars and empty-states, translate DataTable copy (UX-203, UX-204)`.
+  - **Ruta:** delegated direct (1 writer). Trigger: 2+ archivos no triviales (4 componentes + 2 locales + 3 tests).
+  - **TDD (RED→GREEN):** tests nuevos antes (`emptyState` 5, `tableToolbar` 6, `tableI18nGuard` 4); RED =
+    "Failed to resolve import" en las primitivas + 10 literales ingleses detectados en `DataTable.tsx`; luego GREEN.
+  - **Nuevas primitivas:** `ui/empty-state.tsx` (`EmptyState`/`ErrorState`), `ui/table-toolbar.tsx`
+    (`TableToolbar`/`TableToolbarSearch`).
+  - **Adopción:** `TableToolbar` en las cuatro tablas (DataTable, TimeLogsTable, TasksTable, TypeTasksTable);
+    `StatusBadge` reemplaza los dos bloques duplicados de `TimeLogsTable`; `EmptyState`/`ErrorState` compartidos
+    en DataTable + TimeLogsTable.
+  - **i18n:** namespace `table.*` (12 keys) en `en.ts`/`es.ts` con paridad; `DataTable` sin literales ingleses.
+  - **Loading sin cambios:** `SkeletonTable` y los skeletons quedan como estaban (la virtualización de
+    `TimeLogsTable` y el scroll infinito de `DataTable` dependen de ellos) — desvío justificado del
+    "(empty/error/loading)" del plan.
+  - **Grep aceptación:** literales ingleses removidos → 0 matches; paleta cruda en archivos editados → 0 matches.
+  - **`pnpm test`:** 48 archivos, **325 tests** verdes (15 nuevos). **`pnpm lint`:** 0 errores, 83 warnings
+    (baseline). **`pnpm type-check`:** exit 0. Gate re-ejecutado por el parent (spot check), no solo por el writer.
+  - **Pendiente de ojo:** paridad visual (spacing del toolbar, `EmptyState py-12` vs `py-16` previo en
+    `TimeLogsTable`, icono de búsqueda nuevo en `DataTable`); no hay E2E de render.
+  - **Fuera de T4:** `Sync ${pendingCount}` en `TimeLogsTable` sigue hardcodeado (pre-existente; no estaba en
+    la lista de copy de T4).
 
 ## Review nativa (RDD on) — slice T1
 

@@ -23,6 +23,20 @@ const es = {
       errorOccurred: 'Ha ocurrido un error',
       backToTop: 'Volver arriba'
     },
+    table: {
+      searchPlaceholder: 'Buscar...',
+      addRow: 'Agregar fila',
+      emptyTitle: 'Aún no hay datos',
+      emptyDescription: 'Comienza agregando tu primera entrada. Tus datos aparecerán aquí.',
+      addFirstEntry: 'Agregar primera entrada',
+      errorTitle: 'Algo salió mal',
+      noResults: 'Sin resultados para "{{query}}"',
+      clearSearch: 'Limpiar búsqueda',
+      resultsOf_one: '{{count}} resultado de {{total}}',
+      resultsOf_other: '{{count}} resultados de {{total}}',
+      showingRows: 'Mostrando {{shown}} de {{total}} filas',
+      scrollForMore: 'Desplázate para ver más...'
+    },
     timeLogs: {
       deleteSuccess: 'Entrada "{{name}}" eliminada',
       deleteError: 'Error al eliminar la entrada',

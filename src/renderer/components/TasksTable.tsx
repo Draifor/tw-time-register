@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { Plus, ChevronUp, Loader2, Search, X } from 'lucide-react';
+import { Plus, ChevronUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import DataTable from './DataTable';
 import ImportTasksDialog from './ImportTasksDialog';
@@ -15,6 +15,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent } from './ui/card';
+import { TableToolbar, TableToolbarSearch } from './ui/table-toolbar';
 
 function TasksTable() {
   const { t } = useTranslation();
@@ -101,25 +102,14 @@ function TasksTable() {
   return (
     <div className="space-y-3">
       {/* ── Header row ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder={t('tasks.search')}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-8 pr-8"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => setSearchInput('')}
-              className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      <TableToolbar>
+        <TableToolbarSearch
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder={t('tasks.search')}
+          showClear
+          clearLabel={t('table.clearSearch')}
+        />
         <p className="text-sm text-muted-foreground shrink-0">
           {data && data.length > 0 ? t('tasks.taskCount', { count: data.length }) : t('tasks.noTasks')}
         </p>
@@ -139,7 +129,7 @@ function TasksTable() {
             {t('tasks.form.addTaskBtn')}
           </Button>
         </div>
-      </div>
+      </TableToolbar>
 
       {/* ── Collapsible add form ───────────────────────────────────────────── */}
       {open && (

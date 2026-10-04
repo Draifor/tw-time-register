@@ -177,7 +177,7 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 
 - [ ] **UX-204 · 🔴 Unificar las cuatro tablas**
   - **Ubicación:** `TimeLogsTable.tsx:577-673`, `TasksTable.tsx:103-141`, `TypeTasksTable.tsx:60-73`, `DataTable.tsx:210-226`
-  - **Acción:** `TableToolbar` + `EmptyState` compartidos; un solo paradigma de edición inline (celda o fila, no ambos); traducir los estados de `DataTable`.
+  - **Acción:** `TableToolbar` + `EmptyState` compartidos; una implementación compartida de edición inline **por forma de dato** (fila para `TimeLogsTable`, celda para catálogos vía `DataTable`), no un único paradigma forzado; traducir los estados de `DataTable`.
   - **Aceptación:** un toolbar y un empty-state reutilizados; sin copy hardcodeado en inglés.
 
 - [ ] **UX-205 · 🟡 Repaso de contraste y tipografía**
@@ -358,6 +358,9 @@ Antes de implementar la Fase 0:
 3. **Mapa de secciones** (UX-002): ¿cuántos ítems de primer nivel y cuáles? ¿`Catálogo` = Tasks + Types?
 
 4. **Tamaño mínimo de ventana** (UX-301): ¿fijamos `minWidth` (p. ej. 900px) o priorizamos un layout adaptable a ventanas chicas?
+
+5. **Edición inline de tablas** (UX-204): ¿un único paradigma (celda o fila) o uno por forma de dato?
+   - **Resuelto (2026-10-04):** implementación compartida por forma de dato — fila para `TimeLogsTable`, celda para catálogos.
 
 ---
 

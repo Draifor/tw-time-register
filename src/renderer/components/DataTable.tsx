@@ -1,13 +1,15 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
-import { Plus, Loader2, Inbox, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Plus, Loader2, Inbox } from 'lucide-react';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
+import { EmptyState, ErrorState } from './ui/empty-state';
+import { TableToolbar, TableToolbarSearch } from './ui/table-toolbar';
 
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {
@@ -78,40 +80,6 @@ function SkeletonTable({
   );
 }
 
-// Empty state component
-function EmptyState({ onAddRow }: { onAddRow?: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="rounded-full bg-muted p-4 mb-4">
-        <Inbox className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <h3 className="text-lg font-semibold mb-1">No data yet</h3>
-      <p className="text-sm text-muted-foreground mb-4 max-w-[300px]">
-        Get started by adding your first entry. Your data will appear here.
-      </p>
-      {onAddRow && (
-        <Button onClick={onAddRow} size="sm" className="gap-1">
-          <Plus className="h-4 w-4" />
-          Add First Entry
-        </Button>
-      )}
-    </div>
-  );
-}
-
-// Error state component
-function ErrorState({ message }: { message?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="rounded-full bg-destructive/10 p-4 mb-4">
-        <AlertCircle className="h-8 w-8 text-destructive" />
-      </div>
-      <h3 className="text-lg font-semibold mb-1">Something went wrong</h3>
-      <p className="text-sm text-muted-foreground max-w-[300px]">{message || 'An unexpected error occurred'}</p>
-    </div>
-  );
-}
-
 function DataTable<T extends FieldValues>({
   columns,
   data,
@@ -123,6 +91,7 @@ function DataTable<T extends FieldValues>({
   onPersist,
   hideSearch = false
 }: DataTableProps<T>) {
+  const { t } = useTranslation();
   const { table, globalFilter, setGlobalFilter, loadMoreRows, hasMoreRows, visibleRowCount, totalRows } = useTable({
     columns,
     data,
@@ -197,7 +166,7 @@ function DataTable<T extends FieldValues>({
   }, []);
 
   if (isLoading) return <SkeletonTable title={title} columnCount={columns.length} showAddButton={isEditable} />;
-  if (error) return <ErrorState message={error.message} />;
+  if (error) return <ErrorState title={t('table.errorTitle')} message={error.message || t('common.errorOccurred')} />;
 
   return (
     <Card>
@@ -207,23 +176,21 @@ function DataTable<T extends FieldValues>({
         </CardHeader>
       )}
       <CardContent>
-        <div className="flex items-center justify-between gap-4 mb-4">
+        <TableToolbar className="mb-4">
           {!hideSearch && (
-            <Input
-              type="text"
+            <TableToolbarSearch
               value={globalFilter || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
-              placeholder="Search..."
-              className="max-w-sm"
+              onChange={setGlobalFilter}
+              placeholder={t('table.searchPlaceholder')}
             />
           )}
           {isEditable && onAddRow && (
             <Button onClick={onAddRow} size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
-              Add Row
+              {t('table.addRow')}
             </Button>
           )}
-        </div>
+        </TableToolbar>
 
         <div ref={attachScrollContainer} className="rounded-md border max-h-[60vh] overflow-auto">
           <Table>
@@ -256,13 +223,25 @@ function DataTable<T extends FieldValues>({
                   <TableCell colSpan={columns.length} className="h-32">
                     {globalFilter ? (
                       <div className="flex flex-col items-center justify-center text-center">
-                        <p className="text-muted-foreground mb-1">No results found for "{globalFilter}"</p>
+                        <p className="text-muted-foreground mb-1">{t('table.noResults', { query: globalFilter })}</p>
                         <Button variant="ghost" size="sm" onClick={() => setGlobalFilter('')}>
-                          Clear search
+                          {t('table.clearSearch')}
                         </Button>
                       </div>
                     ) : (
-                      <EmptyState onAddRow={isEditable ? onAddRow : undefined} />
+                      <EmptyState
+                        icon={Inbox}
+                        title={t('table.emptyTitle')}
+                        description={t('table.emptyDescription')}
+                        action={
+                          isEditable && onAddRow ? (
+                            <Button onClick={onAddRow} size="sm" className="gap-1">
+                              <Plus className="h-4 w-4" />
+                              {t('table.addFirstEntry')}
+                            </Button>
+                          ) : undefined
+                        }
+                      />
                     )}
                   </TableCell>
                 </TableRow>
@@ -276,13 +255,13 @@ function DataTable<T extends FieldValues>({
           <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
             <span>
               {globalFilter
-                ? `${allRows.length} result${allRows.length !== 1 ? 's' : ''} of ${totalRows}`
-                : `Showing ${Math.min(visibleRowCount, totalRows)} of ${totalRows} rows`}
+                ? t('table.resultsOf', { count: allRows.length, total: totalRows })
+                : t('table.showingRows', { shown: Math.min(visibleRowCount, totalRows), total: totalRows })}
             </span>
             {hasMoreRows && (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Scroll for more...</span>
+                <span>{t('table.scrollForMore')}</span>
               </div>
             )}
           </div>
