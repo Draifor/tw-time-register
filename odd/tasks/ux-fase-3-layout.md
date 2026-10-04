@@ -1,8 +1,8 @@
 # ODD — UX Fase 3: Layout, ventana y responsive
 
-- **Rama:** `feat/ux-fase-3-layout` (base `feat/ux-fase-2-design-system` / PR #25 — **stacked**: Fase 3 toca `AppBar`/`NavBar`/tablas que Fase 2 modificó. Al mergear #25, rebasar sobre `staging`).
+- **Rama:** `feat/ux-fase-3-layout` (base `origin/staging`; PR #25 ya mergeado — `0511872`). La rama contiene solo los commits de Fase 3.
 - **Roadmap:** [`docs/UX-ROADMAP.md`](../../docs/UX-ROADMAP.md) §Fase 3 (UX-301..UX-307)
-- **Estado:** `[x]` tareas T1–T4 completas (UX-301..UX-307); **pendiente: PR** (stacked sobre #25 o tras mergear #25). Review nativa: `medium` / `under_budget`, sin transacción.
+- **Estado:** `[x]` tareas T1–T4 completas (UX-301..UX-307); **pendiente: PR a `staging`**. Review nativa: `medium` / `under_budget`, sin transacción.
 - **Runner de tests:** `pnpm test` (Vitest) · verificación: `pnpm test`, `pnpm lint`, `pnpm type-check`
 - **Estrategia de entrega:** `single-pr` a `staging` (pronóstico ~190 líneas autoradas, por debajo del presupuesto de review ~400).
 
