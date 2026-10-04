@@ -8,8 +8,9 @@ import { Toaster } from './components/ui/sonner';
 // Route-level code splitting: heavy pages (and their flatpickr/date-fns
 // dependencies) load on demand so the initial renderer chunk stays small.
 const WorkTimeForm = lazy(() => import('./components/WorkTimeForm'));
-const TasksPage = lazy(() => import('./pages/TasksPage'));
+const CatalogPage = lazy(() => import('./pages/CatalogPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 
@@ -36,7 +37,7 @@ function App() {
         )}
         <NavBar />
 
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">Loading...</div>
@@ -45,12 +46,13 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/worktime" element={<WorkTimeForm />} />
-              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/history" element={<HistoryPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/catalog" element={<CatalogPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Suspense>
-        </div>
+        </main>
       </div>
     </Router>
   );
