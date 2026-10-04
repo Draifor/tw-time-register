@@ -166,7 +166,8 @@ RED → GREEN:
 
 ## Delivery
 
-Single PR into `staging` (user-owned merge).
+Single PR into `staging`: **PR #18** (`feat/performance-fase-6` -> `staging`),
+https://github.com/Draifor/tw-time-register/pull/18. Merge is user-owned.
 
 ## Review outcome
 
