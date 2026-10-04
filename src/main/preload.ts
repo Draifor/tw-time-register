@@ -171,6 +171,7 @@ const api = {
   Maximize: () => {
     ipcRenderer.send('maximize');
   },
+  isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:isMaximized'),
   ToggleDevTools: () => {
     ipcRenderer.send('toggleDevTools');
   },

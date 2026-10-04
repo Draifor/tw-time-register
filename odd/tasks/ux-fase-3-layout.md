@@ -71,7 +71,7 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
   - Aceptación: usable sin scroll horizontal forzado en 900px.
   - Test-first: excepción justificada (presentacional; sin harness de render).
 
-- [ ] **T4 · Icono Maximize sincronizado** (UX-306)
+- [x] **T4 · Icono Maximize sincronizado** (UX-306)
   - `windowIpc.ts`: emitir `window:maximized` (bool) en `maximize`/`unmaximize`; `ipcMain.handle('window:isMaximized')`.
   - `preload.ts`: `isMaximized(): Promise<boolean>`; suscripción vía `on/off`.
   - `AppBar.tsx`: estado derivado del evento + query inicial; cleanup en unmount.
@@ -112,3 +112,14 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
   - Test-first: excepción justificada (presentacional, sin harness de render).
   - **`pnpm type-check`:** exit 0. **`pnpm lint`:** 0 errores, 83 warnings. **`pnpm exec vitest run src/tests/renderer`:** 31 archivos, 156 tests verdes.
   - **Pendiente de ojo:** a 900px sin scroll horizontal en las cuatro tablas (manual).
+
+- **T4** — commit `feat(window): sync AppBar maximize icon with real window state (UX-306)`.
+  - **Ruta:** delegated direct (1 writer). Trigger: IPC nuevo + test determinista RED→GREEN.
+  - `windowIpc.ts`: `window:maximized` emitido en `maximize`/`unmaximize` (guard `isDestroyed`); `ipcMain.handle('window:isMaximized')` con `removeHandler` defensivo (createWindow se re-ejecuta en macOS `activate`).
+  - `preload.ts`: `isMaximized()` expuesto; el bridge `on/off` ya cubría el evento.
+  - `AppBar.tsx`: estado derivado de la query inicial + suscripción con cleanup; `handleToggle` ya no invierte de forma optimista.
+  - **TDD (RED→GREEN):** 4 tests nuevos; RED = 4 fallos (`Unable to find role="button" name "Restore"`, `onMock` 0 llamadas, flip optimista); GREEN = 10/10.
+  - **`pnpm exec vitest run src/tests/renderer/appBar.test.tsx`:** 10/10. **`pnpm type-check`:** exit 0. **`pnpm lint`:** 0 errores, 83 warnings.
+  - **Pendiente de ojo:** doble-click en la titlebar frameless (manual, sin E2E).
+
+- **Gate de fase (tras T1–T4)** — `pnpm test`: 51 archivos, **378 tests** verdes (4 nuevos); `pnpm lint`: 0 errores, 83 warnings (baseline); `pnpm type-check`: exit 0.

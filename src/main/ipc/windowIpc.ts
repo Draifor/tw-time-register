@@ -29,4 +29,19 @@ export function setupWindowIpc(window: BrowserWindow) {
       shell.openExternal(url);
     }
   });
+
+  // Publish the real window state so the AppBar icon stays in sync with native
+  // transitions (e.g. double-clicking the frameless title bar), not just clicks.
+  const emitMaximizedState = () => {
+    if (!window.isDestroyed()) {
+      window.webContents.send('window:maximized', window.isMaximized());
+    }
+  };
+  window.on('maximize', emitMaximizedState);
+  window.on('unmaximize', emitMaximizedState);
+
+  // `createWindow()` runs again on macOS `activate`; re-registering the same
+  // channel with `ipcMain.handle` throws unless the previous handler is removed.
+  ipcMain.removeHandler('window:isMaximized');
+  ipcMain.handle('window:isMaximized', () => window.isMaximized());
 }
