@@ -23,14 +23,14 @@ Herramienta personal para registrar el tiempo de trabajo diario de forma eficien
 
 ### Core
 
-- **Electron** v30 — proceso main, IPC, acceso a SQLite
-- **React** v18 + **TypeScript** v5 — renderer
-- **Vite** v7 — bundler ultrarrápido
+- **Electron** v44 — proceso main, IPC, acceso a SQLite
+- **React** v19 + **TypeScript** v7 — renderer
+- **Vite** v8 (Rolldown) — bundler ultrarrápido
 
 ### UI
 
 - **shadcn/ui** — componentes accesibles (Radix UI)
-- **Tailwind CSS** v3.4 — utility-first
+- **Tailwind CSS** v4 — utility-first
 - **Lucide React** — iconos
 - **Sonner** — notificaciones toast
 
@@ -42,7 +42,7 @@ Herramienta personal para registrar el tiempo de trabajo diario de forma eficien
 
 ### Base de datos
 
-- **better-sqlite3** v11 — SQLite local, prebuilts N-API (sin recompilar)
+- **better-sqlite3** v13 — SQLite local, prebuilts N-API (sin recompilar)
 
 ### Internacionalización
 
@@ -50,8 +50,8 @@ Herramienta personal para registrar el tiempo de trabajo diario de forma eficien
 
 ### Calidad
 
-- **ESLint** v9 (flat config) + **Prettier** v3 + **typescript-eslint** v8
-- **Vitest** v4 — 111 tests unitarios, 0 fallos
+- **ESLint** v10 (flat config) + **@eslint-react** + **Prettier** v3
+- **Vitest** v5 — 285 tests unitarios, 0 fallos
 
 ### Distribución
 
@@ -113,7 +113,7 @@ src/
 │   │   └── SettingsPage.tsx
 │   └── services/
 │       └── timesService.ts      # Wrappers window.Main.* + SmartSyncResult
-└── tests/                       # Vitest — 111 tests, 8 suites, 0 fallos
+└── tests/                       # Vitest — 285 tests, 39 archivos, 0 fallos
     ├── setup.ts
     ├── main/
     │   ├── models/TaskLinks.test.ts
@@ -161,7 +161,7 @@ worktime_drafts (draft_key, payload, updated_at)
 - **i18n** — ES/EN completo en todos los componentes y páginas
 - **Seguridad** — credenciales TW cifradas con `safeStorage` (DPAPI en Windows)
 - **Auto-updater** — descarga en segundo plano, toasts de estado, botón "Buscar actualizaciones", e instalación silenciosa (sin asistente NSIS) al pulsar "Instalar" o al cerrar la app
-- **108 tests** — modelos, servicios core (encryption, settings, timeEntries, api, sync, history), timeUtils
+- **285 tests** — main (modelos, servicios core) y renderer (hooks, componentes, i18n, router)
 
 ---
 
