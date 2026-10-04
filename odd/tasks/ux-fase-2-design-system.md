@@ -209,6 +209,9 @@ _(se completa por tarea)_
      `ReportsPage.tsx:340-351,359-365`, `TimeLogsTable.tsx:121-128`, `ui/combobox.tsx:228-234`.
      Son el mismo paleta cruda que T2 debía eliminar (el grep de aceptación solo miraba clases).
      Candidato a follow-up small task (UX-201 remanente).
+   - **Review nativa (assess):** `medium` / `under_budget` (197 líneas cambiadas vs. boundary `6900332`;
+     budget ~400) → `review_due: false`, sin transacción. El slice T5 queda por debajo del budget y no
+     dispara review por sí solo (mismo criterio que T2).
 
 ## Review nativa (RDD on) — slice T1
 
