@@ -23,6 +23,20 @@ const en = {
       errorOccurred: 'An error occurred',
       backToTop: 'Back to top'
     },
+    table: {
+      searchPlaceholder: 'Search...',
+      addRow: 'Add Row',
+      emptyTitle: 'No data yet',
+      emptyDescription: 'Get started by adding your first entry. Your data will appear here.',
+      addFirstEntry: 'Add First Entry',
+      errorTitle: 'Something went wrong',
+      noResults: 'No results found for "{{query}}"',
+      clearSearch: 'Clear search',
+      resultsOf_one: '{{count}} result of {{total}}',
+      resultsOf_other: '{{count}} results of {{total}}',
+      showingRows: 'Showing {{shown}} of {{total}} rows',
+      scrollForMore: 'Scroll for more...'
+    },
     timeLogs: {
       deleteSuccess: 'Entry "{{name}}" deleted',
       deleteError: 'Failed to delete entry',

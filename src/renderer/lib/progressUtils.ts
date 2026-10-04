@@ -49,11 +49,11 @@ export function getTaskProgressInfo(
 export function getStatusColor(status: ProgressStatus): string {
   switch (status) {
     case 'overtime':
-      return 'text-red-500';
+      return 'text-destructive';
     case 'warning':
-      return 'text-amber-500';
+      return 'text-warning';
     case 'on-time':
-      return 'text-emerald-500';
+      return 'text-success';
     default:
       return 'text-muted-foreground';
   }
@@ -62,13 +62,33 @@ export function getStatusColor(status: ProgressStatus): string {
 export function getStatusBarColor(status: ProgressStatus): string {
   switch (status) {
     case 'overtime':
-      return 'bg-red-500';
+      return 'bg-destructive';
     case 'warning':
-      return 'bg-amber-500';
+      return 'bg-warning';
     case 'on-time':
-      return 'bg-emerald-500';
+      return 'bg-success';
     default:
       return 'bg-muted';
+  }
+}
+
+/**
+ * Tailwind background class for a visible status indicator (a dot, or a
+ * status-colored share bar). Unlike the progress bar (which falls back to
+ * bg-muted for an empty track), the indicator sits directly on the page
+ * background and must stay visible, so `no-estimate` maps to
+ * `bg-muted-foreground`.
+ */
+export function getStatusDotColor(status: ProgressStatus): string {
+  switch (status) {
+    case 'overtime':
+      return 'bg-destructive';
+    case 'warning':
+      return 'bg-warning';
+    case 'on-time':
+      return 'bg-success';
+    default:
+      return 'bg-muted-foreground';
   }
 }
 

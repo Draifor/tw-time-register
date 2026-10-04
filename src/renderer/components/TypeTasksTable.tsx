@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent } from './ui/card';
+import { TableToolbar } from './ui/table-toolbar';
 
 function TypeTasksTable() {
   const { t } = useTranslation();
@@ -57,7 +58,7 @@ function TypeTasksTable() {
   return (
     <div className="space-y-3">
       {/* ── Header row ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-end">
+      <TableToolbar className="justify-end">
         <Button
           variant={open ? 'secondary' : 'default'}
           size="sm"
@@ -70,7 +71,7 @@ function TypeTasksTable() {
           {open ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           {t('tasks.typeForm.addTypeBtn')}
         </Button>
-      </div>
+      </TableToolbar>
 
       {/* ── Collapsible add form ────────────────────────────────────────── */}
       {open && (

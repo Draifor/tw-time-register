@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { Plus, ChevronUp, Loader2, Search, X } from 'lucide-react';
+import { Plus, ChevronUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import DataTable from './DataTable';
 import ImportTasksDialog from './ImportTasksDialog';
@@ -13,7 +13,9 @@ import fetchTypeTasks from '../services/typeTasksService';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent } from './ui/card';
+import { TableToolbar, TableToolbarSearch } from './ui/table-toolbar';
 
 function TasksTable() {
   const { t } = useTranslation();
@@ -100,25 +102,14 @@ function TasksTable() {
   return (
     <div className="space-y-3">
       {/* ── Header row ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder={t('tasks.search')}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-8 pr-8"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => setSearchInput('')}
-              className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      <TableToolbar>
+        <TableToolbarSearch
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder={t('tasks.search')}
+          showClear
+          clearLabel={t('table.clearSearch')}
+        />
         <p className="text-sm text-muted-foreground shrink-0">
           {data && data.length > 0 ? t('tasks.taskCount', { count: data.length }) : t('tasks.noTasks')}
         </p>
@@ -138,7 +129,7 @@ function TasksTable() {
             {t('tasks.form.addTaskBtn')}
           </Button>
         </div>
-      </div>
+      </TableToolbar>
 
       {/* ── Collapsible add form ───────────────────────────────────────────── */}
       {open && (
@@ -169,22 +160,24 @@ function TasksTable() {
                 <Label htmlFor="new-task-type" className="text-xs">
                   {t('tasks.form.typeLabel')} <span className="text-destructive">*</span>
                 </Label>
-                <select
-                  id="new-task-type"
+                <Select
                   value={typeName}
-                  onChange={(e) => {
-                    setTypeName(e.target.value);
+                  onValueChange={(v) => {
+                    setTypeName(v);
                     setTypeError(false);
                   }}
-                  className={`flex h-9 w-full rounded-md border bg-background text-foreground px-3 py-1 text-sm shadow-xs focus:outline-hidden focus:ring-1 focus:ring-ring ${typeError ? 'border-destructive' : 'border-input'}`}
                 >
-                  <option value="">{t('tasks.form.selectType')}</option>
-                  {typeTasksList.map((tt) => (
-                    <option key={tt.id} value={tt.typeName}>
-                      {tt.typeName}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="new-task-type" className={typeError ? 'border-destructive' : ''}>
+                    <SelectValue placeholder={t('tasks.form.selectType')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeTasksList.map((tt) => (
+                      <SelectItem key={tt.id} value={tt.typeName}>
+                        {tt.typeName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {typeError && <p className="text-xs text-destructive">{t('tasks.form.typeRequired')}</p>}
               </div>
 

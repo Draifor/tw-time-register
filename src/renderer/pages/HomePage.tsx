@@ -17,7 +17,7 @@ import {
   DailyTimeInfo
 } from '../services/timesService';
 import { parseDuration, formatDuration } from '../lib/timeUtils';
-import { getTaskProgressInfo, getStatusBarColor } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusBarColor, getStatusDotColor } from '../lib/progressUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { Task } from '../../types/tasks';
@@ -307,11 +307,7 @@ function HomePage() {
               {isLoading ? (
                 <Skeleton className="h-8 w-20 mx-auto mb-1" />
               ) : (
-                <div
-                  className={`text-2xl font-bold ${
-                    (stats?.pendingEntries || 0) > 0 ? 'text-yellow-600 dark:text-yellow-400' : ''
-                  }`}
-                >
+                <div className={`text-2xl font-bold ${(stats?.pendingEntries || 0) > 0 ? 'text-warning' : ''}`}>
                   {stats?.pendingEntries || 0}
                 </div>
               )}
@@ -337,31 +333,23 @@ function HomePage() {
           ) : (
             <div className="space-y-4">
               <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
-                <div className="h-full bg-emerald-500" style={{ width: `${Math.round(sentPct)}%` }} />
-                <div className="h-full bg-amber-500" style={{ width: `${Math.round(localPct)}%` }} />
+                <div className="h-full bg-success" style={{ width: `${Math.round(sentPct)}%` }} />
+                <div className="h-full bg-warning" style={{ width: `${Math.round(localPct)}%` }} />
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-                  <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                    {t('home.monthSent')}
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-emerald-800 dark:text-emerald-200">
-                    {formatTime(monthSummary.sentMinutes)}
-                  </p>
-                  <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
+                <div className="rounded-lg border border-success/30 bg-success/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-success">{t('home.monthSent')}</p>
+                  <p className="mt-1 text-xl font-semibold text-success">{formatTime(monthSummary.sentMinutes)}</p>
+                  <p className="text-xs text-success/80">
                     {t('home.monthEntriesCount', { count: monthSummary.sentCount })}
                   </p>
                 </div>
 
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-                  <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                    {t('home.monthLocalOnly')}
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-amber-800 dark:text-amber-200">
-                    {formatTime(monthSummary.localMinutes)}
-                  </p>
-                  <p className="text-xs text-amber-700/80 dark:text-amber-300/80">
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-warning">{t('home.monthLocalOnly')}</p>
+                  <p className="mt-1 text-xl font-semibold text-warning">{formatTime(monthSummary.localMinutes)}</p>
+                  <p className="text-xs text-warning/80">
                     {t('home.monthEntriesCount', { count: monthSummary.localCount })}
                   </p>
                 </div>
@@ -402,11 +390,8 @@ function HomePage() {
                           </span>
                           <div className="h-2 rounded-full bg-muted overflow-hidden">
                             <div className="h-full flex" style={{ width: `${Math.round(totalPct)}%` }}>
-                              <div
-                                className="h-full bg-emerald-500"
-                                style={{ width: `${Math.round(sentPctInBar)}%` }}
-                              />
-                              <div className="h-full bg-amber-500" style={{ width: `${Math.round(localPctInBar)}%` }} />
+                              <div className="h-full bg-success" style={{ width: `${Math.round(sentPctInBar)}%` }} />
+                              <div className="h-full bg-warning" style={{ width: `${Math.round(localPctInBar)}%` }} />
                             </div>
                           </div>
                           <span className="text-xs text-muted-foreground tabular-nums">
@@ -451,13 +436,13 @@ function HomePage() {
                 </div>
                 <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden flex">
                   <div
-                    className="h-full bg-emerald-500"
+                    className="h-full bg-success"
                     style={{
                       width: `${weekSummary.totalMinutes > 0 ? Math.round((weekSummary.sentMinutes / weekSummary.totalMinutes) * 100) : 0}%`
                     }}
                   />
                   <div
-                    className="h-full bg-amber-500"
+                    className="h-full bg-warning"
                     style={{
                       width: `${weekSummary.totalMinutes > 0 ? Math.round(((weekSummary.totalMinutes - weekSummary.sentMinutes) / weekSummary.totalMinutes) * 100) : 0}%`
                     }}
@@ -479,19 +464,7 @@ function HomePage() {
                     <div key={idx} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className={`w-2 h-2 rounded-full shrink-0`}
-                            style={{
-                              backgroundColor:
-                                status === 'overtime'
-                                  ? '#ef4444'
-                                  : status === 'warning'
-                                    ? '#f59e0b'
-                                    : status === 'on-time'
-                                      ? '#10b981'
-                                      : '#a1a1aa'
-                            }}
-                          />
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(status)}`} />
                           <span className="font-medium truncate max-w-[65%]" title={task.taskName}>
                             {task.taskName}
                           </span>
@@ -520,7 +493,7 @@ function HomePage() {
                         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                           <span>{Math.round(progressPct)}%</span>
                           {status === 'overtime' && over > 0 && (
-                            <span className="text-red-500 font-medium">
+                            <span className="text-destructive font-medium">
                               +{formatDuration(Math.floor(over / 60), over % 60)}
                             </span>
                           )}
@@ -564,7 +537,7 @@ function HomePage() {
             <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
-                  dailyInfo.totalMinutes >= dailyInfo.maxMinutes ? 'bg-yellow-500' : 'bg-primary'
+                  dailyInfo.totalMinutes >= dailyInfo.maxMinutes ? 'bg-warning' : 'bg-primary'
                 }`}
                 style={{
                   width: `${Math.round(Math.min(100, (dailyInfo.totalMinutes / dailyInfo.maxMinutes) * 100))}%`
@@ -603,19 +576,7 @@ function HomePage() {
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={`w-2 h-2 rounded-full shrink-0 ${barColor.replace('bg-', 'bg-')}`}
-                          style={{
-                            backgroundColor:
-                              status === 'overtime'
-                                ? '#ef4444'
-                                : status === 'warning'
-                                  ? '#f59e0b'
-                                  : status === 'on-time'
-                                    ? '#10b981'
-                                    : '#a1a1aa'
-                          }}
-                        />
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(status)}`} />
                         <span className="font-medium truncate max-w-[65%]" title={task.taskName}>
                           {task.taskName}
                         </span>
@@ -642,7 +603,7 @@ function HomePage() {
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                         <span>{Math.round(progressPct)}%</span>
                         {status === 'overtime' && over > 0 && (
-                          <span className="text-red-500 font-medium">
+                          <span className="text-destructive font-medium">
                             +{formatDuration(Math.floor(over / 60), over % 60)}
                           </span>
                         )}

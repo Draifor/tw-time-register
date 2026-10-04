@@ -397,7 +397,7 @@ function ImportTasksDialog() {
             )}
 
             {conflictsToResolve.length > 0 && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
                 {t('tasks.importTW.duplicatesFound', { count: conflictsToResolve.length })}
               </div>
             )}
@@ -406,7 +406,7 @@ function ImportTasksDialog() {
               {previewTasks.map((task, i) => (
                 <li key={i} className="flex items-start gap-3 px-3 py-2.5 text-sm">
                   {task.found ? (
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-success" />
                   ) : (
                     <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
                   )}
@@ -428,8 +428,8 @@ function ImportTasksDialog() {
             </ul>
 
             {foundCount === 0 && rawSubtasks.length > 0 && (
-              <details className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
-                <summary className="cursor-pointer text-xs font-medium text-amber-600 dark:text-amber-400">
+              <details className="rounded-md border border-warning/40 bg-warning/10 p-3">
+                <summary className="cursor-pointer text-xs font-medium text-warning">
                   TW returned {rawSubtasks.length} subtask{rawSubtasks.length !== 1 ? 's' : ''} — click to inspect
                 </summary>
                 <ul className="mt-2 space-y-1">
@@ -590,7 +590,7 @@ function ImportTasksDialog() {
         {/* ── Step 3: Done ──────────────────────────────────── */}
         {step === 'done' && (
           <div className="space-y-4 py-4 text-center">
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+            <CheckCircle2 className="h-12 w-12 text-success mx-auto" />
             <div>
               <p className="font-semibold">{t('tasks.importTW.doneTitle')}</p>
               <p className="text-sm text-muted-foreground mt-1">{t('tasks.importTW.doneSubtitle')}</p>

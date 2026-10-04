@@ -226,11 +226,14 @@ function ComboboxInner({
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {showProgress && option.estimatedTime && option.estimatedTime > 0 && (
                         <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{
-                            backgroundColor:
-                              status === 'overtime' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#10b981'
-                          }}
+                          className={cn(
+                            'w-2 h-2 rounded-full shrink-0',
+                            status === 'overtime'
+                              ? 'bg-destructive'
+                              : status === 'warning'
+                                ? 'bg-warning'
+                                : 'bg-success'
+                          )}
                         />
                       )}
                       <span className="whitespace-normal break-words pr-2">{option.label}</span>

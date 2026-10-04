@@ -62,9 +62,7 @@ function NavBar() {
                   size="sm"
                   className={cn(
                     'gap-2 text-sm font-normal',
-                    isConfigured
-                      ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
-                      : 'text-muted-foreground hover:text-foreground'
+                    isConfigured ? 'text-success hover:text-success/80' : 'text-muted-foreground hover:text-foreground'
                   )}
                   onClick={() => navigate('/settings')}
                 >
@@ -73,8 +71,8 @@ function NavBar() {
                   ) : isConfigured ? (
                     <>
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                       </span>
                       <span>{username}</span>
                     </>
@@ -112,8 +110,8 @@ function NavBar() {
                         'gap-2 text-sm',
                         updateStatus === 'downloaded' || updatePercent == null ? 'animate-pulse' : '',
                         updateStatus === 'downloaded'
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-0'
-                          : 'border-amber-500 text-amber-500 hover:bg-amber-500/10'
+                          ? 'bg-success hover:bg-success/90 text-success-foreground border-0'
+                          : 'border-warning text-warning hover:bg-warning/10'
                       )}
                       onClick={updateStatus === 'downloaded' ? installUpdate : undefined}
                     >
@@ -130,7 +128,7 @@ function NavBar() {
                     {updateStatus === 'available' && updatePercent != null && (
                       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-amber-500"
+                          className="h-full rounded-full bg-warning"
                           style={{ width: `${Math.round(updatePercent)}%` }}
                         />
                       </div>
@@ -156,7 +154,7 @@ function NavBar() {
                 className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm"
               >
                 <div className="flex flex-col items-center gap-3 px-6 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-success" />
                   <p className="text-lg font-semibold">{t('nav.installingTitle')}</p>
                   <p className="text-sm text-muted-foreground">{t('nav.installingDesc', { version: updateVersion })}</p>
                 </div>

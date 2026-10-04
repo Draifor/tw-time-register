@@ -91,3 +91,23 @@ un **menú de aplicación mínimo y explícito** con roles reales.
 ## Siguiente paso
 
 Review nativa del work unit (RDD on) y, si aprueba, PR a `staging`.
+
+## Follow-up post-merge (PR #24)
+
+- **Rama:** `chore/ux-fase-1-followup` (base `origin/staging` tras el merge `66d5210`).
+- **R3-001 (WARNING) — resuelto como falso positivo, con cobertura añadida.**
+  El review marcó "activación por teclado no garantizada/no probada" para los
+  `DropdownMenuItem` con `onClick`. Verificado contra el código de Radix
+  (`@radix-ui/react-menu@2.1.24`): en `onKeyDown` para Enter/Space el ítem hace
+  `event.currentTarget.click()`, por lo que `onClick` **sí** dispara. El foco tras
+  abrir con mouse queda en el content (`role=menu`), no en el ítem; la ruta real
+  de teclado es `ArrowDown` (enfoca) → `Enter`/`Space`. Se migró igualmente a la
+  API documentada `onSelect` (menos frágil ante cambios internos de Radix) y se
+  agregaron dos tests que prueban la activación por teclado.
+- **R3-002 (SUGGESTION) — guard añadido.** `src/tests/renderer/i18nMenuKeys.test.ts`
+  escanea el código del renderer y falla si vuelve a referenciarse una key de menú
+  eliminada (`menu.file/edit/view.*`, `menu.help.documentation`, `menu.help.versionLabel`).
+- **Roadmap:** tildados UX-101, UX-102 y UX-104 (entregados en PR #24); UX-103 marcado
+  como no aplicable (menú renderer eliminado).
+- **Verificación:** `pnpm test` 42 archivos / **297 tests** en verde; `pnpm lint` 0 errores
+  (82 warnings preexistentes); `pnpm type-check` limpio.

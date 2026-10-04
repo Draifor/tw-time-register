@@ -317,7 +317,7 @@ export default function PullFromTWDialog() {
               </div>
             )}
             {mode === 'all' && (
-              <p className="text-xs text-amber-700 dark:text-amber-400 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2">
+              <p className="text-xs text-warning rounded border border-warning/30 bg-warning/10 p-2">
                 {t('timeLogs.pull.allHistoryWarning')}
               </p>
             )}
@@ -370,9 +370,9 @@ export default function PullFromTWDialog() {
               {t('timeLogs.pull.resultSubtitle', { total: result.total })}
             </p>
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 p-3">
-                <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{result.imported}</p>
+              <div className="rounded-lg border bg-success/10 p-3">
+                <CheckCircle2 className="h-5 w-5 text-success mx-auto mb-1" />
+                <p className="text-2xl font-bold text-success">{result.imported}</p>
                 <p className="text-xs text-muted-foreground">{t('timeLogs.pull.imported')}</p>
               </div>
               <div className="rounded-lg border bg-muted/50 p-3">
@@ -380,20 +380,20 @@ export default function PullFromTWDialog() {
                 <p className="text-2xl font-bold">{result.skippedExisting}</p>
                 <p className="text-xs text-muted-foreground">{t('timeLogs.pull.alreadyExisted')}</p>
               </div>
-              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{result.skippedNoTask}</p>
+              <div className="rounded-lg border bg-warning/10 p-3">
+                <AlertCircle className="h-5 w-5 text-warning mx-auto mb-1" />
+                <p className="text-2xl font-bold text-warning">{result.skippedNoTask}</p>
                 <p className="text-xs text-muted-foreground">{t('timeLogs.pull.noTask')}</p>
               </div>
             </div>
 
             {result.missingTwTaskIds.length > 0 && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
-                <p className="text-xs text-amber-800 dark:text-amber-300">{t('timeLogs.pull.noTaskHint')}</p>
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3 space-y-2">
+                <p className="text-xs text-warning">{t('timeLogs.pull.noTaskHint')}</p>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 border-amber-400 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                  className="gap-1.5 border-warning text-warning hover:bg-warning/10"
                   onClick={handleOpenAddTasks}
                   disabled={isPulling}
                 >
@@ -473,7 +473,7 @@ export default function PullFromTWDialog() {
                           className={`shrink-0 text-xs px-2 py-0.5 rounded border transition-colors ${
                             row.selected
                               ? 'border-border text-muted-foreground hover:border-destructive/60 hover:text-destructive hover:bg-destructive/5'
-                              : 'border-green-500/60 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30'
+                              : 'border-success/60 text-success hover:bg-success/10'
                           }`}
                         >
                           {row.selected ? t('timeLogs.pull.skipTask') : t('timeLogs.pull.includeTask')}

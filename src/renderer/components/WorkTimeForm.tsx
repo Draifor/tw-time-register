@@ -7,7 +7,6 @@ import {
   FieldValues,
   Controller,
   FieldErrors,
-  UseFormRegister,
   UseFormSetValue
 } from 'react-hook-form';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
@@ -18,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
 import Textarea from './ui/textarea-form';
 import { Label } from './ui/label';
+import { Switch } from './ui/switch';
 import Combobox from './ui/combobox';
 import TotalTimeDay from './TotalTimeDay';
 import LiveTimer from './LiveTimer';
@@ -143,15 +143,17 @@ function InsertDivider({ onClick, label }: { onClick: () => void; label: string 
   return (
     <div className="group/insert flex h-5 items-center gap-3">
       <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={onClick}
         title={label}
-        className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-all hover:border-primary hover:text-primary group-hover/insert:opacity-100 focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+        className="h-auto gap-1 rounded-full border-dashed border-muted-foreground/40 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-all hover:border-primary hover:bg-transparent hover:text-primary group-hover/insert:opacity-100 focus-visible:opacity-100 [&_svg]:size-3"
       >
         <Plus className="h-3 w-3" />
         {label}
-      </button>
+      </Button>
       <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
     </div>
   );
@@ -186,7 +188,6 @@ interface EntryCardProps {
   index: number;
   control: Control<{ entries: WorkTimeEntry[] }>;
   typedControl: Control<FieldValues>;
-  register: UseFormRegister<{ entries: WorkTimeEntry[] }>;
   setValue: UseFormSetValue<{ entries: WorkTimeEntry[] }>;
   entryErrors?: FieldErrors<WorkTimeEntry>;
   options: TaskOption[];
@@ -213,7 +214,6 @@ const EntryCard = React.memo(function EntryCard({
   index,
   control,
   typedControl,
-  register,
   setValue,
   entryErrors,
   options,
@@ -356,10 +356,10 @@ const EntryCard = React.memo(function EntryCard({
                       <div
                         className={`text-[10px] px-1.5 py-0.5 rounded ${
                           taskInfo.status === 'overtime'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            ? 'bg-destructive/10 text-destructive'
                             : taskInfo.status === 'warning'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                              : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-success/10 text-success'
                         }`}
                       >
                         {t(draftMinutes > 0 ? 'workTimeForm.progressInfoProjected' : 'workTimeForm.progressInfo', {
@@ -445,18 +445,13 @@ const EntryCard = React.memo(function EntryCard({
               {t('workTimeForm.afterLunch')}
             </Label>
             <div className="h-10 flex items-center">
-              <label
-                htmlFor={`entries.${index}.afterLunch`}
-                className="relative inline-flex items-center cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  id={`entries.${index}.afterLunch`}
-                  {...register(`entries.${index}.afterLunch`)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
-              </label>
+              <Controller
+                name={`entries.${index}.afterLunch`}
+                control={control}
+                render={({ field }) => (
+                  <Switch id={`entries.${index}.afterLunch`} checked={!!field.value} onCheckedChange={field.onChange} />
+                )}
+              />
             </div>
           </div>
           <div className="flex flex-col justify-end space-y-2">
@@ -468,18 +463,13 @@ const EntryCard = React.memo(function EntryCard({
               {t('common.billable')}
             </Label>
             <div className="h-10 flex items-center">
-              <label
-                htmlFor={`entries.${index}.isBillable`}
-                className="relative inline-flex items-center cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  id={`entries.${index}.isBillable`}
-                  {...register(`entries.${index}.isBillable`)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
-              </label>
+              <Controller
+                name={`entries.${index}.isBillable`}
+                control={control}
+                render={({ field }) => (
+                  <Switch id={`entries.${index}.isBillable`} checked={!!field.value} onCheckedChange={field.onChange} />
+                )}
+              />
             </div>
           </div>
         </div>
@@ -532,8 +522,7 @@ export default function WorkTimeForm() {
     handleSubmit,
     reset,
     setValue,
-    getValues,
-    register
+    getValues
   } = useForm<{ entries: WorkTimeEntry[] }>({
     defaultValues: { entries: [defaultValue] }
   });
@@ -1309,7 +1298,6 @@ export default function WorkTimeForm() {
             index={index}
             control={control}
             typedControl={typedControl}
-            register={register}
             setValue={setValue}
             entryErrors={errors.entries?.[index]}
             options={optionsWithDraft}

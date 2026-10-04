@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `Pendiente` — sin cambios de UI aplicados todavía
+- **Estado general:** `En progreso` — Fases 0–2 implementadas (PR #23, #24, #25); Fase 3 en curso
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -135,22 +135,22 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 1 — Sistema de menús (elimina la duplicidad)
 > Objetivo: que exista **un** modelo de menú claro, intencional, accesible y documentado.
 
-- [ ] **UX-101 · 🔴 Decidir el destino del menú del renderer**
+- [x] **UX-101 · 🔴 Decidir el destino del menú del renderer** — ✅ 2026-10-04, PR #24 (opción a: menú renderer eliminado; acciones útiles a un dropdown compacto)
   - **Ubicación:** `AppBar.tsx:32-81`, `MenuBar.tsx`, `MenuHandler.tsx`, `MenuItem.tsx`
   - **Acción:** según §6 Decisión 2: **(a)** eliminar el menú completo y mover sus 3 acciones útiles a un botón/engranaje o a Ajustes; **(b)** conservarlo como menú real (solo acciones vivas); o **(c)** reemplazarlo por un menú nativo real.
   - **Aceptación:** cero ítems `() => {}` visibles en la app.
 
-- [ ] **UX-102 · 🔴 Menú nativo de Electron explícito y documentado**
+- [x] **UX-102 · 🔴 Menú nativo de Electron explícito y documentado** — ✅ 2026-10-04, PR #24 (`src/main/menu.ts` con roles reales; reload/DevTools solo en dev)
   - **Ubicación:** `src/main/index.ts` (no hay `Menu`)
   - **Acción:** construir un `Menu` mínimo con roles reales (reload, DevTools, zoom, fullscreen, quit/close) o `Menu.setApplicationMenu(null)` si se decide que no haya menú; en macOS proveer el menú de aplicación requerido.
   - **Aceptación:** aceleradores intencionales y listados en el README; comportamiento consistente en Windows/macOS.
 
-- [ ] **UX-103 · 🔴 Menú accesible (si se conserva en renderer)**
+- [ ] **UX-103 · 🔴 Menú accesible (si se conserva en renderer)** — *No aplica: el menú del renderer se eliminó (UX-101 opción a).*
   - **Ubicación:** `MenuHandler.tsx:26-33`, `MenuItem.tsx:22-34`
   - **Acción:** `role="menu"/"menuitem"`, `aria-haspopup`, `aria-expanded`, navegación con flechas/Home/End/Escape/Enter, foco visible (`ring`), un solo menú abierto. Evaluar usar `DropdownMenu`/`Menubar` de Radix (ya en dependencias) en vez del componente casero.
   - **Aceptación:** menú 100% operable solo con teclado y anunciado por lector de pantalla.
 
-- [ ] **UX-104 · 🟡 Atajos reales y documentados**
+- [x] **UX-104 · 🟡 Atajos reales y documentados** — ✅ 2026-10-04, PR #24 (README "Atajos de teclado" con los aceleradores reales)
   - **Ubicación:** `AppBar.tsx:61-64`, `useKeyboardShortcuts.ts`
   - **Acción:** exponer/alinear atajos (DevTools, zoom, fullscreen) con los roles nativos y mostrarlos en la UI (p. ej. junto al ítem).
   - **Aceptación:** todo atajo visible o documentado coincide con el comportamiento real.
@@ -160,27 +160,27 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 2 — Design system y consistencia visual
 > Objetivo: una sola fuente de verdad visual. Base: `index.css` (tokens shadcn) + `components/ui`.
 
-- [ ] **UX-201 · 🔴 Migrar colores crudos a tokens semánticos**
+- [x] **UX-201 · 🔴 Migrar colores crudos a tokens semánticos** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `AppBar.tsx:85` (`bg-slate-800`), `MenuHandler.tsx:28-29`, `LiveTimer.tsx:54` (`text-red-500`), `TotalTimeDay.tsx:131-135`, `TimeLogsTable.tsx:186,193,776,783`, `NavBar.tsx:66,115-116`, `WorkTimeForm.tsx:359-362`, diálogos Pull/Import
   - **Acción:** reemplazar por `background/foreground/card/muted/destructive/success` (agregar tokens `success`/`warning` si faltan en `index.css`); badges de estado como variantes de un componente único.
   - **Aceptación:** grep sin `bg-slate-800`, `text-red-500`, `emerald-*`, `amber-*` fuera de `index.css`/tokens.
 
-- [ ] **UX-202 · 🟡 Usar primitivas en vez de controles caseros**
+- [x] **UX-202 · 🟡 Usar primitivas en vez de controles caseros** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `WorkTimeForm.tsx:448-482` (switch), `TaskCommentDialog.tsx:226-327` (dropdowns)
   - **Acción:** `Switch` (o `role="switch"`), `DropdownMenu`/`Select`; `InsertDivider` con `Button`.
   - **Aceptación:** sin `<input type=checkbox>` con estilos `peer` ni dropdowns propios.
 
-- [ ] **UX-203 · 🟡 Componente de estado/badge y patrones únicos**
+- [x] **UX-203 · 🟡 Componente de estado/badge y patrones únicos** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `TimeLogsTable.tsx:185-198` y `:775-788` (badge duplicado), `TasksTable.tsx:131` vs `WorkTimeForm.tsx:1343,1361`
   - **Acción:** extraer `StatusBadge`; unificar spacing (`gap-*` sobre `space-y-*`), tamaño de iconos, `Button variant/size`.
   - **Aceptación:** un componente de badge; spacing consistente en tablas y forms.
 
-- [ ] **UX-204 · 🔴 Unificar las cuatro tablas**
+- [x] **UX-204 · 🔴 Unificar las cuatro tablas** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `TimeLogsTable.tsx:577-673`, `TasksTable.tsx:103-141`, `TypeTasksTable.tsx:60-73`, `DataTable.tsx:210-226`
-  - **Acción:** `TableToolbar` + `EmptyState` compartidos; un solo paradigma de edición inline (celda o fila, no ambos); traducir los estados de `DataTable`.
+  - **Acción:** `TableToolbar` + `EmptyState` compartidos; una implementación compartida de edición inline **por forma de dato** (fila para `TimeLogsTable`, celda para catálogos vía `DataTable`), no un único paradigma forzado; traducir los estados de `DataTable`.
   - **Aceptación:** un toolbar y un empty-state reutilizados; sin copy hardcodeado en inglés.
 
-- [ ] **UX-205 · 🟡 Repaso de contraste y tipografía**
+- [x] **UX-205 · 🟡 Repaso de contraste y tipografía** — ✅ 2026-10-04, PR #25
   - **Ubicación:** `NavBar.tsx:66` (`emerald-600`), `:116` (`amber-500`), `HomePage.tsx:610-617`
   - **Acción:** medir y ajustar a AA (≥4.5:1 en texto normal); fijar escala tipográfica y radios.
   - **Aceptación:** todos los textos normales ≥4.5:1 (verificado).
@@ -358,6 +358,9 @@ Antes de implementar la Fase 0:
 3. **Mapa de secciones** (UX-002): ¿cuántos ítems de primer nivel y cuáles? ¿`Catálogo` = Tasks + Types?
 
 4. **Tamaño mínimo de ventana** (UX-301): ¿fijamos `minWidth` (p. ej. 900px) o priorizamos un layout adaptable a ventanas chicas?
+
+5. **Edición inline de tablas** (UX-204): ¿un único paradigma (celda o fila) o uno por forma de dato?
+   - **Resuelto (2026-10-04):** implementación compartida por forma de dato — fila para `TimeLogsTable`, celda para catálogos.
 
 ---
 

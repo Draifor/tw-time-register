@@ -42,7 +42,7 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
           className="h-6 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden"
           placeholder="https://..."
         />
-        <button type="button" onClick={handleSave} className="text-green-600 hover:text-green-500">
+        <button type="button" onClick={handleSave} className="text-success hover:text-success/80">
           <Check className="h-3.5 w-3.5" />
         </button>
         <button type="button" onClick={handleCancel} className="text-muted-foreground hover:text-foreground">
@@ -115,7 +115,7 @@ function EstimatedTimeCell({ task, onSave }: { task: Task; onSave: (updated: Tas
           className="h-6 min-w-0 w-20 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden"
           placeholder="HH:MM"
         />
-        <button type="button" onClick={handleSave} className="text-green-600 hover:text-green-500">
+        <button type="button" onClick={handleSave} className="text-success hover:text-success/80">
           <Check className="h-3.5 w-3.5" />
         </button>
         <button type="button" onClick={handleCancel} className="text-muted-foreground hover:text-foreground">
@@ -158,14 +158,14 @@ function ProgressCell({ task }: { task: Task }) {
   const isOver = logged > estimated;
   const isWarning = !isOver && pct >= 80;
 
-  let barColor = 'bg-emerald-500';
-  if (isOver) barColor = 'bg-red-500';
-  else if (isWarning) barColor = 'bg-amber-500';
+  let barColor = 'bg-success';
+  if (isOver) barColor = 'bg-destructive';
+  else if (isWarning) barColor = 'bg-warning';
 
   return (
     <div className="space-y-1 min-w-[140px]">
       <div className="flex items-center justify-between text-xs">
-        <span className={isOver ? 'text-red-600 font-medium' : isWarning ? 'text-amber-600' : 'text-emerald-600'}>
+        <span className={isOver ? 'text-destructive font-medium' : isWarning ? 'text-warning' : 'text-success'}>
           {formatMinutesToHHMM(logged)} / {formatMinutesToHHMM(estimated)}
         </span>
         <span className="text-muted-foreground">{Math.round(pct)}%</span>
@@ -173,7 +173,7 @@ function ProgressCell({ task }: { task: Task }) {
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round(Math.min(100, pct))}%` }} />
       </div>
-      {isOver && <span className="text-[10px] text-red-500">Over time</span>}
+      {isOver && <span className="text-[10px] text-destructive">Over time</span>}
       {!isOver && estimated - logged > 0 && (
         <span className="text-[10px] text-muted-foreground">Margin: {formatMinutesToHHMM(estimated - logged)}</span>
       )}
@@ -304,7 +304,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
                 <div className="flex items-center gap-1.5">
                   {isOrphan && (
                     <span title="Sin tipo asignado">
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
                     </span>
                   )}
                   {typeTasks ? (

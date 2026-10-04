@@ -502,9 +502,7 @@ export default function SettingsPage() {
           {twTestResult && (
             <div
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
-                twTestResult.success
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-destructive/10 text-destructive'
+                twTestResult.success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
               }`}
             >
               {twTestResult.success ? (

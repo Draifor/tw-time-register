@@ -7,21 +7,23 @@ import {
   Send,
   CheckCircle2,
   Clock,
-  AlertCircle,
   Pencil,
   X,
   Check,
   Trash2,
   Copy,
-  Search,
   SlidersHorizontal,
   ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { StatusBadge } from './ui/status-badge';
+import { EmptyState, ErrorState } from './ui/empty-state';
+import { TableToolbar, TableToolbarSearch } from './ui/table-toolbar';
 import { Skeleton } from './ui/skeleton';
 import Combobox from './ui/combobox';
+import { Switch } from './ui/switch';
 import TimePickerInput from './ui/time-picker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import useTimeLogs from '../hooks/useTimeLogs';
@@ -48,7 +50,7 @@ interface EditData {
 import { parseDuration, formatDuration } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
-import { getTaskProgressInfo } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusDotColor } from '../lib/progressUtils';
 import { Task } from '../../types/tasks';
 
 export interface TimeLogRowProps {
@@ -117,11 +119,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
         <div className="flex items-start gap-2 max-w-[260px]">
           {progress && (
             <div
-              className="mt-1.5 w-2 h-2 rounded-full shrink-0"
-              style={{
-                backgroundColor:
-                  progress.status === 'overtime' ? '#ef4444' : progress.status === 'warning' ? '#f59e0b' : '#10b981'
-              }}
+              className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(progress.status)}`}
               title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
             />
           )}
@@ -183,18 +181,15 @@ export const TimeLogRow = React.memo(function TimeLogRow({
       </td>
       <td className="px-4 py-3 text-center">
         {entry.isSent ? (
-          <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-500/20">
+          <StatusBadge variant="success">
             <CheckCircle2 className="h-3 w-3" />
             {t('common.sent')}
-          </Badge>
+          </StatusBadge>
         ) : (
-          <Badge
-            variant="outline"
-            className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-          >
+          <StatusBadge variant="warning">
             <Clock className="h-3 w-3" />
             {t('common.pending')}
-          </Badge>
+          </StatusBadge>
         )}
       </td>
       <td className="px-4 py-3 text-center">
@@ -557,68 +552,55 @@ function TimeLogsTable() {
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-destructive p-4">
-        <AlertCircle className="h-5 w-5" />
-        <span>{String((error as Error)?.message || 'Error loading time logs')}</span>
-      </div>
+      <ErrorState
+        title={t('table.errorTitle')}
+        message={String((error as Error)?.message || t('common.errorOccurred'))}
+      />
     );
   }
 
   if (data.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-        <Clock className="h-12 w-12 opacity-30" />
-        <p className="text-lg">{t('timeLogs.noTimeLogs')}</p>
-        <p className="text-sm">{t('timeLogs.createEntry')}</p>
-      </div>
-    );
+    return <EmptyState icon={Clock} title={t('timeLogs.noTimeLogs')} description={t('timeLogs.createEntry')} />;
   }
 
   return (
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
+        <TableToolbar>
           {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t('timeLogs.searchPlaceholder')}
-              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-hidden focus:ring-1 focus:ring-ring"
-            />
+          <TableToolbarSearch value={search} onChange={setSearch} placeholder={t('timeLogs.searchPlaceholder')} />
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Filter toggle */}
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5 shrink-0"
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              {t('timeLogs.filters')}
+              {hasActiveFilters && (
+                <span className="ml-0.5 rounded-full bg-primary text-primary-foreground w-4 h-4 text-xs flex items-center justify-center">
+                  {[search, filterTask, filterDateFrom, filterDateTo].filter(Boolean).length}
+                </span>
+              )}
+            </Button>
+            {/* Sync button */}
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={handleSyncAll}
+              disabled={syncingAll || pendingCount === 0}
+            >
+              {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {`Sync ${pendingCount}`}
+            </Button>
+            {/* Pull from TW button */}
+            <PullFromTWDialog />
           </div>
-          {/* Filter toggle */}
-          <Button
-            variant={showFilters ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5 shrink-0"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            {t('timeLogs.filters')}
-            {hasActiveFilters && (
-              <span className="ml-0.5 rounded-full bg-primary text-primary-foreground w-4 h-4 text-xs flex items-center justify-center">
-                {[search, filterTask, filterDateFrom, filterDateTo].filter(Boolean).length}
-              </span>
-            )}
-          </Button>
-          {/* Sync button */}
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-2 shrink-0"
-            onClick={handleSyncAll}
-            disabled={syncingAll || pendingCount === 0}
-          >
-            {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {`Sync ${pendingCount}`}
-          </Button>
-          {/* Pull from TW button */}
-          <PullFromTWDialog />
-        </div>
+        </TableToolbar>
 
         {/* Expanded filters */}
         {showFilters && (
@@ -760,31 +742,24 @@ function TimeLogsTable() {
                     </td>
                     {/* Billable */}
                     <td className="px-2 py-2 text-center">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editData.isBillable}
-                          onChange={(e) => setEditData((d) => ({ ...d, isBillable: e.target.checked }))}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 rounded-full border border-input bg-muted peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-background after:shadow-sm after:transition-all after:duration-200 peer-checked:after:translate-x-4" />
-                      </label>
+                      <Switch
+                        checked={editData.isBillable}
+                        onCheckedChange={(v) => setEditData((d) => ({ ...d, isBillable: v }))}
+                        aria-label={t('common.billable')}
+                      />
                     </td>
-                    {/* Status — unchanged */}
+                    {/* Status */}
                     <td className="px-4 py-2 text-center">
                       {entry.isSent ? (
-                        <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                        <StatusBadge variant="success">
                           <CheckCircle2 className="h-3 w-3" />
                           {t('common.sent')}
-                        </Badge>
+                        </StatusBadge>
                       ) : (
-                        <Badge
-                          variant="outline"
-                          className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-                        >
+                        <StatusBadge variant="warning">
                           <Clock className="h-3 w-3" />
                           {t('common.pending')}
-                        </Badge>
+                        </StatusBadge>
                       )}
                     </td>
                     {/* Save / Cancel / Delete */}
@@ -796,7 +771,7 @@ function TimeLogsTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700"
+                                className="h-8 w-8 p-0 text-success hover:text-success/80"
                                 disabled={savingEdit}
                                 onClick={() => handleSaveEdit(entry)}
                               >

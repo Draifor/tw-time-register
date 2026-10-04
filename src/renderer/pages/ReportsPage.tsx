@@ -10,7 +10,7 @@ import useDebouncedValue from '../hooks/useDebouncedValue';
 import { Skeleton } from '../components/ui/skeleton';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
-import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
+import { getTaskProgressInfo, getStatusDotColor, formatMinutesToHHMM } from '../lib/progressUtils';
 import { Task } from '../../types/tasks';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -337,32 +337,17 @@ function ReportsPage() {
                       <tr key={row.taskName} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3 max-w-[280px]">
                           <div className="flex items-center gap-2">
-                            <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{
-                                backgroundColor:
-                                  status === 'overtime'
-                                    ? '#ef4444'
-                                    : status === 'warning'
-                                      ? '#f59e0b'
-                                      : status === 'on-time'
-                                        ? '#10b981'
-                                        : '#a1a1aa'
-                              }}
-                            />
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(status)}`} />
                             <div className="font-medium truncate" title={row.taskName}>
                               {row.taskName}
                             </div>
                           </div>
-                          {/* mini progress bar */}
+                          {/* mini share bar — status-colored; uses the visible
+                              status indicator color so no-estimate stays legible */}
                           <div className="mt-1 h-1 w-full rounded-full bg-muted">
                             <div
-                              className="h-1 rounded-full"
-                              style={{
-                                width: `${barWidth}%`,
-                                backgroundColor:
-                                  status === 'overtime' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#10b981'
-                              }}
+                              className={`h-1 rounded-full ${getStatusDotColor(status)}`}
+                              style={{ width: `${barWidth}%` }}
                             />
                           </div>
                         </td>
@@ -387,10 +372,10 @@ function ReportsPage() {
                                 variant="outline"
                                 className={`text-[10px] ${
                                   status === 'overtime'
-                                    ? 'text-red-600 border-red-300 dark:text-red-400 dark:border-red-800'
+                                    ? 'text-destructive border-destructive/40'
                                     : status === 'warning'
-                                      ? 'text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700'
-                                      : 'text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-800'
+                                      ? 'text-warning border-warning/40'
+                                      : 'text-success border-success/40'
                                 }`}
                               >
                                 {status === 'overtime'
@@ -406,19 +391,14 @@ function ReportsPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {row.billableMinutes > 0 ? (
-                            <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                              {formatDuration(row.billableMinutes)}
-                            </span>
+                            <span className="font-mono text-success">{formatDuration(row.billableMinutes)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {pct === 100 ? (
-                            <Badge
-                              variant="outline"
-                              className="text-emerald-600 border-emerald-300 dark:text-emerald-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-success border-success/40 gap-1">
                               <CheckCircle2 className="h-3 w-3" />
                               {t('common.sent')}
                             </Badge>
@@ -428,10 +408,7 @@ function ReportsPage() {
                               {t('common.pending')}
                             </Badge>
                           ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-amber-600 border-amber-300 dark:text-amber-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-warning border-warning/40 gap-1">
                               <CircleDot className="h-3 w-3" />
                               {pct}%
                             </Badge>
@@ -484,10 +461,7 @@ function ReportsPage() {
                         <td className="px-4 py-3 text-center font-mono font-medium">{formatDuration(row.minutes)}</td>
                         <td className="px-4 py-3 text-center">
                           {pct === 100 ? (
-                            <Badge
-                              variant="outline"
-                              className="text-emerald-600 border-emerald-300 dark:text-emerald-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-success border-success/40 gap-1">
                               <CheckCircle2 className="h-3 w-3" />
                               {t('common.sent')}
                             </Badge>
@@ -497,10 +471,7 @@ function ReportsPage() {
                               {t('common.pending')}
                             </Badge>
                           ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-amber-600 border-amber-300 dark:text-amber-400 gap-1"
-                            >
+                            <Badge variant="outline" className="text-warning border-warning/40 gap-1">
                               <CircleDot className="h-3 w-3" />
                               {pct}%
                             </Badge>

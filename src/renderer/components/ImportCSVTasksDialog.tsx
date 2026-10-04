@@ -118,11 +118,11 @@ function ImportCSVTasksDialog() {
             <p className="text-sm text-muted-foreground">{t('tasks.importCSV.uploadHint')}</p>
 
             <div className="rounded-md border bg-muted/50 px-4 py-3 font-mono text-sm">
-              <span className="text-blue-500">TareaTW</span>
+              <span className="text-info">TareaTW</span>
               <span className="text-muted-foreground">, </span>
-              <span className="text-green-500">Tipo</span>
+              <span className="text-success">Tipo</span>
               <span className="text-muted-foreground">, </span>
-              <span className="text-orange-500">Link</span>
+              <span className="text-warning">Link</span>
             </div>
 
             <p className="text-sm text-muted-foreground">{t('tasks.importCSV.typeAutoCreate')}</p>
@@ -143,7 +143,7 @@ function ImportCSVTasksDialog() {
             </div>
 
             {parseError && (
-              <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-700 dark:text-yellow-400">
+              <div className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{parseError}</span>
               </div>
@@ -165,7 +165,7 @@ function ImportCSVTasksDialog() {
             </div>
 
             {parseError && (
-              <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-700 dark:text-yellow-400">
+              <div className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{parseError}</span>
               </div>
@@ -220,9 +220,9 @@ function ImportCSVTasksDialog() {
           <div className="space-y-4 py-2">
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border bg-green-500/10 px-4 py-3">
+              <div className="rounded-lg border bg-success/10 px-4 py-3">
                 <p className="text-xs text-muted-foreground">{t('tasks.importCSV.createdLabel')}</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{result.created}</p>
+                <p className="text-2xl font-bold text-success">{result.created}</p>
               </div>
               <div className="rounded-lg border bg-muted/50 px-4 py-3">
                 <p className="text-xs text-muted-foreground">{t('tasks.importCSV.skippedLabel')}</p>
@@ -260,7 +260,7 @@ function ImportCSVTasksDialog() {
             )}
 
             {result.created > 0 && result.errors.length === 0 && (
-              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+              <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle2 className="h-4 w-4" />
                 {t('tasks.importCSV.allSuccess')}
               </div>

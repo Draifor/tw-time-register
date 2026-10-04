@@ -32,7 +32,7 @@ function AppBar() {
 
   return (
     <div className="fixed top-0 w-full z-50">
-      <div className="bg-slate-800 h-8 flex justify-between items-center draggable text-white">
+      <div className="bg-card text-card-foreground border-b border-border h-8 flex justify-between items-center draggable">
         <div className="inline-flex items-center gap-1 pl-2">
           <img className="h-5 w-5" src={Icon} alt="TW Time Register" />
           <span className="text-sm font-medium">TW Time Register</span>
@@ -41,34 +41,34 @@ function AppBar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="undraggable w-10 h-full flex items-center justify-center hover:bg-slate-700 transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                className="undraggable w-10 h-full flex items-center justify-center hover:bg-accent transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                 aria-label={t('menu.help.help')}
               >
                 <HelpCircle className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleCheckForUpdates}>{t('menu.help.checkForUpdates')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAboutOpen(true)}>{t('menu.help.about')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleCheckForUpdates}>{t('menu.help.checkForUpdates')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAboutOpen(true)}>{t('menu.help.about')}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button
             onClick={window.Main.Minimize}
-            className="undraggable w-12 h-full flex items-center justify-center hover:bg-slate-700 transition-colors"
+            className="undraggable w-12 h-full flex items-center justify-center hover:bg-accent transition-colors"
             aria-label="Minimize"
           >
             <Minus className="h-4 w-4" />
           </button>
           <button
             onClick={handleToggle}
-            className="undraggable w-12 h-full flex items-center justify-center hover:bg-slate-700 transition-colors"
+            className="undraggable w-12 h-full flex items-center justify-center hover:bg-accent transition-colors"
             aria-label={isMaximize ? 'Restore' : 'Maximize'}
           >
             {isMaximize ? <Maximize2 className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
           </button>
           <button
             onClick={window.Main.Close}
-            className="undraggable w-12 h-full flex items-center justify-center hover:bg-red-500 transition-colors"
+            className="undraggable w-12 h-full flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

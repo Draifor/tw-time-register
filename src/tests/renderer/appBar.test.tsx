@@ -82,4 +82,32 @@ describe('AppBar (UX-101)', () => {
 
     expect(await screen.findByText('About TW Time Register')).toBeInTheDocument();
   });
+
+  // R3-001 follow-up: prove the Help items activate from the keyboard, not only
+  // from a pointer click. Opening via pointer parks focus on the menu content,
+  // so the keyboard path is ArrowDown (focus the item) then Enter/Space. Radix
+  // dispatches a native click on selection, which the items' onSelect handles.
+  it('runs a manual update check with the keyboard (ArrowDown + Enter)', async () => {
+    const user = userEvent.setup();
+    render(<AppBar />);
+
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    await screen.findByRole('menuitem', { name: 'Check for updates' });
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(sessionStorage.getItem('manualUpdateCheck')).toBe('1');
+    expect(checkForUpdatesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the About dialog with the keyboard (ArrowDown + Space)', async () => {
+    const user = userEvent.setup();
+    render(<AppBar />);
+
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    await screen.findByRole('menuitem', { name: 'Check for updates' });
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    await user.keyboard(' ');
+
+    expect(await screen.findByText('About TW Time Register')).toBeInTheDocument();
+  });
 });
