@@ -74,9 +74,9 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
   - Edición inline **por forma de dato** (RESUELTA): fila en `TimeLogsTable`, celda en `DataTable` (§Decisiones).
   - Aceptación: un toolbar y un empty-state reutilizados; sin copy inglés hardcodeado.
 
-- [ ] **T5 · Contraste y tipografía** (UX-205)
-  - Ajustar `NavBar` (amber/emerald), `LiveTimer` (red), `TotalTimeDay`, `HomePage:610-617`.
-  - Aceptación: texto normal ≥4.5:1 en los focos listados (verificado con cálculo de contraste).
+- [x] **T5 · Contraste y tipografía** (UX-205)
+   - Ajustar `NavBar` (amber/emerald), `LiveTimer` (red), `TotalTimeDay`, `HomePage:610-617`.
+   - Aceptación: texto normal ≥4.5:1 en los focos listados (verificado con cálculo de contraste y guard determinista).
 
 ## Criterios de aceptación (global)
 
@@ -96,6 +96,12 @@ toolbar/empty-state) y unificar las cuatro tablas. Base: `src/renderer/index.css
   edición **por fila** en `TimeLogsTable` (campos acoplados + duración derivada) y edición **por celda**
   en los catálogos (`TasksTable`/`TypeTasksTable` vía `DataTable`). Ambas salen de una misma capa `ui/`,
   sin reinvención por tabla. No se fuerza un único paradigma para las cuatro.
+- **T5 tokens (doble rol surface/text):** RESUELTA (2026-10-04) — cada token semántico se usa sobre todo
+  como **texto** (`text-{token}` sobre fondo neutro o `bg-{token}/10`), no como superficie sólida. Por eso
+  se calibran los valores para AA **como texto** y el `-foreground` pareado sigue cumpliendo sobre la
+  superficie sólida. En `.dark`, `destructive` adopta la convención ya vigente para `success/warning/info`
+  (token claro + `-foreground` oscuro), en vez de ser el único token oscuro con foreground claro.
+  `--muted-foreground` light se oscurece levemente (`46.9%` → `44%`) para pasar sobre `bg-muted`.
 
 ## Evidencia / progreso
 
@@ -173,8 +179,36 @@ _(se completa por tarea)_
     (baseline). **`pnpm type-check`:** exit 0. Gate re-ejecutado por el parent (spot check), no solo por el writer.
   - **Pendiente de ojo:** paridad visual (spacing del toolbar, `EmptyState py-12` vs `py-16` previo en
     `TimeLogsTable`, icono de búsqueda nuevo en `DataTable`); no hay E2E de render.
-  - **Fuera de T4:** `Sync ${pendingCount}` en `TimeLogsTable` sigue hardcodeado (pre-existente; no estaba en
-    la lista de copy de T4).
+   - **Fuera de T4:** `Sync ${pendingCount}` en `TimeLogsTable` sigue hardcodeado (pre-existente; no estaba en
+     la lista de copy de T4).
+
+- **T5** — commit `fix(ux): enforce AA contrast on semantic tokens and guard it (UX-205)`.
+   - **Ruta:** delegated direct (1 writer). Trigger: archivo de test nuevo no trivial + cambio de tokens.
+   - **TDD (RED→GREEN):** guard `src/tests/renderer/contrastTokens.test.ts` **escrito y corrido antes** del cambio.
+     RED = **21 aserciones en rojo**: `success` light 2.59, `warning` light 3.16, `destructive` light 3.76,
+     `info` en `bg-info/10` 4.49, `muted-foreground` light sobre `bg-muted` 4.34, y `destructive` dark 2.00.
+     Luego GREEN.
+   - **Guard:** parsea `:root`/`.dark` de `index.css` resuelto por `import.meta.url` (no `process.cwd()`,
+     evita el hallazgo R3-GUARD-CWD), calcula WCAG (luminancia relativa + ratio) y `blend` alpha para el
+     modelo `bg-{token}/10`; afirma ≥4.5 para token-como-texto (bg/card/muted/badge), `-foreground` sobre
+     superficie sólida y `muted-foreground` sobre muted. 42 tests.
+   - **Tokens ajustados (`index.css`), light:** `destructive 0 84.2% 60.2%→0 74% 42%`,
+     `success 160 84% 39%→24%`, `warning 32 95% 44%→30%`, `info 221 83% 53%→45%`,
+     `muted-foreground 215.4 16.3% 46.9%→44%`. **dark:** `destructive 0 62.8% 30.6%→0 91% 71%` y
+     `destructive-foreground 210 40% 98%→222 47% 11%` (convención success/warning/info dark).
+   - **Ratios verificados (mín. del set token-como-texto):** light destructivo 5.41, success 5.22,
+     warning 5.27, info 5.81; dark destructivo 5.32; `muted-foreground` light sobre muted 4.81.
+     Pares `-foreground` sobre sólido: 5.76–6.50 (light), 6.50–10.56 (dark).
+   - **`pnpm test`:** 49 archivos, **367 tests** verdes (42 nuevos). **`pnpm lint`:** 0 errores, 83 warnings
+     (baseline). **`pnpm type-check`:** exit 0. Guard re-ejecutado por el parent (spot check):
+     `pnpm exec vitest run src/tests/renderer/contrastTokens.test.ts` → 42/42.
+   - **Nota de proceso:** `pnpm test -- <filtro>` de este repo reenvía `--` literal a `vitest run` y corre
+     toda la suite; para un archivo puntual usar `pnpm exec vitest run <path>`.
+   - **Fuera de T5 (deuda detectada, no tocada):** dots de estado con hex crudo inline
+     (`#ef4444`/`#f59e0b`/`#10b981`/`#a1a1aa`) en `HomePage.tsx:467-479,591-603`,
+     `ReportsPage.tsx:340-351,359-365`, `TimeLogsTable.tsx:121-128`, `ui/combobox.tsx:228-234`.
+     Son el mismo paleta cruda que T2 debía eliminar (el grep de aceptación solo miraba clases).
+     Candidato a follow-up small task (UX-201 remanente).
 
 ## Review nativa (RDD on) — slice T1
 
