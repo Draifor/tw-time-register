@@ -2,7 +2,7 @@
 
 - **Rama:** `feat/ux-fase-3-layout` (base `feat/ux-fase-2-design-system` / PR #25 — **stacked**: Fase 3 toca `AppBar`/`NavBar`/tablas que Fase 2 modificó. Al mergear #25, rebasar sobre `staging`).
 - **Roadmap:** [`docs/UX-ROADMAP.md`](../../docs/UX-ROADMAP.md) §Fase 3 (UX-301..UX-307)
-- **Estado:** en progreso
+- **Estado:** `[x]` tareas T1–T4 completas (UX-301..UX-307); **pendiente: PR** (stacked sobre #25 o tras mergear #25). Review nativa: `medium` / `under_budget`, sin transacción.
 - **Runner de tests:** `pnpm test` (Vitest) · verificación: `pnpm test`, `pnpm lint`, `pnpm type-check`
 - **Estrategia de entrega:** `single-pr` a `staging` (pronóstico ~190 líneas autoradas, por debajo del presupuesto de review ~400).
 
@@ -123,3 +123,7 @@ el NavBar entra a 900px y las tablas no fuerzan scroll horizontal en el tamaño 
   - **Pendiente de ojo:** doble-click en la titlebar frameless (manual, sin E2E).
 
 - **Gate de fase (tras T1–T4)** — `pnpm test`: 51 archivos, **378 tests** verdes (4 nuevos); `pnpm lint`: 0 errores, 83 warnings (baseline); `pnpm type-check`: exit 0.
+
+## Review nativa (RDD on) — evaluación Fase 3
+
+- **Assess:** `medium` / `under_budget` (10 paths / 269 líneas cambiadas vs. boundary `23fde1c`; presupuesto ~400) → `review_due: false`, sin transacción. Razón de riesgo: `executable_change` (`src/main/index.ts`). El slice queda por debajo del presupuesto; no dispara review por sí solo.
