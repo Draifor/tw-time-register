@@ -20,8 +20,33 @@ function AppBar() {
     }
   }, [aboutOpen, appVersion]);
 
+  // Keep the Maximize/Restore icon bound to the real BrowserWindow state, so
+  // native transitions (double-click on the frameless title bar, OS shortcuts)
+  // stay in sync instead of relying only on the button's own click.
+  useEffect(() => {
+    let active = true;
+
+    window.Main.isMaximized()
+      .then((maximized) => {
+        if (active) setMaximize(maximized);
+      })
+      .catch(() => {
+        // Keep the default state if the query fails.
+      });
+
+    const handleMaximizeChange = (maximized: unknown) => {
+      if (active) setMaximize(Boolean(maximized));
+    };
+
+    window.Main.on('window:maximized', handleMaximizeChange);
+
+    return () => {
+      active = false;
+      window.Main.off('window:maximized', handleMaximizeChange);
+    };
+  }, []);
+
   const handleToggle = () => {
-    setMaximize(!isMaximize);
     window.Main.Maximize();
   };
 

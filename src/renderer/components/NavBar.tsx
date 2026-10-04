@@ -29,7 +29,7 @@ function NavBar() {
   ];
 
   return (
-    <div className="sticky top-14 z-40 border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80">
+    <div className="sticky top-8 z-40 border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80">
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-6">
           <h1 className="text-lg font-semibold">TW Time Register</h1>
@@ -42,10 +42,12 @@ function NavBar() {
                   <Button
                     variant={isActive ? 'secondary' : 'ghost'}
                     size="sm"
+                    aria-label={item.label}
+                    title={item.label}
                     className={cn('gap-2', isActive && 'bg-secondary')}
                   >
                     <Icon className="h-4 w-4" />
-                    {item.label}
+                    <span className="hidden lg:inline">{item.label}</span>
                   </Button>
                 </Link>
               );
@@ -74,7 +76,7 @@ function NavBar() {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                       </span>
-                      <span>{username}</span>
+                      <span className="max-w-[12rem] truncate">{username}</span>
                     </>
                   ) : (
                     <>

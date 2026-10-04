@@ -14,7 +14,7 @@ export interface TableToolbarProps {
  * right-aligned actions. Override the justification with `className`.
  */
 function TableToolbar({ children, className }: TableToolbarProps) {
-  return <div className={cn('flex items-center justify-between gap-2', className)}>{children}</div>;
+  return <div className={cn('flex flex-wrap items-center justify-between gap-2', className)}>{children}</div>;
 }
 
 export interface TableToolbarSearchProps {
@@ -41,7 +41,7 @@ function TableToolbarSearch({
   className
 }: TableToolbarSearchProps) {
   return (
-    <div className={cn('relative flex-1 max-w-sm', className)}>
+    <div className={cn('relative min-w-0 flex-1 max-w-sm', className)}>
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <Input
         type="text"

@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `En progreso` — Fases 0–2 implementadas (PR #23, #24, #25); Fase 3 en curso
+- **Estado general:** `En progreso` — Fases 1–3 implementadas (PR #24, #25, #26); Fase 0 (IA/landing) y Fases 4–6 pendientes
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -190,37 +190,37 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 3 — Layout, ventana y responsive
 > Objetivo: el shell deja de romperse en tamaños chicos y todo encaja.
 
-- [ ] **UX-301 · 🔴 Tamaño mínimo de ventana (o responsive real)**
+- [x] **UX-301 · 🔴 Tamaño mínimo de ventana (o responsive real)** — ✅ 2026-10-04, PR #26 (mínimo 900×600; default 1000×640)
   - **Ubicación:** `src/main/index.ts:53-67`
   - **Acción:** `minWidth: 900, minHeight: 600` (ajustable) o hacer el layout realmente adaptable.
   - **Aceptación:** la ventana no se puede reducir a un tamaño que rompa el layout.
 
-- [ ] **UX-302 · 🟡 Corregir solape AppBar/NavBar**
+- [x] **UX-302 · 🟡 Corregir solape AppBar/NavBar** — ✅ 2026-10-04, PR #26 (reserva h-8 real; NavBar top-8)
   - **Ubicación:** `App.tsx:31`, `AppBar.tsx:84-85`, `NavBar.tsx:32`
   - **Acción:** reservar la altura real del AppBar (medir y fijar, o hacerlo auto), ajustar `top-*` del NavBar.
   - **Aceptación:** sin superposición ni salto de 4px en ningún zoom.
 
-- [ ] **UX-303 · 🟡 Alinear anchos y scaffold**
+- [x] **UX-303 · 🟡 Alinear anchos y scaffold** — ✅ 2026-10-04, PR #26 (max-w-7xl compartido; min-h-screen + flex-1)
   - **Ubicación:** `App.tsx:37` (`container`), `NavBar.tsx:33` (`max-w-7xl`)
   - **Acción:** un único ancho máximo compartido; `min-h-screen` + `flex-1` en el contenido; opcional footer.
   - **Aceptación:** bordes de NavBar y contenido alineados.
 
-- [ ] **UX-304 · 🟡 NavBar responsive**
+- [x] **UX-304 · 🟡 NavBar responsive** — ✅ 2026-10-04, PR #26 (icon-only < lg con aria-label)
   - **Ubicación:** `NavBar.tsx:33-54`
   - **Acción:** permitir wrap/overflow o colapsar a un menú compacto por debajo del breakpoint.
   - **Aceptación:** a 900px no hay recorte ni overflow horizontal.
 
-- [ ] **UX-305 · 🟡 Toolbars y cards a 800px**
+- [x] **UX-305 · 🟡 Toolbars y cards a 800px** — ✅ 2026-10-04, PR #26 (toolbar wrap; TimeLogs min-w 840)
   - **Ubicación:** `TimeLogsTable.tsx:581-620,677` (`min-w-[960px]`), `TasksTable.tsx:103-140`, `WorkTimeForm.tsx:305-438`
   - **Acción:** toolbars con wrap; revisar `min-w` y anchos fijos de entradas.
   - **Aceptación:** usable y sin scroll horizontal forzado en el tamaño mínimo.
 
-- [ ] **UX-306 · ⚪ Sincronizar icono Maximize**
+- [x] **UX-306 · ⚪ Sincronizar icono Maximize** — ✅ 2026-10-04, PR #26 (evento window:maximized + isMaximized)
   - **Ubicación:** `AppBar.tsx:10,23-26`
   - **Acción:** escuchar `maximize`/`unmaximize` (o consultar estado real) en vez de estado local.
   - **Aceptación:** el icono refleja siempre el estado real (incluido doble-click en la barra).
 
-- [ ] **UX-307 · ⚪ Scaffold mínimo**
+- [x] **UX-307 · ⚪ Scaffold mínimo** — ✅ 2026-10-04, PR #26 (min-h-screen + fondo consistente)
   - **Ubicación:** `App.tsx:29`
   - **Acción:** `min-h-screen`; fondo consistente en pantallas cortas.
   - **Aceptación:** sin "banda" de fondo distinto en páginas cortas.

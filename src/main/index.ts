@@ -15,8 +15,11 @@ import { buildApplicationMenuTemplate } from './menu';
 // Equivalent to the deprecated `electron-is-dev` package, without the dependency.
 const isDev = !app.isPackaged;
 
-const height = 600;
-const width = 800;
+const height = 640;
+const width = 1000;
+// Floor that keeps the shell (AppBar + NavBar + tables) from breaking.
+const minWidth = 900;
+const minHeight = 600;
 const windowStatePath = join(app.getPath('userData'), 'window-state.json');
 let mainWindow: BrowserWindow | null = null;
 
@@ -56,6 +59,8 @@ function createWindow() {
     y,
     width,
     height,
+    minWidth,
+    minHeight,
     //  change to false to use AppBar
     frame: false,
     show: false,
