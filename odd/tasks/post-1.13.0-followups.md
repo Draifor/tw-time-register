@@ -85,3 +85,10 @@ explicit decision.
   TS 5→7, Vite 7→8, Tailwind 3.4→4, better-sqlite3 11→13, ESLint 9→10 + @eslint-react, Vitest 4→5,
   111/108→285 tests). **M2 done** (`3e7e96f`): `.github/workflows/ci.yml` runs
   `pnpm install --frozen-lockfile --ignore-scripts` on `pull_request`; YAML parse-validated with `js-yaml`.
+- 2026-10-04 — Native review could not close: after consent (`granted`) and transaction creation
+  (lineage `review-309715685d6c8833`, 4 lenses), `review.status` returned `operation_timeout` /
+  `manual_action_required` twice (120 s and 300 s) — the known Gentle AI defect
+  [#4655](https://github.com/Gentleman-Programming/gentle-ai/issues/4655) (open, no published fix). The
+  review locks were orphaned, not held. **Per the user's decision, M1 + M2 are delivered under ordinary
+  policy without review closure.** M3 remains pending its own decision (needs a version newer than `1.13.0`
+  or a disposable VM).
