@@ -421,36 +421,12 @@ const es = {
       sunday: 'Domingo'
     },
     menu: {
-      file: {
-        file: 'Archivo',
-        new: 'Nuevo',
-        open: 'Abrir',
-        save: 'Guardar',
-        export: 'Exportar'
-      },
-      edit: {
-        edit: 'Editar',
-        undo: 'Deshacer',
-        redo: 'Rehacer',
-        cut: 'Cortar',
-        copy: 'Copiar',
-        paste: 'Pegar'
-      },
-      view: {
-        view: 'Ver',
-        toggleDevTools: 'Toggle Dev Tools',
-        zoomIn: 'Zoom +',
-        zoomOut: 'Zoom -',
-        fullscreen: 'Pantalla Completa'
-      },
       help: {
         help: 'Ayuda',
-        documentation: 'Documentación',
         checkForUpdates: 'Buscar actualizaciones',
         about: 'Acerca de',
         aboutDialogTitle: 'Acerca de TW Time Register',
         aboutDesc: 'Aplicación de escritorio para registrar y sincronizar tiempos de trabajo con TeamWork.',
-        versionLabel: 'Versión',
         builtWith: 'Construido con Electron + React'
       }
     },

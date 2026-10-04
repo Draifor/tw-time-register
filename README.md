@@ -165,6 +165,34 @@ worktime_drafts (draft_key, payload, updated_at)
 
 ---
 
+## ⌨️ Atajos de teclado
+
+El menú nativo de Electron expone estos aceleradores. En macOS se usa `Cmd`; en Windows/Linux, `Ctrl`.
+
+### Edición
+
+| Atajo | Acción |
+| --- | --- |
+| `Ctrl/Cmd + Z` | Deshacer |
+| `Ctrl/Cmd + Shift + Z` | Rehacer |
+| `Ctrl/Cmd + X` | Cortar |
+| `Ctrl/Cmd + C` | Copiar |
+| `Ctrl/Cmd + V` | Pegar |
+| `Ctrl/Cmd + A` | Seleccionar todo |
+
+### Vista
+
+| Atajo | Acción |
+| --- | --- |
+| `Ctrl/Cmd + +` | Acercar |
+| `Ctrl/Cmd + -` | Alejar |
+| `Ctrl/Cmd + 0` | Restablecer zoom |
+| `F11` (Windows/Linux) · `Ctrl + Cmd + F` (macOS) | Pantalla completa |
+
+> **Solo en desarrollo:** `Ctrl/Cmd + R` recarga, `Ctrl/Cmd + Shift + R` fuerza la recarga y `Ctrl/Cmd + Shift + I` (`Alt + Cmd + I` en macOS) abre las DevTools. El menú nativo omite estas acciones en las builds de producción.
+
+---
+
 ## Draft de WorkTime (Persistencia)
 
 - **Fuente de verdad**: SQLite (`worktime_drafts`), no `localStorage`.

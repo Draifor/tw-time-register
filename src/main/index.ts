@@ -3,13 +3,14 @@ import { join } from 'path';
 import fs from 'fs';
 
 // Packages
-import { BrowserWindow, app, nativeTheme, dialog } from 'electron';
+import { BrowserWindow, app, nativeTheme, dialog, Menu } from 'electron';
 import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc';
 import './database/database';
 import { runMigrations } from './database/migrations';
 import { armDbReadiness, markDbReady } from './database/dbReadiness';
 import { initAutoUpdater } from './updater';
+import { buildApplicationMenuTemplate } from './menu';
 
 // Equivalent to the deprecated `electron-is-dev` package, without the dependency.
 const isDev = !app.isPackaged;
@@ -126,6 +127,9 @@ app.whenReady().then(async () => {
     // Gate the DB before any IPC handler can reach it, paint the window first,
     // then run migrations and release the gate.
     armDbReadiness();
+    // Explicit minimal native menu: real edit/zoom/fullscreen roles, plus
+    // reload/DevTools only in development (UX-102).
+    Menu.setApplicationMenu(Menu.buildFromTemplate(buildApplicationMenuTemplate(process.platform === 'darwin', isDev)));
     createWindow();
     await runMigrations();
     markDbReady();
