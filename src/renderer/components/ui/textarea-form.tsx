@@ -23,6 +23,10 @@ interface TextareaFieldProps {
 
 function TextareaField({ field, fieldState, className, baseStyles, rows, rest }: TextareaFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Stable id shared by the control and its error message so `aria-describedby`
+  // can point at the error element directly, matching the other form controls.
+  const errorId = `${field.name}-error`;
+  const hasError = Boolean(fieldState?.error);
 
   const adjustHeight = useCallback(() => {
     const element = textareaRef.current;
@@ -61,9 +65,16 @@ function TextareaField({ field, fieldState, className, baseStyles, rows, rest }:
         value={field.value}
         onChange={field.onChange}
         onBlur={field.onBlur}
+        id={field.name}
+        aria-invalid={hasError || undefined}
+        aria-describedby={hasError ? errorId : undefined}
         {...rest}
       />
-      {fieldState?.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+      {fieldState?.error && (
+        <p id={errorId} className="text-sm text-destructive mt-1">
+          {fieldState.error.message}
+        </p>
+      )}
     </div>
   );
 }

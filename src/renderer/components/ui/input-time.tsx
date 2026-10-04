@@ -10,6 +10,10 @@ interface InputTimeProps {
   name: string;
   rules?: RegisterOptions;
   options?: Partial<Options>;
+  id?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+  'aria-required'?: boolean;
 }
 
 interface FlatpickrInstance {
@@ -18,7 +22,17 @@ interface FlatpickrInstance {
   altInput?: HTMLInputElement | null;
 }
 
-function InputTime({ className, control, name, rules, options }: InputTimeProps) {
+function InputTime({
+  className,
+  control,
+  name,
+  rules,
+  options,
+  id,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
+  'aria-required': ariaRequired
+}: InputTimeProps) {
   const DateTimePickerAny = DateTimePicker as React.ComponentType<Record<string, unknown>>;
   const baseStyles =
     'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
@@ -110,8 +124,19 @@ function InputTime({ className, control, name, rules, options }: InputTimeProps)
   // field.onChange and field.value are wired through `options` and the setDate
   // effect above; leaving them off the DOM input keeps it uncontrolled so React
   // does not overwrite what flatpickr writes. `ref` is stripped from the spread
-  // too — it is re-pointed at the real input by the effect above.
-  const fieldProps = { ...field, onChange: undefined, value: undefined, ref: undefined };
+  // too — it is re-pointed at the real input by the effect above. Validation
+  // semantics (`id`, `aria-invalid`, `aria-describedby`, `aria-required`) are
+  // forwarded straight to flatpickr's input so assistive tech can announce them.
+  const fieldProps = {
+    ...field,
+    onChange: undefined,
+    value: undefined,
+    ref: undefined,
+    id: id ?? name,
+    'aria-invalid': ariaInvalid ? 'true' : undefined,
+    'aria-describedby': ariaDescribedBy,
+    'aria-required': ariaRequired ? 'true' : undefined
+  };
 
   return <DateTimePickerAny {...fieldProps} className={`${baseStyles} ${className || ''}`} options={stableOptions} />;
 }

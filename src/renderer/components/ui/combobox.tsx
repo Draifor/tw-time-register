@@ -14,7 +14,7 @@ interface Option {
   link?: string;
 }
 
-interface ComboboxProps {
+interface ComboboxProps extends React.AriaAttributes {
   name?: string;
   options: Option[];
   placeholder?: string;
@@ -26,9 +26,10 @@ interface ComboboxProps {
   className?: string;
   searchPlaceholder?: string;
   showProgress?: boolean;
+  id?: string;
 }
 
-interface ComboboxInnerProps {
+interface ComboboxInnerProps extends React.AriaAttributes {
   options: Option[];
   placeholder?: string;
   value?: Option | null;
@@ -36,6 +37,7 @@ interface ComboboxInnerProps {
   className?: string;
   searchPlaceholder?: string;
   showProgress?: boolean;
+  id?: string;
 }
 
 function ComboboxInner({
@@ -45,7 +47,8 @@ function ComboboxInner({
   onChange,
   className,
   searchPlaceholder = 'Search...',
-  showProgress = false
+  showProgress = false,
+  ...triggerProps
 }: ComboboxInnerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -143,10 +146,13 @@ function ComboboxInner({
 
   return (
     <div ref={containerRef} className={cn('relative w-full', className)} onKeyDown={handleKeyDown}>
-      {/* Trigger */}
+      {/* Trigger — receives the pass-through `aria-*`/`id` (validation
+          semantics, label association) from `triggerProps`, while the
+          popup state attributes stay owned by this component. */}
       <button
         type="button"
         role="combobox"
+        {...triggerProps}
         aria-expanded={open}
         aria-haspopup="listbox"
         onClick={() => setOpen((v) => !v)}
@@ -260,7 +266,8 @@ function Combobox({
   searchPlaceholder,
   value,
   onChange,
-  showProgress
+  showProgress,
+  ...triggerProps
 }: ComboboxProps) {
   if (control && name) {
     return (
@@ -277,6 +284,7 @@ function Combobox({
             className={className}
             searchPlaceholder={searchPlaceholder}
             showProgress={showProgress}
+            {...triggerProps}
           />
         )}
       />
@@ -292,6 +300,7 @@ function Combobox({
       className={className}
       searchPlaceholder={searchPlaceholder}
       showProgress={showProgress}
+      {...triggerProps}
     />
   );
 }

@@ -75,7 +75,7 @@ logic, E2E visual tests.
   - Test-first: a formatter/entry test asserting 24h output (e.g. `14:30`, never `2:30 PM`).
   - Acceptance: one format and one picker across the app.
 
-- [ ] **T7 · UX-408 — Semantic validation and consistent required**
+- [x] **T7 · UX-408 — Semantic validation and consistent required** — ✅ 2026-10-04
   - `aria-invalid` + `aria-describedby` on invalid fields; i18n error messages (no hardcoded); required marker where applicable.
   - Acceptance: errors are announced and consistent.
 
@@ -152,3 +152,11 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   flatpickr pickers `h:i K`+`time_24hr:false` → `H:i`+`time_24hr:true`; `toTimeEntryInputs` drops
   locale-dependent `toLocaleTimeString`; `TimeLogsTable` start/end cells use the helper. Test-first
   RED→GREEN (`timeFormat24h.test.tsx`, 8 tests). Full suite 61 files / 413 tests green.
+- 2026-10-04 — T6 slice reviewed: lineage `review-efba9156f48265fe`, **approved**, boundary `107af7d`.
+  Advisories R3-001..R3-006 (wizard/guard coverage gaps, formatter boundaries, TimeLogsTable 24h wiring).
+  Queued for advisory closure.
+- 2026-10-04 — T7 (UX-408) done: `aria-invalid`/`aria-describedby`/`aria-required` on WorkTimeForm
+  (description, date, hours, startTime, task), TasksTable + TypeTasksTable add-forms, and the custom
+  controls (`input-form`/`input-time`/`input-date`/`combobox`/`textarea-form`); `descriptionRequired`
+  moved to i18n + `common.required`. Test-first RED→GREEN (`formValidationA11y.test.tsx`, 5 tests).
+  Full suite 62 files / 418 tests green.

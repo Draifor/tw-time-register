@@ -25,7 +25,8 @@ const en = {
       retry: 'Retry',
       backToTop: 'Back to top',
       stepProgress: 'Progress',
-      stepOf: 'Step {{current}} of {{total}}'
+      stepOf: 'Step {{current}} of {{total}}',
+      required: 'required'
     },
     table: {
       searchPlaceholder: 'Search...',
@@ -447,6 +448,7 @@ const en = {
       subtitle: 'Register your work hours for TeamWork',
       entryN: 'Entry {{num}}',
       descPlaceholder: 'What did you work on?',
+      descriptionRequired: 'Description is required',
       task: 'Task',
       selectTask: 'Select a task',
       searchTasks: 'Search tasks...',

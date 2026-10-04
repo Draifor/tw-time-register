@@ -15,6 +15,8 @@ interface InputDateProps {
   rules?: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: any;
+  id?: string;
+  'aria-required'?: boolean;
 }
 
 interface FlatpickrInstance {
@@ -31,7 +33,7 @@ function toIsoDate(value: unknown): string {
   return raw.includes('T') ? raw.split('T')[0] : raw;
 }
 
-function InputDate({ className, control, name, rules, options }: InputDateProps) {
+function InputDate({ className, control, name, rules, options, id, 'aria-required': ariaRequired }: InputDateProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DateTimePickerAny = DateTimePicker as any;
   const { i18n } = useTranslation();
@@ -109,10 +111,26 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
   // Register the picker's real input with RHF — see the note in input-time.tsx.
   // flatpickr's `altInput` mode keeps the ISO value on a hidden original and the
   // formatted one on `altInput`, which is the node RHF should focus on error.
+  // The visible node also carries the field's `id` (so the label associates) and
+  // the validation semantics (`aria-invalid` / `aria-describedby` /
+  // `aria-required`) that assistive tech reads.
   useEffect(() => {
     if (!instance) return;
-    fieldRef.current.ref(instance.altInput ?? instance.element ?? null);
-  }, [instance]);
+    const input = instance.altInput ?? instance.element ?? null;
+    fieldRef.current.ref(input);
+    if (!input) return;
+    input.id = id ?? name;
+    if (fieldState.error) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', `${name}-error`);
+    } else {
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-describedby');
+    }
+    if (ariaRequired) {
+      input.setAttribute('aria-required', 'true');
+    }
+  }, [instance, id, name, fieldState.error, ariaRequired]);
 
   return (
     <div className="w-full">
@@ -127,7 +145,11 @@ function InputDate({ className, control, name, rules, options }: InputDateProps)
         className={`${baseStyles} ${className || ''}`}
         options={defaultOptions}
       />
-      {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+      {fieldState.error && (
+        <p id={`${name}-error`} className="text-sm text-destructive mt-1">
+          {fieldState.error.message}
+        </p>
+      )}
     </div>
   );
 }

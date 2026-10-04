@@ -139,7 +139,11 @@ function TasksTable() {
               {/* Task name */}
               <div className="space-y-1">
                 <Label htmlFor="new-task-name" className="text-xs">
-                  {t('tasks.form.taskNameLabel')} <span className="text-destructive">*</span>
+                  {t('tasks.form.taskNameLabel')}{' '}
+                  <span className="text-destructive" aria-hidden="true">
+                    *
+                  </span>
+                  <span className="sr-only">{t('common.required')}</span>
                 </Label>
                 <Input
                   id="new-task-name"
@@ -150,15 +154,26 @@ function TasksTable() {
                     setNameError(false);
                   }}
                   className={nameError ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  aria-invalid={nameError ? 'true' : undefined}
+                  aria-describedby={nameError ? 'new-task-name-error' : undefined}
+                  aria-required="true"
                   autoFocus
                 />
-                {nameError && <p className="text-xs text-destructive">{t('tasks.form.nameRequired')}</p>}
+                {nameError && (
+                  <p id="new-task-name-error" className="text-xs text-destructive">
+                    {t('tasks.form.nameRequired')}
+                  </p>
+                )}
               </div>
 
               {/* Task type */}
               <div className="space-y-1">
                 <Label htmlFor="new-task-type" className="text-xs">
-                  {t('tasks.form.typeLabel')} <span className="text-destructive">*</span>
+                  {t('tasks.form.typeLabel')}{' '}
+                  <span className="text-destructive" aria-hidden="true">
+                    *
+                  </span>
+                  <span className="sr-only">{t('common.required')}</span>
                 </Label>
                 <Select
                   value={typeName}
@@ -167,7 +182,13 @@ function TasksTable() {
                     setTypeError(false);
                   }}
                 >
-                  <SelectTrigger id="new-task-type" className={typeError ? 'border-destructive' : ''}>
+                  <SelectTrigger
+                    id="new-task-type"
+                    className={typeError ? 'border-destructive' : ''}
+                    aria-invalid={typeError ? 'true' : undefined}
+                    aria-describedby={typeError ? 'new-task-type-error' : undefined}
+                    aria-required="true"
+                  >
                     <SelectValue placeholder={t('tasks.form.selectType')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -178,7 +199,11 @@ function TasksTable() {
                     ))}
                   </SelectContent>
                 </Select>
-                {typeError && <p className="text-xs text-destructive">{t('tasks.form.typeRequired')}</p>}
+                {typeError && (
+                  <p id="new-task-type-error" className="text-xs text-destructive">
+                    {t('tasks.form.typeRequired')}
+                  </p>
+                )}
               </div>
 
               {/* Task link */}

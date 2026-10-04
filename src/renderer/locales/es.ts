@@ -25,7 +25,8 @@ const es = {
       retry: 'Reintentar',
       backToTop: 'Volver arriba',
       stepProgress: 'Progreso',
-      stepOf: 'Paso {{current}} de {{total}}'
+      stepOf: 'Paso {{current}} de {{total}}',
+      required: 'obligatorio'
     },
     table: {
       searchPlaceholder: 'Buscar...',
@@ -447,6 +448,7 @@ const es = {
       subtitle: 'Registra tus horas de trabajo para TeamWork',
       entryN: 'Entrada {{num}}',
       descPlaceholder: '¿en qué trabajaste?',
+      descriptionRequired: 'La descripción es obligatoria',
       task: 'Tarea',
       selectTask: 'Selecciona una tarea',
       searchTasks: 'Buscar tareas...',

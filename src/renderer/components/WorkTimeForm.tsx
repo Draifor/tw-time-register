@@ -166,6 +166,21 @@ function InsertDivider({ onClick, label }: { onClick: () => void; label: string 
   );
 }
 
+// Consistent required indicator shared by every required field label: a visual
+// glyph hidden from assistive tech plus a screen-reader-only "required" label,
+// so the asterisk is announced meaningfully instead of read as "star".
+function RequiredMark() {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span className="text-destructive" aria-hidden="true">
+        *
+      </span>
+      <span className="sr-only">{t('common.required')}</span>
+    </>
+  );
+}
+
 const hydrateEntryDates = (
   entry: WorkTimeEntry & { hours: string[]; startTime: string[]; endTime: string[] }
 ): WorkTimeEntry => ({
@@ -241,6 +256,9 @@ const EntryCard = React.memo(function EntryCard({
   const { t } = useTranslation();
   const taskError = entryErrors?.task;
   const startTimeError = entryErrors?.startTime;
+  const hoursError = entryErrors?.hours;
+  const descriptionError = entryErrors?.description;
+  const descriptionErrorId = `entries.${index}.description-error`;
 
   return (
     <Card
@@ -311,17 +329,28 @@ const EntryCard = React.memo(function EntryCard({
         {/* Single row layout - wraps on smaller screens */}
         <div className="flex flex-wrap gap-4 items-start">
           <div className="flex-1 min-w-[200px] space-y-2">
-            <Label htmlFor={`entries.${index}.description`}>{t('common.description')}</Label>
+            <Label htmlFor={`entries.${index}.description`}>
+              {t('common.description')} <RequiredMark />
+            </Label>
+            {/* `TextareaForm` owns the error message and renders it with a stable
+                `${name}-error` id, so `aria-describedby` points at that element
+                directly instead of a wrapper that contains it. */}
             <Textarea
+              id={`entries.${index}.description`}
               placeholder={t('workTimeForm.descPlaceholder')}
               className="w-full"
               name={`entries.${index}.description`}
               control={typedControl}
-              rules={{ required: 'Description is required' }}
+              aria-invalid={descriptionError ? true : undefined}
+              aria-describedby={descriptionError ? descriptionErrorId : undefined}
+              aria-required
+              rules={{ required: t('workTimeForm.descriptionRequired') }}
             />
           </div>
           <div className="w-[200px] space-y-2">
-            <Label htmlFor={`entries.${index}.task`}>{t('workTimeForm.task')}</Label>
+            <Label htmlFor={`entries.${index}.task`}>
+              {t('workTimeForm.task')} <RequiredMark />
+            </Label>
             <Controller
               name={`entries.${index}.task`}
               control={control}
@@ -351,11 +380,15 @@ const EntryCard = React.memo(function EntryCard({
                 return (
                   <div className="space-y-1">
                     <Combobox
+                      id={`entries.${index}.task`}
                       options={options}
                       placeholder={t('workTimeForm.selectTask')}
                       searchPlaceholder={t('workTimeForm.searchTasks')}
                       value={selectedTask}
                       onChange={field.onChange}
+                      aria-required
+                      aria-invalid={taskError ? true : undefined}
+                      aria-describedby={taskError ? `entries.${index}.task-error` : undefined}
                       showProgress
                       className="w-full"
                     />
@@ -382,22 +415,35 @@ const EntryCard = React.memo(function EntryCard({
                 );
               }}
             />
-            {taskError && <span className="text-sm text-destructive">{taskError.message}</span>}
+            {taskError && (
+              <span id={`entries.${index}.task-error`} className="text-sm text-destructive">
+                {taskError.message}
+              </span>
+            )}
           </div>
           <div className="w-[170px] space-y-2">
-            <Label htmlFor={`entries.${index}.date`}>{t('common.date')}</Label>
+            <Label htmlFor={`entries.${index}.date`}>
+              {t('common.date')} <RequiredMark />
+            </Label>
             <InputDate
               name={`entries.${index}.date`}
               control={typedControl}
+              id={`entries.${index}.date`}
+              aria-required
               rules={{ required: t('workTimeForm.dateRequired') }}
             />
           </div>
           <div className="w-[90px] space-y-2">
-            <Label htmlFor={`entries.${index}.hours`}>{t('timeLogs.colDuration')}</Label>
+            <Label htmlFor={`entries.${index}.hours`}>
+              {t('timeLogs.colDuration')} <RequiredMark />
+            </Label>
             <InputTime
               name={`entries.${index}.hours`}
               control={typedControl}
               className="w-full"
+              aria-required
+              aria-invalid={hoursError ? true : undefined}
+              aria-describedby={hoursError ? `entries.${index}.hours-error` : undefined}
               rules={{ required: t('workTimeForm.durationRequired') }}
               options={{
                 enableTime: true,
@@ -407,13 +453,23 @@ const EntryCard = React.memo(function EntryCard({
                 defaultDate: '00:00'
               }}
             />
+            {hoursError && (
+              <span id={`entries.${index}.hours-error`} className="text-sm text-destructive">
+                {hoursError.message}
+              </span>
+            )}
           </div>
           <div className="w-[100px] space-y-2">
-            <Label htmlFor={`entries.${index}.startTime`}>{t('timeLogs.colStart')}</Label>
+            <Label htmlFor={`entries.${index}.startTime`}>
+              {t('timeLogs.colStart')} <RequiredMark />
+            </Label>
             <InputTime
               name={`entries.${index}.startTime`}
               control={typedControl}
               className="w-full"
+              aria-required
+              aria-invalid={startTimeError ? true : undefined}
+              aria-describedby={startTimeError ? `entries.${index}.startTime-error` : undefined}
               rules={{ required: t('workTimeForm.startRequired') }}
               options={{
                 enableTime: true,
@@ -426,7 +482,11 @@ const EntryCard = React.memo(function EntryCard({
                 }
               }}
             />
-            {startTimeError && <span className="text-sm text-destructive">{startTimeError.message}</span>}
+            {startTimeError && (
+              <span id={`entries.${index}.startTime-error`} className="text-sm text-destructive">
+                {startTimeError.message}
+              </span>
+            )}
           </div>
           <div className="w-[100px] space-y-2">
             <Label htmlFor={`entries.${index}.endTime`}>{t('timeLogs.colEnd')}</Label>
