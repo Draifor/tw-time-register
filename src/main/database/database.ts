@@ -2,6 +2,7 @@ import BetterSqlite3 from 'better-sqlite3';
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { whenDbReady } from './dbReadiness';
 
 // ─── Compatibility wrapper ──────────────────────────────────────
 // Provides an async API that matches the `sqlite` (wrapper) package so that
@@ -140,7 +141,13 @@ export async function closeDb(): Promise<void> {
   }
 }
 
-async function openDb(): Promise<DatabaseWrapper> {
+/**
+ * Un-gated database opener.
+ *
+ * Used by `runMigrations()`: migrations must run before the readiness gate is
+ * released, so waiting on `whenDbReady()` here would deadlock startup.
+ */
+export async function openDbRaw(): Promise<DatabaseWrapper> {
   if (!db) {
     const dbPath = getDbPath();
     db = new DatabaseWrapper(dbPath);
@@ -153,6 +160,18 @@ async function openDb(): Promise<DatabaseWrapper> {
     await db.exec(schema);
   }
   return db;
+}
+
+/**
+ * Gated database opener — the default export every service uses.
+ *
+ * Waits for migrations to finish before opening. In tests and the real-SQLite
+ * integration harness the readiness gate is never armed, so `whenDbReady()`
+ * resolves immediately and behaviour is unchanged.
+ */
+async function openDb(): Promise<DatabaseWrapper> {
+  await whenDbReady();
+  return openDbRaw();
 }
 
 export async function addWorkTime(description: string, hours: number, date: string) {

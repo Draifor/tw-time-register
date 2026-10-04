@@ -8,6 +8,7 @@ import { setupWindowIpc } from './ipc/windowIpc';
 import './ipc';
 import './database/database';
 import { runMigrations } from './database/migrations';
+import { armDbReadiness, markDbReady } from './database/dbReadiness';
 import { initAutoUpdater } from './updater';
 
 // Equivalent to the deprecated `electron-is-dev` package, without the dependency.
@@ -45,6 +46,10 @@ function createWindow() {
   // Create the browser window.
   const { height, width, x, y } = readWindowState();
 
+  // Set the dark theme before the window is constructed so the first frame
+  // painted uses the dark background instead of a white flash.
+  nativeTheme.themeSource = 'dark';
+
   const window = new BrowserWindow({
     x,
     y,
@@ -52,13 +57,17 @@ function createWindow() {
     height,
     //  change to false to use AppBar
     frame: false,
-    show: true,
+    show: false,
+    backgroundColor: '#282c34',
     resizable: true,
     fullscreenable: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js')
     }
   });
+
+  // Show the window only once the renderer has painted its first frame.
+  window.once('ready-to-show', () => window.show());
 
   const port = process.env.PORT || 3000;
   const url = isDev ? `http://localhost:${port}` : join(__dirname, '../dist-vite/index.html');
@@ -76,8 +85,6 @@ function createWindow() {
 
   setupWindowIpc(window);
   initAutoUpdater(window);
-
-  nativeTheme.themeSource = 'dark';
 
   // window.maximize();
 
@@ -116,10 +123,15 @@ app.on('second-instance', () => {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
   try {
-    // Run database migrations
-    await runMigrations();
+    // Gate the DB before any IPC handler can reach it, paint the window first,
+    // then run migrations and release the gate.
+    armDbReadiness();
     createWindow();
+    await runMigrations();
+    markDbReady();
   } catch (err) {
+    // Migration failed: keep the existing startup-failure behavior. The gate is
+    // intentionally left armed (not marked ready) because the app is quitting.
     dialog.showErrorBox('Startup error', String(err));
     app.quit();
   }

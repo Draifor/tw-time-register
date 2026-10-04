@@ -1,9 +1,11 @@
-import openDb from './database';
+import { openDbRaw } from './database';
 import { isEncryptedValue, encrypt } from '../services/encryptionService';
 
 // Run all pending migrations
 export async function runMigrations(): Promise<void> {
-  const db = await openDb();
+  // Raw opener: migrations run BEFORE `markDbReady()`, so the gated default
+  // `openDb()` would deadlock waiting on the readiness gate.
+  const db = await openDbRaw();
 
   // Migration: Add language setting if it doesn't exist
   const languageSetting = await db.get("SELECT 1 FROM work_settings WHERE setting_key = 'language'");
