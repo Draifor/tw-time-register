@@ -450,7 +450,34 @@ function TimeLogsTable() {
 
   const handleSaveEdit = async (entry: TimeEntry) => {
     setSavingEdit(true);
+    const workTimesKey = queryKeys.workTimes.all;
+    // Snapshot of the previous list, taken before the optimistic patch so a
+    // failed save can restore it exactly. Declared outside the try block so the
+    // catch can reach it.
+    let previousEntries: TimeEntry[] | undefined;
     try {
+      // Optimistic patch: reflect the edit in the cache immediately. Leaving the
+      // edit mode then never shows the stale row while the server round-trip is
+      // still in flight.
+      await queryClient.cancelQueries({ queryKey: workTimesKey });
+      previousEntries = queryClient.getQueryData<TimeEntry[]>(workTimesKey);
+      queryClient.setQueryData<TimeEntry[]>(workTimesKey, (old) =>
+        old
+          ? old.map((item) =>
+              item.entryId === entry.entryId
+                ? {
+                    ...item,
+                    date: editData.date,
+                    startTime: editData.startTime,
+                    endTime: editData.endTime,
+                    description: editData.description,
+                    isBillable: editData.isBillable
+                  }
+                : item
+            )
+          : old
+      );
+
       const ok = await updateTimeEntry(entry.entryId, {
         date: editData.date,
         startTime: editData.startTime,
@@ -459,6 +486,7 @@ function TimeLogsTable() {
         isBillable: editData.isBillable
       });
       if (!ok) {
+        if (previousEntries) queryClient.setQueryData(workTimesKey, previousEntries);
         toast.error(t('timeLogs.saveError'));
         return;
       }
@@ -470,12 +498,15 @@ function TimeLogsTable() {
         toast.success(t('timeLogs.changesSaved'));
       }
       setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: ['workTimes'] });
     } catch (err) {
+      if (previousEntries) queryClient.setQueryData(workTimesKey, previousEntries);
       console.error('Edit error:', err);
       toast.error(String(err));
     } finally {
       setSavingEdit(false);
+      // Reconcile with authoritative server state on every terminal path so a
+      // rolled-back optimistic value can never linger as stale truth.
+      queryClient.invalidateQueries({ queryKey: workTimesKey });
     }
   };
 

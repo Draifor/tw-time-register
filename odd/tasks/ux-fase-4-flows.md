@@ -79,7 +79,7 @@ logic, E2E visual tests.
   - `aria-invalid` + `aria-describedby` on invalid fields; i18n error messages (no hardcoded); required marker where applicable.
   - Acceptance: errors are announced and consistent.
 
-- [ ] **T8 · UX-409 — Optimistic feedback where it applies**
+- [x] **T8 · UX-409 — Optimistic feedback where it applies** — ✅ 2026-10-04
   - Evaluate `TimeLogsTable`/`WorkTimeForm` mutations case by case; improve perceived latency without desyncing data.
   - Acceptance: frequent actions feel instant without stale data.
 
@@ -160,3 +160,10 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   controls (`input-form`/`input-time`/`input-date`/`combobox`/`textarea-form`); `descriptionRequired`
   moved to i18n + `common.required`. Test-first RED→GREEN (`formValidationA11y.test.tsx`, 5 tests).
   Full suite 62 files / 418 tests green.
+- 2026-10-04 — T7 slice reviewed: lineage `review-054d0f147b9d1ea9`, **approved** (first capture malformed;
+  slot re-offered and relaunched), boundary `6004740`. Advisories R3-001..R3-004 (table add-form coverage,
+  `input-form` native `required` dropped, `input-date` stale aria-required, test order-sensitivity).
+- 2026-10-04 — T8 (UX-409) done: optimistic update for task edit (`useTasks.onEdit`) and TimeLogsTable
+  inline-edit save (cache patch + rollback + settle invalidation); other mutations deliberately left
+  (destructive/server-authoritative/server-generated ids). Test-first RED→GREEN
+  (`useTasksOptimistic.test.tsx`, `optimisticFeedback.test.tsx`). Full suite 63 files / 420 tests green.
