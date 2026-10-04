@@ -164,6 +164,24 @@ merge are user-owned.
 
 ## Review outcome
 
-- Receipt-driven development is `on` (global). Native review not yet started —
-  pending operator decision (the Fase 4 reviewer runtime returned
-  `opencode_task_output_empty`).
+- Native review `review-37d014d03f77c5a1` (medium risk, single lens
+  `review-reliability`) against target `sha256:c9513a00…` (tree `92529ce`):
+  **approved** and acknowledged; authority **burned**.
+- Non-blocking advisory findings (they do NOT reopen this candidate — treat as
+  separate later work):
+  - `R3-lazy-routes-no-error-boundary` (WARNING, `src/renderer/App.tsx:38-50`):
+    the lazy route subtree has no error boundary; a rejected chunk import would
+    blank the renderer instead of showing a fallback.
+  - `R3-loadlanguage-failure-unhandled` (WARNING,
+    `src/renderer/plugins/i18n.ts:24-31`): `loadLanguage()`'s dynamic import has
+    no try/catch, so a rejected `es` chunk aborts the language switch silently.
+  - `R3-migrations-deadlock-path-untested` (WARNING,
+    `src/main/database/migrations.ts:11-13`): no test proves migrations use the
+    un-gated opener; a regression to the gated default would deadlock startup
+    while tests stay green.
+  - `R3-readiness-gate-no-timeout` (SUGGESTION, `src/main/index.ts:128-131`):
+    the readiness gate has no timeout; a hung migration would leave every
+    DB-touching IPC handler pending.
+- Proactive follow-up: the reviewer Task only completes when the agent prompt is
+  the exact `provider_task.prompt` (the binding line) — appending material
+  caused `opencode_task_output_empty` / `opencode_reviewer_result_refused`.
