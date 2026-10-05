@@ -13,7 +13,8 @@ import {
   Trash2,
   Copy,
   SlidersHorizontal,
-  ExternalLink
+  ExternalLink,
+  SearchX
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -47,7 +48,7 @@ interface EditData {
   isBillable: boolean;
 }
 
-import { parseDuration, formatDuration } from '../lib/timeUtils';
+import { parseDuration, formatDuration, formatTime24h } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo, getStatusDotColor } from '../lib/progressUtils';
@@ -167,8 +168,10 @@ export const TimeLogRow = React.memo(function TimeLogRow({
           </Tooltip>
         </TooltipProvider>
       </td>
-      <td className="px-4 py-3 text-center font-mono text-xs">{entry.startTime || '—'}</td>
-      <td className="px-4 py-3 text-center font-mono text-xs">{entry.endTime || '—'}</td>
+      <td className="px-4 py-3 text-center font-mono text-xs">
+        {entry.startTime ? formatTime24h(entry.startTime) : '—'}
+      </td>
+      <td className="px-4 py-3 text-center font-mono text-xs">{entry.endTime ? formatTime24h(entry.endTime) : '—'}</td>
       <td className="px-4 py-3 text-center font-mono text-xs font-medium">{formatDuration(hours, minutes)}</td>
       <td className="px-4 py-3 text-center">
         {entry.isBillable ? (
@@ -447,7 +450,34 @@ function TimeLogsTable() {
 
   const handleSaveEdit = async (entry: TimeEntry) => {
     setSavingEdit(true);
+    const workTimesKey = queryKeys.workTimes.all;
+    // Snapshot of the previous list, taken before the optimistic patch so a
+    // failed save can restore it exactly. Declared outside the try block so the
+    // catch can reach it.
+    let previousEntries: TimeEntry[] | undefined;
     try {
+      // Optimistic patch: reflect the edit in the cache immediately. Leaving the
+      // edit mode then never shows the stale row while the server round-trip is
+      // still in flight.
+      await queryClient.cancelQueries({ queryKey: workTimesKey });
+      previousEntries = queryClient.getQueryData<TimeEntry[]>(workTimesKey);
+      queryClient.setQueryData<TimeEntry[]>(workTimesKey, (old) =>
+        old
+          ? old.map((item) =>
+              item.entryId === entry.entryId
+                ? {
+                    ...item,
+                    date: editData.date,
+                    startTime: editData.startTime,
+                    endTime: editData.endTime,
+                    description: editData.description,
+                    isBillable: editData.isBillable
+                  }
+                : item
+            )
+          : old
+      );
+
       const ok = await updateTimeEntry(entry.entryId, {
         date: editData.date,
         startTime: editData.startTime,
@@ -456,6 +486,7 @@ function TimeLogsTable() {
         isBillable: editData.isBillable
       });
       if (!ok) {
+        if (previousEntries) queryClient.setQueryData(workTimesKey, previousEntries);
         toast.error(t('timeLogs.saveError'));
         return;
       }
@@ -467,12 +498,15 @@ function TimeLogsTable() {
         toast.success(t('timeLogs.changesSaved'));
       }
       setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: ['workTimes'] });
     } catch (err) {
+      if (previousEntries) queryClient.setQueryData(workTimesKey, previousEntries);
       console.error('Edit error:', err);
       toast.error(String(err));
     } finally {
       setSavingEdit(false);
+      // Reconcile with authoritative server state on every terminal path so a
+      // rolled-back optimistic value can never linger as stale truth.
+      queryClient.invalidateQueries({ queryKey: workTimesKey });
     }
   };
 
@@ -673,8 +707,8 @@ function TimeLogsTable() {
           <tbody>
             {hasActiveFilters && filteredData.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
-                  {t('timeLogs.noFilterResults')}
+                <td colSpan={9}>
+                  <EmptyState icon={SearchX} title={t('timeLogs.noFilterResults')} />
                 </td>
               </tr>
             )}

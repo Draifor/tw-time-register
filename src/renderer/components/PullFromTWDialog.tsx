@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
+import { WizardStepIndicator } from './ui/wizard-step-indicator';
 import { pullEntriesFromTW, fetchTWTaskDetails, PullFromTWResult, TWTaskDetail } from '../services/timesService';
 import { addTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
@@ -26,6 +27,8 @@ import { queryKeys } from '../lib/queryKeys';
 
 type PeriodMode = 'lastMonth' | 'lastWeek' | 'custom' | 'all';
 type Step = 'config' | 'result' | 'addTasks';
+
+const STEP_ORDER: Step[] = ['config', 'result', 'addTasks'];
 
 function getPeriodDates(mode: PeriodMode): { fromDate?: string; toDate?: string } {
   const today = new Date();
@@ -55,6 +58,7 @@ export default function PullFromTWDialog() {
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('config');
+  const firstControlRef = useRef<HTMLButtonElement>(null);
 
   // Step 1
   const [mode, setMode] = useState<PeriodMode>('lastMonth');
@@ -81,7 +85,13 @@ export default function PullFromTWDialog() {
     setMissingRows([]);
   }
 
+  // True while any long/destructive operation runs: the dialog must not be
+  // dismissible (overlay / Escape / close button) until it settles.
+  const isBusy = isPulling || loadingTasks || savingTasks;
+  const stepIndex = Math.max(0, STEP_ORDER.indexOf(step));
+
   function handleClose(value: boolean) {
+    if (!value && isBusy) return;
     if (!value) resetState();
     setOpen(value);
   }
@@ -205,7 +215,22 @@ export default function PullFromTWDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className={step === 'addTasks' ? 'sm:max-w-2xl' : 'sm:max-w-md'}>
+      <DialogContent
+        className={step === 'addTasks' ? 'sm:max-w-2xl' : 'sm:max-w-md'}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          firstControlRef.current?.focus();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step === 'addTasks' ? (
@@ -222,6 +247,13 @@ export default function PullFromTWDialog() {
           </DialogTitle>
         </DialogHeader>
 
+        <WizardStepIndicator
+          labels={[t('timeLogs.pull.stepConfig'), t('timeLogs.pull.stepResult'), t('timeLogs.pull.stepTasks')]}
+          currentIndex={stepIndex}
+          progressLabel={t('common.stepOf', { current: stepIndex + 1, total: STEP_ORDER.length })}
+          ariaLabel={t('common.stepProgress')}
+        />
+
         {/* ── Step 1: Config ─────────────────────────────────────────── */}
         {step === 'config' && (
           <div className="space-y-4">
@@ -229,9 +261,10 @@ export default function PullFromTWDialog() {
             <div className="space-y-2">
               <Label className="text-xs font-medium">{t('timeLogs.pull.periodLabel')}</Label>
               <div className="grid grid-cols-2 gap-2">
-                {modeOptions.map((opt) => (
+                {modeOptions.map((opt, i) => (
                   <button
                     key={opt.value}
+                    ref={i === 0 ? firstControlRef : undefined}
                     type="button"
                     onClick={() => setMode(opt.value)}
                     className={`rounded-md border px-3 py-2 text-sm text-left transition-colors ${
@@ -291,7 +324,7 @@ export default function PullFromTWDialog() {
               </p>
             )}
             <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" size="sm" onClick={() => handleClose(false)} disabled={isPulling}>
+              <Button variant="outline" size="sm" onClick={() => handleClose(false)} disabled={isBusy}>
                 {t('common.cancel')}
               </Button>
               <Button size="sm" onClick={handlePull} disabled={isPulling} className="gap-1.5">
@@ -361,7 +394,7 @@ export default function PullFromTWDialog() {
                   {t('timeLogs.pull.reimport')}
                 </Button>
               )}
-              <Button size="sm" onClick={() => handleClose(false)}>
+              <Button size="sm" onClick={() => handleClose(false)} disabled={isBusy}>
                 {t('common.done')}
               </Button>
             </div>

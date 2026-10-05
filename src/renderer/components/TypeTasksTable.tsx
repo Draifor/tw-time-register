@@ -80,7 +80,11 @@ function TypeTasksTable() {
             <div className="flex flex-col sm:flex-row gap-3 items-end">
               <div className="space-y-1 flex-1">
                 <Label htmlFor="new-type-name" className="text-xs">
-                  {t('tasks.typeForm.typeNameLabel')} <span className="text-destructive">*</span>
+                  {t('tasks.typeForm.typeNameLabel')}{' '}
+                  <span className="text-destructive" aria-hidden="true">
+                    *
+                  </span>
+                  <span className="sr-only">{t('common.required')}</span>
                 </Label>
                 <Input
                   id="new-type-name"
@@ -91,9 +95,16 @@ function TypeTasksTable() {
                     setNameError(false);
                   }}
                   className={nameError ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  aria-invalid={nameError ? 'true' : undefined}
+                  aria-describedby={nameError ? 'new-type-name-error' : undefined}
+                  aria-required="true"
                   autoFocus
                 />
-                {nameError && <p className="text-xs text-destructive">{t('tasks.typeForm.nameRequired')}</p>}
+                {nameError && (
+                  <p id="new-type-name-error" className="text-xs text-destructive">
+                    {t('tasks.typeForm.nameRequired')}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button

@@ -25,7 +25,17 @@ import InputTime from './ui/input-time';
 import InputDate from './ui/input-date';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from './ui/alert-dialog';
 import { getTaskProgressInfo, formatMinutesToHHMM } from '../lib/progressUtils';
+import { formatTime24h } from '../lib/timeUtils';
 import useTasks from '../hooks/useTasks';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import {
@@ -105,10 +115,7 @@ const getEntryMinutes = (entry?: WorkTimeEntry): number => {
  * Map form entries to the payload accepted by the batch time-entry endpoint.
  */
 export function toTimeEntryInputs(entries: WorkTimeEntry[]): TimeEntryInput[] {
-  const formatTime = (date: Date) => {
-    if (!date) return '00:00';
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatTime = (date: Date) => formatTime24h(date);
 
   return entries.map((entry) => {
     const taskId = typeof entry.task === 'object' ? Number(entry.task.value) : Number(entry.task);
@@ -156,6 +163,21 @@ function InsertDivider({ onClick, label }: { onClick: () => void; label: string 
       </Button>
       <div className="h-px flex-1 bg-border/60 transition-colors group-hover/insert:bg-primary/50" />
     </div>
+  );
+}
+
+// Consistent required indicator shared by every required field label: a visual
+// glyph hidden from assistive tech plus a screen-reader-only "required" label,
+// so the asterisk is announced meaningfully instead of read as "star".
+function RequiredMark() {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span className="text-destructive" aria-hidden="true">
+        *
+      </span>
+      <span className="sr-only">{t('common.required')}</span>
+    </>
   );
 }
 
@@ -234,6 +256,9 @@ const EntryCard = React.memo(function EntryCard({
   const { t } = useTranslation();
   const taskError = entryErrors?.task;
   const startTimeError = entryErrors?.startTime;
+  const hoursError = entryErrors?.hours;
+  const descriptionError = entryErrors?.description;
+  const descriptionErrorId = `entries.${index}.description-error`;
 
   return (
     <Card
@@ -304,17 +329,28 @@ const EntryCard = React.memo(function EntryCard({
         {/* Single row layout - wraps on smaller screens */}
         <div className="flex flex-wrap gap-4 items-start">
           <div className="flex-1 min-w-[200px] space-y-2">
-            <Label htmlFor={`entries.${index}.description`}>{t('common.description')}</Label>
+            <Label htmlFor={`entries.${index}.description`}>
+              {t('common.description')} <RequiredMark />
+            </Label>
+            {/* `TextareaForm` owns the error message and renders it with a stable
+                `${name}-error` id, so `aria-describedby` points at that element
+                directly instead of a wrapper that contains it. */}
             <Textarea
+              id={`entries.${index}.description`}
               placeholder={t('workTimeForm.descPlaceholder')}
               className="w-full"
               name={`entries.${index}.description`}
               control={typedControl}
-              rules={{ required: 'Description is required' }}
+              aria-invalid={descriptionError ? true : undefined}
+              aria-describedby={descriptionError ? descriptionErrorId : undefined}
+              aria-required
+              rules={{ required: t('workTimeForm.descriptionRequired') }}
             />
           </div>
           <div className="w-[200px] space-y-2">
-            <Label htmlFor={`entries.${index}.task`}>{t('workTimeForm.task')}</Label>
+            <Label htmlFor={`entries.${index}.task`}>
+              {t('workTimeForm.task')} <RequiredMark />
+            </Label>
             <Controller
               name={`entries.${index}.task`}
               control={control}
@@ -344,11 +380,15 @@ const EntryCard = React.memo(function EntryCard({
                 return (
                   <div className="space-y-1">
                     <Combobox
+                      id={`entries.${index}.task`}
                       options={options}
                       placeholder={t('workTimeForm.selectTask')}
                       searchPlaceholder={t('workTimeForm.searchTasks')}
                       value={selectedTask}
                       onChange={field.onChange}
+                      aria-required
+                      aria-invalid={taskError ? true : undefined}
+                      aria-describedby={taskError ? `entries.${index}.task-error` : undefined}
                       showProgress
                       className="w-full"
                     />
@@ -375,22 +415,35 @@ const EntryCard = React.memo(function EntryCard({
                 );
               }}
             />
-            {taskError && <span className="text-sm text-destructive">{taskError.message}</span>}
+            {taskError && (
+              <span id={`entries.${index}.task-error`} className="text-sm text-destructive">
+                {taskError.message}
+              </span>
+            )}
           </div>
           <div className="w-[170px] space-y-2">
-            <Label htmlFor={`entries.${index}.date`}>{t('common.date')}</Label>
+            <Label htmlFor={`entries.${index}.date`}>
+              {t('common.date')} <RequiredMark />
+            </Label>
             <InputDate
               name={`entries.${index}.date`}
               control={typedControl}
+              id={`entries.${index}.date`}
+              aria-required
               rules={{ required: t('workTimeForm.dateRequired') }}
             />
           </div>
           <div className="w-[90px] space-y-2">
-            <Label htmlFor={`entries.${index}.hours`}>{t('timeLogs.colDuration')}</Label>
+            <Label htmlFor={`entries.${index}.hours`}>
+              {t('timeLogs.colDuration')} <RequiredMark />
+            </Label>
             <InputTime
               name={`entries.${index}.hours`}
               control={typedControl}
               className="w-full"
+              aria-required
+              aria-invalid={hoursError ? true : undefined}
+              aria-describedby={hoursError ? `entries.${index}.hours-error` : undefined}
               rules={{ required: t('workTimeForm.durationRequired') }}
               options={{
                 enableTime: true,
@@ -400,25 +453,40 @@ const EntryCard = React.memo(function EntryCard({
                 defaultDate: '00:00'
               }}
             />
+            {hoursError && (
+              <span id={`entries.${index}.hours-error`} className="text-sm text-destructive">
+                {hoursError.message}
+              </span>
+            )}
           </div>
           <div className="w-[100px] space-y-2">
-            <Label htmlFor={`entries.${index}.startTime`}>{t('timeLogs.colStart')}</Label>
+            <Label htmlFor={`entries.${index}.startTime`}>
+              {t('timeLogs.colStart')} <RequiredMark />
+            </Label>
             <InputTime
               name={`entries.${index}.startTime`}
               control={typedControl}
               className="w-full"
+              aria-required
+              aria-invalid={startTimeError ? true : undefined}
+              aria-describedby={startTimeError ? `entries.${index}.startTime-error` : undefined}
               rules={{ required: t('workTimeForm.startRequired') }}
               options={{
                 enableTime: true,
                 noCalendar: true,
-                dateFormat: 'h:i K',
+                time_24hr: true,
+                dateFormat: 'H:i',
                 defaultDate: '09:00',
                 onChange: () => {
                   setValue(`entries.${index}.manualStartTime`, true, { shouldDirty: true });
                 }
               }}
             />
-            {startTimeError && <span className="text-sm text-destructive">{startTimeError.message}</span>}
+            {startTimeError && (
+              <span id={`entries.${index}.startTime-error`} className="text-sm text-destructive">
+                {startTimeError.message}
+              </span>
+            )}
           </div>
           <div className="w-[100px] space-y-2">
             <Label htmlFor={`entries.${index}.endTime`}>{t('timeLogs.colEnd')}</Label>
@@ -429,8 +497,8 @@ const EntryCard = React.memo(function EntryCard({
               options={{
                 enableTime: true,
                 noCalendar: true,
-                dateFormat: 'h:i K',
-                time_24hr: false,
+                time_24hr: true,
+                dateFormat: 'H:i',
                 defaultDate: '09:00',
                 clickOpens: false
               }}
@@ -487,6 +555,11 @@ export default function WorkTimeForm() {
   // while the state drives the button's disabled/spinner UI.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+
+  // Single pending-deletion state driving one reusable confirmation dialog for
+  // every draft-entry removal (the per-row Trash2 control and the Esc shortcut).
+  const [pendingRemovalIndex, setPendingRemovalIndex] = useState<number | null>(null);
+  const removeConfirmRef = useRef<HTMLButtonElement>(null);
 
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
@@ -865,18 +938,28 @@ export default function WorkTimeForm() {
     localStorage.removeItem('wt_activeTimer');
   }, [activeTimer, setValue]);
 
-  const handleRemoveEntry = useCallback(
-    (index: number) => {
-      // If the timer is running on this entry, stop it silently before removing
-      if (activeTimer?.index === index) {
-        setActiveTimer(null);
-        setTimerElapsedMinutes(0);
-        localStorage.removeItem('wt_activeTimer');
-      }
-      removeRef.current(index);
-    },
-    [activeTimer]
-  );
+  const handleRemoveEntry = useCallback((index: number) => {
+    // Do not touch the form yet: open the confirmation dialog and only remove
+    // the row once the user accepts.
+    setPendingRemovalIndex(index);
+  }, []);
+
+  const confirmRemoveEntry = useCallback(() => {
+    if (pendingRemovalIndex === null) return;
+    const index = pendingRemovalIndex;
+    // If the timer is running on this entry, stop it silently before removing
+    if (activeTimer?.index === index) {
+      setActiveTimer(null);
+      setTimerElapsedMinutes(0);
+      localStorage.removeItem('wt_activeTimer');
+    }
+    const wasLastEntry = index === fields.length - 1;
+    removeRef.current(index);
+    setPendingRemovalIndex(null);
+    if (wasLastEntry) {
+      toast.info(t('workTimeForm.lastRemoved'));
+    }
+  }, [pendingRemovalIndex, activeTimer, fields.length, t]);
   // ── End live timer ──────────────────────────────────────────────────────────
 
   const calculateEndTime = (startTimeArray: Date[], hoursArray: Date[]) => {
@@ -1271,17 +1354,12 @@ export default function WorkTimeForm() {
       {
         key: 'Escape',
         action: () => {
-          // Clear the last entry if there's more than one
+          // The confirmation dialog owns Escape while it is open (it dismisses
+          // itself), so never re-open it from this global shortcut.
+          if (pendingRemovalIndex !== null) return;
+          // Clear the last entry if there's more than one, after confirming.
           if (fields.length > 1) {
-            const lastIndex = fields.length - 1;
-            // If the timer is running on the last entry, stop it silently
-            if (activeTimerRef.current?.index === lastIndex) {
-              setActiveTimer(null);
-              setTimerElapsedMinutes(0);
-              localStorage.removeItem('wt_activeTimer');
-            }
-            remove(lastIndex);
-            toast.info(t('workTimeForm.lastRemoved'));
+            setPendingRemovalIndex(fields.length - 1);
           }
         },
         description: 'Remove last entry'
@@ -1388,6 +1466,43 @@ export default function WorkTimeForm() {
           </span>
         </div>
       </form>
+
+      {/* ── Draft entry removal confirmation (UX-402) ─────────────────────── */}
+      <AlertDialog
+        open={pendingRemovalIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemovalIndex(null);
+        }}
+      >
+        <AlertDialogContent
+          className="sm:max-w-md"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            removeConfirmRef.current?.focus();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              {t('timeLogs.deleteConfirmTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <Button
+              ref={removeConfirmRef}
+              variant="destructive"
+              size="sm"
+              onClick={confirmRemoveEntry}
+              className="gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              {t('common.delete')}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

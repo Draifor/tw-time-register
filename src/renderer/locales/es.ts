@@ -21,7 +21,12 @@ const es = {
       done: 'Listo',
       back: 'Atrás',
       errorOccurred: 'Ha ocurrido un error',
-      backToTop: 'Volver arriba'
+      loading: 'Cargando...',
+      retry: 'Reintentar',
+      backToTop: 'Volver arriba',
+      stepProgress: 'Progreso',
+      stepOf: 'Paso {{current}} de {{total}}',
+      required: 'obligatorio'
     },
     table: {
       searchPlaceholder: 'Buscar...',
@@ -87,6 +92,9 @@ const es = {
         trigger: 'Importar desde TW',
         title: 'Importar registros de TW',
         subtitle: 'Descarga tus time entries de TeamWork al historial local. Solo se importan entradas nuevas.',
+        stepConfig: 'Período',
+        stepResult: 'Resultado',
+        stepTasks: 'Tareas',
         periodLabel: 'Período a importar',
         lastWeek: 'Última semana',
         lastMonth: 'Último mes',
@@ -173,6 +181,9 @@ const es = {
       pendingEntries: 'Entradas Pendientes',
       dailyView: 'Registro del Día',
       noEntriesYet: 'Sin entradas hoy. ¡Empieza a registrar!',
+      statsErrorTitle: 'No se pudieron cargar tus estadísticas',
+      dailyErrorTitle: 'No se pudo cargar el registro de hoy',
+      loadErrorDescription: 'Algo salió mal al cargar. Inténtalo de nuevo.',
       remaining: 'Faltan {{time}}',
       margin: 'Margen'
     },
@@ -335,6 +346,9 @@ const es = {
       importTW: {
         trigger: 'Importar desde TW',
         title: 'Importar Tareas desde TeamWork',
+        stepForm: 'Formulario',
+        stepPreview: 'Vista previa',
+        stepDone: 'Listo',
         parentLinkRequired: 'El enlace del padre en TW es obligatorio',
         prefixRequired: 'El prefijo es obligatorio',
         typeRequired: 'El tipo de tarea es obligatorio',
@@ -434,6 +448,7 @@ const es = {
       subtitle: 'Registra tus horas de trabajo para TeamWork',
       entryN: 'Entrada {{num}}',
       descPlaceholder: '¿en qué trabajaste?',
+      descriptionRequired: 'La descripción es obligatoria',
       task: 'Tarea',
       selectTask: 'Selecciona una tarea',
       searchTasks: 'Buscar tareas...',

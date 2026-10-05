@@ -21,7 +21,12 @@ const en = {
       done: 'Done',
       back: 'Back',
       errorOccurred: 'An error occurred',
-      backToTop: 'Back to top'
+      loading: 'Loading...',
+      retry: 'Retry',
+      backToTop: 'Back to top',
+      stepProgress: 'Progress',
+      stepOf: 'Step {{current}} of {{total}}',
+      required: 'required'
     },
     table: {
       searchPlaceholder: 'Search...',
@@ -87,6 +92,9 @@ const en = {
         trigger: 'Import from TW',
         title: 'Import entries from TW',
         subtitle: 'Download your TeamWork time entries into the local history. Only new entries will be imported.',
+        stepConfig: 'Period',
+        stepResult: 'Result',
+        stepTasks: 'Tasks',
         periodLabel: 'Period to import',
         lastWeek: 'Last week',
         lastMonth: 'Last month',
@@ -173,6 +181,9 @@ const en = {
       pendingEntries: 'Pending Entries',
       dailyView: "Today's Log",
       noEntriesYet: 'No entries yet today. Start tracking!',
+      statsErrorTitle: 'Could not load your stats',
+      dailyErrorTitle: "Could not load today's log",
+      loadErrorDescription: 'Something went wrong while loading. Please try again.',
       remaining: '{{time}} remaining',
       margin: 'Margin'
     },
@@ -335,6 +346,9 @@ const en = {
       importTW: {
         trigger: 'Import from TW',
         title: 'Import Tasks from TeamWork',
+        stepForm: 'Form',
+        stepPreview: 'Preview',
+        stepDone: 'Done',
         parentLinkRequired: 'Parent TW link is required',
         prefixRequired: 'Prefix is required',
         typeRequired: 'Task type is required',
@@ -434,6 +448,7 @@ const en = {
       subtitle: 'Register your work hours for TeamWork',
       entryN: 'Entry {{num}}',
       descPlaceholder: 'What did you work on?',
+      descriptionRequired: 'Description is required',
       task: 'Task',
       selectTask: 'Select a task',
       searchTasks: 'Search tasks...',

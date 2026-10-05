@@ -17,16 +17,36 @@ interface InputProps {
   [key: string]: unknown;
 }
 
-function InputForm({ className, control, name, rules, ...rest }: InputProps) {
+function InputForm({ className, control, name, required, rules, ...rest }: InputProps) {
   const baseStyles =
     'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
-  const inputElement = (field: Partial<ControllerRenderProps>, fieldState: Partial<ControllerFieldState>) => (
-    <div className="w-full">
-      <input className={`${baseStyles} ${className || ''}`} {...rest} {...field} />
-      {fieldState?.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
-    </div>
-  );
+  const inputElement = (field: Partial<ControllerRenderProps>, fieldState: Partial<ControllerFieldState>) => {
+    const errorId = `${name}-error`;
+    const hasError = Boolean(fieldState?.error);
+    return (
+      <div className="w-full">
+        <input
+          className={`${baseStyles} ${className || ''}`}
+          id={name}
+          {...rest}
+          {...field}
+          // Preserve the native `required` attribute as well as the ARIA flag:
+          // `required` used to reach the DOM input through `...rest`, and
+          // destructuring it out silently dropped it.
+          required={required || undefined}
+          aria-invalid={hasError || undefined}
+          aria-describedby={hasError ? errorId : undefined}
+          aria-required={required || undefined}
+        />
+        {fieldState?.error && (
+          <p id={errorId} className="text-sm text-destructive mt-1">
+            {fieldState.error.message}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   if (control) {
     return (

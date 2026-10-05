@@ -230,15 +230,36 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
 
   const { mutate: onEdit } = useMutation({
     mutationFn: editTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
-      toast.success('Task updated successfully');
+    onMutate: async (updatedTask) => {
+      // Mirror the add-task optimistic contract: cancel in-flight reads, snapshot
+      // every cached `tasks` search variant, then replace the edited task in place
+      // so the inline edit is reflected before the server responds.
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
+
+      const previousTasks = queryClient.getQueriesData<Task[]>({ queryKey: queryKeys.tasks.all });
+
+      queryClient.setQueriesData<Task[]>({ queryKey: queryKeys.tasks.all }, (old) =>
+        old ? old.map((task) => (task.id === updatedTask.id ? updatedTask : task)) : old
+      );
+
+      return { previousTasks };
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
       console.error('Error updating task:', error);
+      for (const [key, data] of context?.previousTasks ?? []) {
+        if (data !== undefined) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       toast.error('Failed to update task', {
         description: error.message
       });
+    },
+    onSuccess: () => {
+      toast.success('Task updated successfully');
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
     }
   });
 

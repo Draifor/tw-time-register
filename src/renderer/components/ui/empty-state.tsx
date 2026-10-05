@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 
@@ -36,14 +36,17 @@ function EmptyState({ icon: Icon, title, description, action, className }: Empty
 export interface ErrorStateProps {
   title: string;
   message?: string;
+  /** Optional recovery action, e.g. a retry button. */
+  action?: React.ReactNode;
   className?: string;
 }
 
 /**
  * Shared error state used by every table (UX-204). The destructive token keeps
- * it visually distinct from an empty state.
+ * it visually distinct from an empty state. An optional `action` slot carries
+ * the recovery affordance (e.g. retry) without changing the existing layout.
  */
-function ErrorState({ title, message, className }: ErrorStateProps) {
+function ErrorState({ title, message, action, className }: ErrorStateProps) {
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
       <div className="rounded-full bg-destructive/10 p-4 mb-4">
@@ -51,8 +54,32 @@ function ErrorState({ title, message, className }: ErrorStateProps) {
       </div>
       <h3 className="text-lg font-semibold mb-1">{title}</h3>
       {message && <p className="text-sm text-muted-foreground max-w-[300px]">{message}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
 
-export { EmptyState, ErrorState };
+export interface LoadingStateProps {
+  title: string;
+  description?: string;
+  className?: string;
+}
+
+/**
+ * Shared loading state (UX-403). Mirrors the `EmptyState`/`ErrorState` layout
+ * with a muted spinner so every full-panel load reads the same. Tables keep
+ * their row skeletons; this primitive is for panel-level loading.
+ */
+function LoadingState({ title, description, className }: LoadingStateProps) {
+  return (
+    <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
+      <div className="rounded-full bg-muted p-4 mb-4">
+        <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+      </div>
+      <h3 className="text-lg font-semibold mb-1">{title}</h3>
+      {description && <p className="text-sm text-muted-foreground max-w-[300px]">{description}</p>}
+    </div>
+  );
+}
+
+export { EmptyState, ErrorState, LoadingState };

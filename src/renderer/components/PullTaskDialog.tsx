@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowDownToLine, Loader2, CalendarRange, Clock, CheckCircle2, SkipForward, AlertCircle } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { WizardStepIndicator } from './ui/wizard-step-indicator';
 import { pullEntriesFromTW, PullFromTWResult } from '../services/timesService';
 import { Task } from '../../types/tasks';
 import { queryKeys } from '../lib/queryKeys';
@@ -51,6 +52,7 @@ export default function PullTaskDialog({ task }: Props) {
   const [toDate, setToDate] = useState('');
   const [isPulling, setIsPulling] = useState(false);
   const [result, setResult] = useState<PullFromTWResult | null>(null);
+  const firstControlRef = useRef<HTMLButtonElement>(null);
 
   function resetState() {
     setMode('lastMonth');
@@ -60,6 +62,7 @@ export default function PullTaskDialog({ task }: Props) {
   }
 
   function handleClose(value: boolean) {
+    if (!value && isPulling) return;
     if (!value) resetState();
     setOpen(value);
   }
@@ -113,7 +116,22 @@ export default function PullTaskDialog({ task }: Props) {
         </Tooltip>
       </TooltipProvider>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          firstControlRef.current?.focus();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (isPulling) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (isPulling) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (isPulling) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {result ? (
@@ -130,6 +148,13 @@ export default function PullTaskDialog({ task }: Props) {
           </DialogTitle>
         </DialogHeader>
 
+        <WizardStepIndicator
+          labels={[t('timeLogs.pull.stepConfig'), t('timeLogs.pull.stepResult')]}
+          currentIndex={result ? 1 : 0}
+          progressLabel={t('common.stepOf', { current: result ? 2 : 1, total: 2 })}
+          ariaLabel={t('common.stepProgress')}
+        />
+
         <div className="space-y-4 pt-1">
           {/* ── Step: config ── */}
           {!result && (
@@ -140,9 +165,10 @@ export default function PullTaskDialog({ task }: Props) {
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">{t('timeLogs.pull.periodLabel')}</Label>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {periodOptions.map((opt) => (
+                  {periodOptions.map((opt, i) => (
                     <button
                       key={opt.value}
+                      ref={i === 0 ? firstControlRef : undefined}
                       type="button"
                       onClick={() => setMode(opt.value)}
                       className={`flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors text-left ${
@@ -247,7 +273,7 @@ export default function PullTaskDialog({ task }: Props) {
                 <Button variant="outline" size="sm" onClick={resetState} disabled={isPulling}>
                   {t('timeLogs.pull.pullAgain')}
                 </Button>
-                <Button size="sm" onClick={() => handleClose(false)}>
+                <Button size="sm" onClick={() => handleClose(false)} disabled={isPulling}>
                   {t('common.done')}
                 </Button>
               </div>
