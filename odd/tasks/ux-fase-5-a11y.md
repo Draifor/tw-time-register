@@ -54,14 +54,16 @@ WorkTimeForm calculation logic, E2E visual/a11y automation (axe CI) — separate
 
 ## Tasks
 
-- [ ] **T1 · UX-501 — Close label↔control association gaps**
-  - Add `htmlFor`/`id` wiring in `TimeLogsTable` filter labels and `PullFromTWDialog` button-group label
-    (use `aria-labelledby` where the control is a group, not a single input); verify `ImportTasksDialog`.
+- [x] **T1 · UX-501 — Close label↔control association gaps** — ✅ 2026-10-04, commit `57581e0`
+  - `TimeLogsTable` date/task filter labels wired (`htmlFor`/`id`); `PullFromTWDialog` + `PullTaskDialog`
+    period selectors became `role="group"` + `aria-labelledby`; per-row local-name/type label↔control ids
+    keyed by `row.twTaskId`; `ImportTasksDialog` verified already correct.
   - Acceptance: every visible form label programmatically names its control.
 
-- [ ] **T2 · UX-502 — Accessible names on icon-only buttons**
-  - Add `aria-label` (i18n) to every icon-only/`size="icon"` button lacking a name across WorkTimeForm,
-    TimeLogsTable, SettingsPage, PullTaskDialog, PullFromTWDialog, and any other found in the sweep.
+- [x] **T2 · UX-502 — Accessible names on icon-only buttons** — ✅ 2026-10-04, commit `57581e0`
+  - `aria-label` (i18n) added to timer/remove (`WorkTimeForm`), 7 row/edit actions (`TimeLogsTable`),
+    holiday delete + template edit/delete (`SettingsPage`), `PullTaskDialog` trigger, `PullFromTWDialog`
+    external-link. Sweep confirmed no remaining unlabeled icon-only buttons. 4 locale keys added (en/es).
   - Acceptance: zero icon-only buttons without an accessible name.
 
 - [ ] **T3 · UX-505 — Dialog descriptions**
@@ -128,6 +130,19 @@ render description (T3); reduced-motion CSS present and theme switch named (T4);
 `aria-controls`/`aria-activedescendant` + Home/End (T5); progress-dot non-color affordance (T6);
 `scope` present + dropzone keyboard-operable (T7).
 
+## Review (RDD on)
+
+- **Slice 1 (T1+T2)** — base `424d807` / commit `57581e0`, 8 paths / 450 lines: `review_due_reason =
+  slice_budget_reached`, risk `medium`. Consent granted; lens `review-reliability`; lineage
+  `review-717700e0a52546b6`. Result **approved**; acknowledgement burned authority. Reviewed boundary
+  `57581e0`. Advisories (non-blocking, queued):
+  - **R3-1 (WARNING)** — the PullFromTWDialog per-row local-name/type label↔control association added in
+    this candidate is never asserted (test only checks the external-link name at that step).
+  - **R3-2 (WARNING)** — tests derive expected names from the same `i18n.t()` lookups the components use,
+    so missing/placeholder keys (e.g. `workTimeForm.timer.start`, `common.cancel`) go undetected.
+  - **R3-3 (SUGGESTION)** — the `Combobox` label wiring (`time-logs-filter-task`) is not pinned to the
+    control; `getByLabelText` resolves anywhere in the document.
+
 ## Delivery
 
 - Forecast: ~550–700 authored changed lines (code + tests) across 7 tasks. Exceeds the ~400-line
@@ -137,4 +152,7 @@ render description (T3); reduced-motion CSS present and theme switch named (T4);
 
 - 2026-10-04 — User authorized Fase 5 ("Vamos con la fase 5"). Branch `feat/ux-fase-5-a11y` created from
   `origin/staging` (`36ca963`). Read-only map done (roadmap refs stale; UX-501 largely fixed). Task doc
-  created.
+  created. Delivery strategy: `feature-branch-chain` (user-approved). Planned slices recorded.
+- 2026-10-04 — Slice 1 (T1+T2) done: `aria-label`/`htmlFor`/`role=group` sweep + 4 locale keys + new
+  `a11yNames.test.tsx` (8 tests, RED→GREEN). Full suite 64 files / 444 tests green. Commit `57581e0`
+  (`feat/ux-fase-5-01-names`). Native review approved; advisories R3-1..R3-3 queued.
