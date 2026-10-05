@@ -71,11 +71,17 @@ UX-003 rule; the Electron window title is brand, not translatable copy.
 
 ## Tasks
 
-- [ ] **T1 · UX-603 — Remove dead UI code** (slice 1)
-  - Delete orphan `DynamicForm.tsx` + `FormField.tsx` and the `FormFieldProps` type; delete orphan
-    `Filter.tsx`; remove `DAYS_OF_WEEK.labelEs`; remove the `onPersist` no-op wiring and the dead
-    `onAddRow` path (`DataTable`/`useTable`/`useTasks`) plus the unused `useTasks` returns.
-  - Acceptance: no orphan components, no dead props/fields; suite + type-check green.
+- [x] **T1 · UX-603 — Remove dead UI code** (slice 1) — ✅ 2026-10-05, commit `e3c4242`
+  - Deleted orphan `DynamicForm.tsx` + `FormField.tsx` + `Filter.tsx`; removed `FormFieldProps` (and the
+    transitively-orphaned `NewRecord` + dead `DataTableProps`) from `types/dataTable.ts`; removed
+    `DAYS_OF_WEEK.labelEs`; removed the `TypeTasksTable` `onPersist` no-op; removed the dead `onAddRow`
+    path (prop + both render branches + phantom `SkeletonTable` add button) and the dead `useTasks`
+    `onSubmit` add-mutation return plus `onDelete`/`isLoadingMutation` returns; deleted the dead-path
+    optimistic-add test (kept the edit test).
+  - `pnpm type-check` clean; `pnpm lint` 0 errors / 83 warnings (baseline); `pnpm test` 71 files / 492
+    tests green; `pnpm build` green. Assess: risk `medium`, `review_due_reason = under_budget` (349 lines,
+    11 paths) → no native review due.
+  - Acceptance: no orphan components, no dead props/fields; suite + type-check green. ✅
 
 - [ ] **T2 · UX-601 — Move hardcoded UI strings to locales** (slice 2)
   - Every UI-visible literal from the map moves behind `t()` with new `en`/`es` keys (AppBar window
@@ -145,7 +151,7 @@ one verb per action after T4.
 
 | Slice | Task | Branch | Commit(s) | Lines |
 | --- | --- | --- | --- | --- |
-| 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | — | — |
+| 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | `e3c4242` | 349 |
 | 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | — | — |
 | 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | — | — |
 | 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | — | — |
@@ -156,3 +162,9 @@ one verb per action after T4.
   `feat/ux-fase-6-i18n-cleanup` created from `origin/staging` (`94e03ab`). Read-only map done (roadmap refs
   stale; debt wider than listed; en/es parity already met; orphans confirmed). Task doc created. Delivery
   strategy: `feature-branch-chain` (user-approved). Planned slices recorded.
+- 2026-10-05 — Slice 1 (UX-603) done: deleted orphan `DynamicForm`/`FormField`/`Filter` + `FormFieldProps`,
+  `NewRecord`, dead `DataTableProps`; removed `labelEs`, `onPersist` no-op, `onAddRow` path, and the dead
+  `useTasks` `onSubmit`/`onDelete`/`isLoadingMutation` returns; removed the dead-path add test. Commit
+  `e3c4242` (`feat/ux-fase-6-01-dead-code`), +20/−329 across 11 files. Type-check/lint/test/build green.
+  Assess risk `medium`, `under_budget` → no review due. Chained topology: child #1 targets the tracker;
+  later children target the immediate parent branch (slices stacked).
