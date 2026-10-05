@@ -96,10 +96,14 @@ UX-003 rule; the Electron window title is brand, not translatable copy.
     burned via exact acknowledgement. 4 non-blocking advisories recorded (see Review section).
   - Acceptance: no UI literals outside locales except brand/proper nouns; EN/ES both resolve every string. ✅
 
-- [ ] **T3 · UX-602 — Fix and complete locales** (slice 3)
-  - Translate the English leftovers in `es.ts`; resolve the `importCSV.colTaskName` divergence; remove
-    locale keys with no source usage (after T1/T2 settle the surface).
-  - Acceptance: `en`/`es` mirrored, correct, no orphan keys.
+- [x] **T3 · UX-602 — Fix and complete locales** (slice 3) — ✅ 2026-10-05, commit `4bcc96a`
+  - Translated 14 Spanish values that were still English (pull subtitle, holidays sync, task/type link
+    labels, timer labels, TW username, etc.); resolved the `importCSV.colTaskName` divergence
+    (`TareaTW` → `Nombre de tarea`, matching EN `Task Name`); removed 18 orphan keys from both bundles.
+    New `fase6Locales.test.ts` (33 tests, RED→GREEN) pins parity + corrected copy + orphan absence.
+  - `pnpm type-check`/`lint` (0 errors/83 warnings)/`test` (73 files / 539 tests)/`build` all green.
+    Assess: risk `medium`, `review_due_reason = under_budget` (166 lines) → no review due.
+  - Acceptance: `en`/`es` mirrored (493 keys each), correct, no orphan keys. ✅
 
 - [ ] **T4 · UX-604 — Unify action copy per the UX-003 glossary** (slice 4)
   - Apply one verb per action across buttons/toasts/errors (`Add`, `Save`, `Delete`, `Edit`…), removing
@@ -178,7 +182,7 @@ one verb per action after T4.
 | --- | --- | --- | --- | --- |
 | 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | `e3c4242` | 349 |
 | 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | `13df113` | 523 |
-| 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | — | — |
+| 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | `4bcc96a` | 166 |
 | 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | — | — |
 
 ## Progress log
@@ -199,3 +203,7 @@ one verb per action after T4.
   (`feat/ux-fase-6-02-i18n-strings`), 523 lines. Native review (lens `review-reliability`) **approved**;
   acknowledgement burned authority; 4 advisories recorded (1 verified non-defect, 1 accepted, 2 queued for
   advisory closure). Assess `slice_budget_reached`.
+- 2026-10-05 — Slice 3 (UX-602) done: translated 14 English leftovers in `es.ts`, resolved the
+  `importCSV.colTaskName` divergence, removed 18 orphan keys (incl. `table.addRow`/`addFirstEntry`).
+  New `fase6Locales.test.ts` (33 tests, RED→GREEN). Commit `4bcc96a` (`feat/ux-fase-6-03-locales`), 166
+  lines. Assess `under_budget` → no review due.
