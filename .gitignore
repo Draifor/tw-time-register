@@ -1,4 +1,6 @@
 node_modules
+# npm lockfile - this repo uses pnpm (pnpm-lock.yaml is the source of truth)
+package-lock.json
 .DS_Store
 dist
 dist-ssr
