@@ -424,6 +424,7 @@ const es = {
         uploadHint: 'Selecciona un archivo .csv con las siguientes columnas (encabezado opcional):',
         typeAutoCreate: 'Si un Tipo no existe aún, se creará automáticamente.',
         dropzoneHint: 'Haz clic para seleccionar un archivo CSV',
+        dropzoneAria: 'Importar tareas desde un archivo CSV. Presiona Enter para elegir un archivo o arrástralo aquí.',
         browseBtn: 'Examinar…',
         rowsParsed: '{{count}} filas leídas de {{file}}',
         changeFile: 'Cambiar archivo',

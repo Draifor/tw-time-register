@@ -51,9 +51,7 @@ function ImportCSVTasksDialog() {
     setOpen(isOpen);
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function processFile(file: File) {
     setFileName(file.name);
     setParseError(null);
 
@@ -73,6 +71,34 @@ function ImportCSVTasksDialog() {
       }
     };
     reader.readAsText(file);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function handleDropzoneKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    // Only react when the dropzone itself is focused, not a nested control
+    // (the Browse button handles its own activation).
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      // Prevent the page from scrolling on Space activation.
+      if (e.key === ' ') e.preventDefault();
+      openFilePicker();
+    }
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    processFile(file);
   }
 
   async function handleImport() {
@@ -128,10 +154,28 @@ function ImportCSVTasksDialog() {
 
             <p className="text-sm text-muted-foreground">{t('tasks.importCSV.typeAutoCreate')}</p>
 
-            <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border px-6 py-8">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={t('tasks.importCSV.dropzoneAria')}
+              onClick={openFilePicker}
+              onKeyDown={handleDropzoneKeyDown}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border px-6 py-8 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
               <FileUp className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">{t('tasks.importCSV.dropzoneHint')}</p>
-              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => {
+                  // Keep a single picker open: the button must not bubble to the
+                  // clickable dropzone wrapper.
+                  e.stopPropagation();
+                  openFilePicker();
+                }}
+              >
                 {t('tasks.importCSV.browseBtn')}
               </Button>
               <input
@@ -140,6 +184,10 @@ function ImportCSVTasksDialog() {
                 accept=".csv,text/csv"
                 className="hidden"
                 onChange={handleFileChange}
+                // The hidden input lives inside the clickable dropzone; without
+                // this, the programmatic `openFilePicker` click bubbles back up
+                // and fires the dropzone handler a second time.
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
 
@@ -177,13 +225,13 @@ function ImportCSVTasksDialog() {
               <table className="w-full">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-xs">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">
                       {t('tasks.importCSV.colTaskName')}
                     </th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">
                       {t('tasks.importCSV.colType')}
                     </th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">
                       {t('tasks.importCSV.colLink')}
                     </th>
                   </tr>

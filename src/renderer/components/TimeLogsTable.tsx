@@ -726,15 +726,33 @@ function TimeLogsTable() {
         <table className="w-full min-w-[840px] text-sm">
           <thead className="sticky top-0 z-10 bg-muted/50">
             <tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colTask')}</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('common.description')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colStart')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colEnd')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colDuration')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('common.billable')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colStatus')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colActions')}</th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                {t('reports.colDate')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                {t('reports.colTask')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                {t('common.description')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colStart')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colEnd')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colDuration')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('common.billable')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colStatus')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colActions')}
+              </th>
             </tr>
           </thead>
           <tbody>

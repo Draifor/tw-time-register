@@ -305,23 +305,25 @@ function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colTask')}</th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                      {t('reports.colTask')}
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colEntries')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colTotalHours')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colEstimated')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colProgress')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colBillable')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colSyncStatus')}
                     </th>
                   </tr>
@@ -439,14 +441,16 @@ function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                      {t('reports.colDate')}
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colEntries')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colTotalHours')}
                     </th>
-                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
                       {t('reports.colSyncStatus')}
                     </th>
                   </tr>
