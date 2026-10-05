@@ -48,7 +48,7 @@ interface EditData {
   isBillable: boolean;
 }
 
-import { parseDuration, formatDuration, formatTime24h } from '../lib/timeUtils';
+import { parseDuration, formatDuration, formatTime24h, formatMinutesToHHMM } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo, getStatusDotColor } from '../lib/progressUtils';
@@ -119,10 +119,30 @@ export const TimeLogRow = React.memo(function TimeLogRow({
       <td className="px-4 py-3 align-top">
         <div className="flex items-start gap-2 max-w-[260px]">
           {progress && (
-            <div
-              className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(progress.status)}`}
-              title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
-            />
+            <span className="mt-1.5 inline-flex shrink-0">
+              {/* Color-only dot stays decorative; the status is also exposed
+                  as text so it is perceivable without color and announced by
+                  screen readers (UX-504). */}
+              <span
+                aria-hidden="true"
+                className={`w-2 h-2 rounded-full ${getStatusDotColor(progress.status)}`}
+                title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
+              />
+              <span className="sr-only">
+                {t('progress.detail', {
+                  status:
+                    progress.status === 'overtime'
+                      ? t('progress.statusOvertime')
+                      : progress.status === 'warning'
+                        ? t('progress.statusWarning')
+                        : t('progress.statusOnTime'),
+                  logged: formatMinutesToHHMM(progress.logged),
+                  estimated: formatMinutesToHHMM(progress.estimated),
+                  pct: Math.round(progress.pct),
+                  margin: formatMinutesToHHMM(progress.margin)
+                })}
+              </span>
+            </span>
           )}
           <TooltipProvider>
             <Tooltip>
