@@ -105,13 +105,23 @@ UX-003 rule; the Electron window title is brand, not translatable copy.
     Assess: risk `medium`, `review_due_reason = under_budget` (166 lines) → no review due.
   - Acceptance: `en`/`es` mirrored (493 keys each), correct, no orphan keys. ✅
 
-- [ ] **T4 · UX-604 — Unify action copy per the UX-003 glossary** (slice 4)
-  - Apply one verb per action across buttons/toasts/errors (`Add`, `Save`, `Delete`, `Edit`…), removing
-    the `New`/`Add`/`Create` and `Add Row`/`Add First Entry` drift.
-  - Acceptance: one verb per action app-wide; no synonym drift.
+- [x] **T4 · UX-604 — Unify action copy per the UX-003 glossary** (slice 4) — ✅ 2026-10-05, commit `81700ca`
+  - Applied `Add`/`Agregar` for creation and `Save`/`Guardar` for primary submit across 8 action keys
+    (task/type add buttons + submits, work-time add-entry + submit, Settings submit, inline save, and the
+    home-screen add-entry copy). New `fase6ActionCopy.test.ts` (18 tests, RED→GREEN) pins the contract and
+    guards against synonym drift. Dialog/section titles (e.g. `New template`) kept as names, not verbs.
+  - Assess: risk `medium`, `review_due_reason = under_budget` (124 lines) → no review due.
+  - Acceptance: one verb per action app-wide; no synonym drift. ✅
 
-- [ ] **T5 · Closure — verification + roadmap** (slice 5)
-  - Full checks green; `docs/UX-ROADMAP.md` Fase 6 items ticked with date/PR; this doc's outcome recorded.
+- [x] **T5 · Closure — verification + roadmap** (slice 5) — ✅ 2026-10-05, commit `d622340`
+  - Closed both queued slice-2 advisories: added reused-key resolution assertions (`workTimeForm.progressInfo`
+    with interpolation, `tasks.tableTitle`, `common.description`, `common.cancel`) and render-level
+    localization proofs (`AppBar` window-control name; `DeleteButton` dialog copy) to `fase6I18nGuard.test.ts`.
+    Ticked `docs/UX-ROADMAP.md` UX-601..604 and updated `Estado general` to Fases 0–6.
+  - Final chain checks: `pnpm type-check` clean; `pnpm lint` 0 errors / 83 warnings; `pnpm test` 74 files /
+    563 tests (one pre-existing load flake in `timeLogsTableVirtual.test.tsx`, green in isolation — see
+    Progress log); `pnpm build` green. Assess: `under_budget` → no review due.
+  - Acceptance: all checks green; advisories closed or explicitly accepted; roadmap updated. ✅
 
 ## Authorized files
 
@@ -170,20 +180,31 @@ one verb per action after T4.
   - **R3-SETTINGS-STALE-T (SUGGESTION)** — the mount-time settings-load effect closure keeps the `t`
     captured at mount, so a load failure after a language change reports in the previous locale. Accepted
     residual for a low-frequency error toast (adding `t` to deps would re-fetch and risk discarding edits).
+  - **Advisory closure** — R3-KEY-RESOLUTION-COVERAGE and R3-NEGATIVE-ONLY-GUARD closed in `d622340`
+    (reused-key resolution + interpolation + render-level assertions). R3-A11Y-HIDDEN-NAME verified
+    non-defect. R3-SETTINGS-STALE-T accepted. No re-review was run (test/docs-only, `under_budget`).
+
+- **Slices 3–5** — each assessed independently against its parent tip; all
+  `review_due_reason = under_budget`, so no native review was due:
+  - Slice 3 (UX-602, commit `4bcc96a`, 166 lines).
+  - Slice 4 (UX-604, commit `81700ca`, 124 lines).
+  - Slice 5 (closure, commit `d622340`, 145 lines).
 
 ## Delivery
 
 - Strategy: `feature-branch-chain` (user-approved 2026-10-05). Tracker branch
   `feat/ux-fase-6-i18n-cleanup`; child slices off the tracker, one cohesive unit each; child PRs target the
   tracker. Slicing confirmed at PR time with one honest pass.
-- Forecast: ~400–650 authored changed lines (locale keys dominate) across 4 tasks.
+- Forecast: ~400–650 authored changed lines (locale keys dominate) across 4 tasks; actual ≈ 1.31k changed
+  lines across 5 slices (a large share is new guard/test code, which the forecast underestimated).
 
 | Slice | Task | Branch | Commit(s) | Lines |
 | --- | --- | --- | --- | --- |
 | 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | `e3c4242` | 349 |
 | 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | `13df113` | 523 |
 | 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | `4bcc96a` | 166 |
-| 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | — | — |
+| 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | `81700ca` | 124 |
+| 5 | Closure (advisory hardening + roadmap) | `feat/ux-fase-6-05-closure` | `d622340` | 145 |
 
 ## Progress log
 
@@ -207,3 +228,18 @@ one verb per action after T4.
   `importCSV.colTaskName` divergence, removed 18 orphan keys (incl. `table.addRow`/`addFirstEntry`).
   New `fase6Locales.test.ts` (33 tests, RED→GREEN). Commit `4bcc96a` (`feat/ux-fase-6-03-locales`), 166
   lines. Assess `under_budget` → no review due.
+- 2026-10-05 — Slice 4 (UX-604) done: unified action verbs (`Add`/`Save`) across 8 keys in both locales;
+  new `fase6ActionCopy.test.ts` (18 tests, RED→GREEN); updated one a11y test for the now-shared
+  opener/submit name. Commit `81700ca` (`feat/ux-fase-6-04-action-copy`), 124 lines. Assess `under_budget`.
+- 2026-10-05 — Slice 5 (closure) done: closed the two queued slice-2 advisories in `fase6I18nGuard.test.ts`
+  (reused-key resolution + interpolation + render-level AppBar/DeleteButton proofs); ticked
+  `docs/UX-ROADMAP.md` Fase 6 (UX-601..604) and updated `Estado general`. Commit `d622340`
+  (`feat/ux-fase-6-05-closure`), 145 lines. Assess `under_budget`.
+- 2026-10-05 — Feature closure verification on the chain tip: type-check clean; lint 0 errors / 83 warnings;
+  test 74 files / 563 tests (one pre-existing environmental load flake in `timeLogsTableVirtual.test.tsx`
+  timeouts at 5s under full parallel load — green in isolation; both slice-1 and closure runs hit it, so it
+  is NOT introduced by Fase 6 and is out of scope here); build green. Chained branches ready for push/PR
+  (user-owned decision).
+- Verification counts: baseline 71 files / 492 tests → 74 files / 563 tests (+4 test files:
+  `fase6I18nGuard`, `fase6Locales`, `fase6ActionCopy`, plus the render additions; net +71 tests, −1 dead
+  test removed in slice 1). Authored changed lines by slice: 349 / 523 / 166 / 124 / 145 = ~1307.
