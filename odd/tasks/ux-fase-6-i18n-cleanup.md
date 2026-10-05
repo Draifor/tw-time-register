@@ -83,12 +83,18 @@ UX-003 rule; the Electron window title is brand, not translatable copy.
     11 paths) → no native review due.
   - Acceptance: no orphan components, no dead props/fields; suite + type-check green. ✅
 
-- [ ] **T2 · UX-601 — Move hardcoded UI strings to locales** (slice 2)
-  - Every UI-visible literal from the map moves behind `t()` with new `en`/`es` keys (AppBar window
-    controls, SettingsPage toast/samples, SwitchDarkMode alts, SelectLanguage fallback, `useTasks`/
-    `useTypeTasks` headers + cell copy + toasts, DeleteButton, combobox, dialog sr-only Close,
-    ImportCSVTasksDialog, TimeLogsTable, App loading).
-  - Acceptance: no UI literals outside locales except brand/proper nouns; EN/ES both resolve every string.
+- [x] **T2 · UX-601 — Move hardcoded UI strings to locales** (slice 2) — ✅ 2026-10-05, commit `13df113`
+  - Every mapped UI literal moved behind `t()` with mirrored `en`/`es` keys: AppBar window controls;
+    SettingsPage load toast + TW sample placeholders; `SwitchDarkMode` decorative alts; `SelectLanguage`
+    fallback; `useTasks`/`useTypeTasks` column headers + cell copy + toasts; `DeleteButton`; `combobox`;
+    `dialog` sr-only close; `ImportCSVTasksDialog`; `TimeLogsTable`; App loading. Brand/proper nouns and
+    format tokens kept. RED→GREEN source-scan guard `fase6I18nGuard.test.ts` (14 tests).
+  - `pnpm type-check` clean; `pnpm lint` 0 errors / 83 warnings (baseline, after suppressing a new
+    exhaustive-deps warning on the mount-time settings load); `pnpm test` 72 files / 506 tests green;
+    `pnpm build` green. Assess: risk `medium`, review_due `slice_budget_reached` (523 lines, 15 paths).
+  - Native review lineage `review-e5bb65c401131367`, lens `review-reliability`: **approved**; authority
+    burned via exact acknowledgement. 4 non-blocking advisories recorded (see Review section).
+  - Acceptance: no UI literals outside locales except brand/proper nouns; EN/ES both resolve every string. ✅
 
 - [ ] **T3 · UX-602 — Fix and complete locales** (slice 3)
   - Translate the English leftovers in `es.ts`; resolve the `importCSV.colTaskName` divergence; remove
@@ -142,6 +148,25 @@ Task-specific: no orphan imports after T1 (grep `DynamicForm|FormField|Filter` �
 no UI literals outside locales after T2 (grep sweep); EN/ES resolve every key + no orphan keys after T3;
 one verb per action after T4.
 
+## Review (RDD on)
+
+- **Slice 2 (UX-601)** — base `e3c4242`, commit `13df113`, 15 paths / 523 lines: risk `medium`,
+  `review_due_reason = slice_budget_reached`. Consent granted; lens `review-reliability`; lineage
+  `review-e5bb65c401131367`. Result **approved**; acknowledgement burned authority. Advisories
+  (non-blocking, queued as separate later work):
+  - **R3-A11Y-HIDDEN-NAME (WARNING)** — reviewer flagged `SwitchDarkMode.tsx:17` `alt=""` as possibly
+    dropping the checkbox's accessible name. **Verified non-defect:** the `<input>` keeps
+    `aria-label={t('common.toggleDarkMode')}` (`SwitchDarkMode.tsx:28`), so the images are correctly
+    decorative; the reviewer could not see attributes outside the changed hunk.
+  - **R3-KEY-RESOLUTION-COVERAGE (WARNING)** — the new resolution test pins 12 keys; reused keys
+    (`workTimeForm.progressInfo`, `tasks.tableTitle`, `common.description`, `common.cancel`) are not
+    asserted to resolve. Queued: extend the resolution assertions.
+  - **R3-NEGATIVE-ONLY-GUARD (SUGGESTION)** — the guard is a negative source-text scan; it cannot prove a
+    component renders localized copy. Queued: add a render-level assertion.
+  - **R3-SETTINGS-STALE-T (SUGGESTION)** — the mount-time settings-load effect closure keeps the `t`
+    captured at mount, so a load failure after a language change reports in the previous locale. Accepted
+    residual for a low-frequency error toast (adding `t` to deps would re-fetch and risk discarding edits).
+
 ## Delivery
 
 - Strategy: `feature-branch-chain` (user-approved 2026-10-05). Tracker branch
@@ -152,7 +177,7 @@ one verb per action after T4.
 | Slice | Task | Branch | Commit(s) | Lines |
 | --- | --- | --- | --- | --- |
 | 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | `e3c4242` | 349 |
-| 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | — | — |
+| 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | `13df113` | 523 |
 | 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | — | — |
 | 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | — | — |
 
@@ -168,3 +193,9 @@ one verb per action after T4.
   `e3c4242` (`feat/ux-fase-6-01-dead-code`), +20/−329 across 11 files. Type-check/lint/test/build green.
   Assess risk `medium`, `under_budget` → no review due. Chained topology: child #1 targets the tracker;
   later children target the immediate parent branch (slices stacked).
+- 2026-10-05 — Slice 2 (UX-601) done: extracted every remaining hardcoded UI string to mirrored `en`/`es`
+  keys across 15 files + new `fase6I18nGuard.test.ts` (14 tests, RED→GREEN). One new lint warning
+  (settings mount effect exhaustive-deps) suppressed with rationale. Commit `13df113`
+  (`feat/ux-fase-6-02-i18n-strings`), 523 lines. Native review (lens `review-reliability`) **approved**;
+  acknowledgement burned authority; 4 advisories recorded (1 verified non-defect, 1 accepted, 2 queued for
+  advisory closure). Assess `slice_budget_reached`.
