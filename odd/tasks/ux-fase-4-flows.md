@@ -186,5 +186,34 @@ state on failure (T4); no debug panel (T1); 24h output (T6); `aria-invalid` + de
   - **R3-002 (WARNING)** — `formatTime24h` now passes unknown non-empty strings through raw, so it no
     longer guarantees `HH:mm`; documented deliberate tradeoff (never fabricate `00:00`). Only the
     TimeLogsTable consumer is exercised. Accepted.
-  - **R3-003 (SUGGESTION)** — `deleteConfirm.test.tsx` uses `clearAllMocks()` without `mockReset()`; weaker
-    per-case isolation than sibling suites. Accepted follow-up.
+- **R3-003 (SUGGESTION)** — `deleteConfirm.test.tsx` uses `clearAllMocks()` without `mockReset()`; weaker
+  per-case isolation than sibling suites. Accepted follow-up.
+
+## Delivery (Feature Branch Chain)
+
+- **Tracker:** draft/no-merge PR **#28** (`feat/ux-fase-4-flows` → `staging`), carrying the ODD task doc.
+- **Children:** 8 slice PRs **#29–#36**, one cohesive UX unit each, reviewed individually.
+- Merged 2026-10-04/05. Slices and review budgets:
+
+| PR | Slice | Branch | Lines |
+| --- | --- | --- | --- |
+| #28 | tracker (ODD doc) | `feat/ux-fase-4-flows` | 117 |
+| #29 | UX-405 + UX-401 | `feat/ux-fase-4-01-debug-submit` | 319 |
+| #30 | UX-402 / UX-406 | `feat/ux-fase-4-02-confirm-delete` | 366 |
+| #31 | UX-403 | `feat/ux-fase-4-03-states` | 334 |
+| #32 | UX-404 | `feat/ux-fase-4-04-wizards` | 355 |
+| #33 | UX-407 | `feat/ux-fase-4-05-time-24h` | 196 |
+| #34 | UX-408 (`size:exception`) | `feat/ux-fase-4-06-validation-a11y` | 520 |
+| #35 | UX-409 | `feat/ux-fase-4-07-optimistic` | 271 |
+| #36 | advisory hardening (`size:exception`) | `feat/ux-fase-4-08-advisory-hardening` | 577 |
+
+### Topology incident and recovery
+
+The chain was merged incorrectly: only #29 targeted the tracker, so #30–#36 accumulated on
+`feat/ux-fase-4-08-advisory-hardening` without ever reaching the tracker. `staging` therefore received
+only Slice 1 via #28. Recovery PR **#37** (`feat/ux-fase-4-08-advisory-hardening` → `staging`,
++2388/−193) delivered slices 2–8; `staging` @ `a14d693` now contains all eight slice commits.
+Verified with `git merge-base --is-ancestor <slice-commit> origin/staging`, not PR state.
+
+Lesson: in a Feature Branch Chain, only child #1 targets the tracker; every later child must be
+retargeted to the tracker as its parent merges. Confirm delivery with ancestry checks.
