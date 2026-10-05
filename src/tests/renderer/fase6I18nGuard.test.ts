@@ -13,10 +13,14 @@
  * (`https://`, `.teamwork.com`), language endonyms (`Español`, `English`) and
  * decorative placeholders (the password dots) are intentionally out of scope.
  */
-import { describe, it, expect } from 'vitest';
+import React from 'react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import i18n, { loadLanguage } from '../../renderer/plugins/i18n';
+import AppBar from '../../renderer/components/AppBar';
+import DeleteButton from '../../renderer/components/DeleteButton';
 
 interface FileGuard {
   file: string;
@@ -201,5 +205,134 @@ describe('Fase 6 new keys resolve to real copy (UX-601)', () => {
     for (const key of ['common.close', 'appBar.minimize', 'deleteButton.title', 'combobox.noResults']) {
       expect(String(i18n.t(key))).not.toBe(NEW_EN_COPY[key]);
     }
+  });
+});
+
+// R3-KEY-RESOLUTION-COVERAGE: the block above only proves the *newly added*
+// keys resolve. UX-601 also REUSED pre-existing keys in the extracted code,
+// and a reused key that silently became orphaned would echo itself just as
+// loudly. Pin those reused keys to real copy in both locales too.
+const REUSED_EN_COPY: Record<string, string> = {
+  'tasks.tableTitle': 'TeamWork Tasks',
+  'common.description': 'Description',
+  'common.cancel': 'Cancel'
+};
+
+describe('Fase 6 reused keys resolve to real copy (UX-601)', () => {
+  it('pins the English copy', async () => {
+    await i18n.changeLanguage('en');
+
+    for (const [key, copy] of Object.entries(REUSED_EN_COPY)) {
+      const resolved = String(i18n.t(key));
+      expect(resolved).not.toBe(key);
+      expect(resolved).toBe(copy);
+    }
+  });
+
+  it('resolves to genuinely translated Spanish copy', async () => {
+    await loadLanguage('es');
+    await i18n.changeLanguage('es');
+
+    expect(i18n.hasResourceBundle('es', 'translations')).toBe(true);
+
+    for (const [key, copy] of Object.entries(REUSED_EN_COPY)) {
+      const resolved = String(i18n.t(key));
+      expect(resolved).not.toBe(key);
+      expect(resolved.length).toBeGreaterThan(0);
+      expect(resolved).not.toBe(copy);
+    }
+  });
+
+  // `progressInfo` is reused with interpolation, so non-key resolution alone is
+  // not enough: assert the passed values actually land in the rendered string
+  // (a wrapper that dropped the options would still resolve to real copy).
+  it('interpolates workTimeForm.progressInfo in en and es', async () => {
+    const values = { logged: '1:15', estimated: '4:00', pct: 31, margin: '2:45' };
+
+    await i18n.changeLanguage('en');
+    const en = String(i18n.t('workTimeForm.progressInfo', values));
+    expect(en).not.toBe('workTimeForm.progressInfo');
+    for (const value of ['1:15', '4:00', '31', '2:45']) {
+      expect(en).toContain(value);
+    }
+
+    await loadLanguage('es');
+    await i18n.changeLanguage('es');
+    const es = String(i18n.t('workTimeForm.progressInfo', values));
+    expect(es).not.toBe('workTimeForm.progressInfo');
+    for (const value of ['1:15', '4:00', '31', '2:45']) {
+      expect(es).toContain(value);
+    }
+
+    // Genuinely translated, not the English interpolation.
+    expect(es).not.toBe(en);
+  });
+});
+
+// R3-NEGATIVE-ONLY-GUARD: everything above is a negative source-text scan or a
+// pure i18n lookup. Neither proves a component actually *renders* localized
+// copy. These render-level assertions close that gap: the component tree must
+// surface the resolved string at the level a user (or screen reader) sees it.
+//
+// Radix popper/alert primitives need DOM helpers jsdom does not implement.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
+Object.assign(Element.prototype, {
+  hasPointerCapture: () => false,
+  setPointerCapture: () => {},
+  releasePointerCapture: () => {},
+  scrollIntoView: () => {}
+});
+
+const isMaximizedMock = vi.fn();
+
+function installWindowMain() {
+  isMaximizedMock.mockReset().mockResolvedValue(false);
+  (window as unknown as { Main: unknown }).Main = {
+    Minimize: vi.fn(),
+    Maximize: vi.fn(),
+    Close: vi.fn(),
+    isMaximized: isMaximizedMock,
+    on: vi.fn(),
+    off: vi.fn(),
+    checkForUpdates: vi.fn(),
+    getAppVersion: vi.fn().mockResolvedValue('1.14.0')
+  };
+}
+
+describe('Fase 6 components render localized copy (UX-601)', () => {
+  beforeEach(() => {
+    cleanup();
+    installWindowMain();
+  });
+
+  it.each([
+    ['en', 'Minimize'],
+    ['es', 'Minimizar']
+  ])('renders the AppBar window-control name in %s', async (lng, expectedName) => {
+    await loadLanguage(lng);
+    await i18n.changeLanguage(lng);
+
+    render(React.createElement(AppBar));
+
+    expect(await screen.findByRole('button', { name: expectedName })).toBeInTheDocument();
+  });
+
+  it('renders DeleteButton dialog title and description from deleteButton.* keys', async () => {
+    await i18n.changeLanguage('en');
+
+    render(React.createElement(DeleteButton, { itemName: 'Task 42', onConfirm: vi.fn() }));
+
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(await screen.findByText(String(i18n.t('deleteButton.title')))).toBeInTheDocument();
+    expect(screen.getByText(String(i18n.t('deleteButton.deletePrefix')), { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(String(i18n.t('deleteButton.deleteSuffix')), { exact: false })).toBeInTheDocument();
   });
 });

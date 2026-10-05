@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `En progreso` — Fases 0–5 implementadas (PR #24, #25, #26, rama `feat/ux-fase-0-ia`, PR #28/#37 y rama `feat/ux-fase-5-a11y`); Fase 6 y el backlog de Reportes (Fase 7) pendientes
+- **Estado general:** `En progreso` — Fases 0–6 implementadas (PR #24, #25, #26, rama `feat/ux-fase-0-ia`, PR #28/#37, rama `feat/ux-fase-5-a11y` y cadena `feat/ux-fase-6-i18n-cleanup`); el backlog de Reportes (Fase 7) pendiente
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -320,22 +320,22 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 6 — i18n y limpieza de copy
 > Objetivo: cero texto sin traducir y sin residuos muertos.
 
-- [ ] **UX-601 · 🟡 Eliminar strings hardcodeados**
+- [x] **UX-601 · 🟡 Eliminar strings hardcodeados** — ✅ 2026-10-05, rama feat/ux-fase-6-02-i18n-strings
   - **Ubicación:** `AppBar.tsx:87,88,94,101,108,42-43`, `DataTable.tsx:88,109`, `SettingsPage.tsx:166,431,443,462,476`, `SwitchDarkMode.tsx:15,18`, `SelectLanguage.tsx:63`
   - **Acción:** mover a `en.ts`/`es.ts` (incluye aria-labels de ventana y ProductName).
   - **Aceptación:** sin literales de UI fuera de locales (salvo nombres propios).
 
-- [ ] **UX-602 · ⚪ Corregir y completar locales**
+- [x] **UX-602 · ⚪ Corregir y completar locales** — ✅ 2026-10-05, rama feat/ux-fase-6-03-locales
   - **Ubicación:** `es.ts:441-443` (devtools/zoom en inglés), `es.ts:398` vs `en.ts:398`, `menu.help.versionLabel` sin uso
   - **Acción:** traducir pendientes, corregir divergencias, eliminar keys sin uso.
   - **Aceptación:** `en`/`es` espejados y sin keys huérfanas.
 
-- [ ] **UX-603 · ⚪ Limpiar dead code de UI**
+- [x] **UX-603 · ⚪ Limpiar dead code de UI** — ✅ 2026-10-05, rama feat/ux-fase-6-01-dead-code
   - **Ubicación:** `SettingsPage.tsx:65-71` (`DAYS_OF_WEEK.label/labelEs` sin uso), `TypeTasksTable.tsx:126` (`onPersist` no-op), `TasksTable.tsx:253-262` (`onAddRow` sin pasar), `DynamicForm.tsx`/`FormField.tsx` (aparentemente sin uso)
   - **Acción:** eliminar o completar; confirmar si `DynamicForm`/`FormField` se usan.
   - **Aceptación:** sin props/campos muertos ni componentes huérfanos.
 
-- [ ] **UX-604 · ⚪ Unificar copy de acciones**
+- [x] **UX-604 · ⚪ Unificar copy de acciones** — ✅ 2026-10-05, rama feat/ux-fase-6-04-action-copy
   - **Ubicación:** global
   - **Acción:** aplicar el glosario de UX-003 a todos los botones/toasts/errores.
   - **Aceptación:** un verbo por acción en toda la app.
