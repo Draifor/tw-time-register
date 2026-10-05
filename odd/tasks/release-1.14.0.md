@@ -68,7 +68,7 @@ Under the ~400-line delivery budget, so one work unit.
 | R-1 | Create `release/1.14.0` from `origin/staging` + this document; delete stale `docs/ux-roadmap` | this document | direct inline | [x] |
 | R-2 | Bump version, write `[1.14.0]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | delegated (one writer) | [x] — +32/−1 |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one worker) | [x] — all green (see evidence) |
-| R-4 | Commit `chore(release): 1.14.0` | — | direct inline | [ ] |
+| R-4 | Commit `chore(release): 1.14.0` | — | direct inline | [x] — `62672aa` |
 | R-5 | Promote to `main` + tag `v1.14.0` | — | direct | [ ] |
 | R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
 
@@ -108,3 +108,7 @@ _(filled by R-5/R-6)_
   Fases 0–5 + CI gate; Changed: README refresh + coverage 285→493; Fixed: relaunch E2E record), README
   `v1.14.0` section. Diff `+32/−1` across the three files. **R-3 done** (same worker): all five gates green
   (frozen install, type-check, 493/493 tests, build) — see *Verification evidence*.
+- 2026-10-04 — **R-4 done:** `62672aa` `chore(release): 1.14.0` (4 files, +142/−1, includes this doc).
+  RDD assessment (`--base-ref origin/staging --committed-only --json`): **medium**
+  (`configuration_change: package.json`), `review_due: false` — `under_budget` (4 paths, 143 lines). No
+  native review required for this work unit.
