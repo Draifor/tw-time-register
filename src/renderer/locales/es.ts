@@ -2,6 +2,7 @@ const es = {
   translations: {
     common: {
       selectLanguage: 'Seleccione el idioma',
+      toggleDarkMode: 'Alternar modo oscuro',
       cancel: 'Cancelar',
       save: 'Guardar',
       saving: 'Guardando...',
@@ -91,6 +92,8 @@ const es = {
       pull: {
         trigger: 'Importar desde TW',
         title: 'Importar registros de TW',
+        dialogDescription:
+          'Importa registros de tiempo de TeamWork a tu historial local y agrega las tareas faltantes.',
         subtitle: 'Descarga tus time entries de TeamWork al historial local. Solo se importan entradas nuevas.',
         stepConfig: 'Período',
         stepResult: 'Resultado',
@@ -133,6 +136,7 @@ const es = {
         taskTrigger: 'Importar registros desde TW',
         noTaskLink: 'Esta tarea no tiene enlace de TW configurado',
         taskTitle: 'Sincronizar: {{name}}',
+        taskDialogDescription: 'Importa a tu base de datos local los registros de tiempo de esta tarea en TeamWork.',
         taskSubtitle: 'Importa desde TW los registros de esta tarea que aún no están en tu BD local.',
         successToast: '{{count}} entradas importadas desde TW',
         noneImported: 'No hay entradas nuevas para importar',
@@ -346,6 +350,8 @@ const es = {
       importTW: {
         trigger: 'Importar desde TW',
         title: 'Importar Tareas desde TeamWork',
+        dialogDescription:
+          'Crea o actualiza tus tareas locales a partir de una tarea padre de TeamWork y sus subtareas.',
         stepForm: 'Formulario',
         stepPreview: 'Vista previa',
         stepDone: 'Listo',
@@ -402,6 +408,7 @@ const es = {
       importCSV: {
         trigger: 'Importar CSV',
         title: 'Importar Tareas desde CSV',
+        dialogDescription: 'Importa tareas en lote desde un archivo CSV con las columnas Tarea, Tipo y Link.',
         uploadHint: 'Selecciona un archivo .csv con las siguientes columnas (encabezado opcional):',
         typeAutoCreate: 'Si un Tipo no existe aún, se creará automáticamente.',
         dropzoneHint: 'Haz clic para seleccionar un archivo CSV',
@@ -493,6 +500,7 @@ const es = {
     taskComment: {
       triggerTooltip: 'Agregar comentario en TW',
       title: 'Nuevo comentario',
+      dialogDescription: 'Agrega un comentario y archivos adjuntos opcionales a esta tarea en TeamWork.',
       bodyLabel: 'Comentario',
       bodyPlaceholder: '¿Qué quieres comentar?',
       dropZoneHint: 'Arrastra archivos aquí',

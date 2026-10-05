@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ArrowDownToLine, Loader2, CalendarRange, Clock, CheckCircle2, SkipForward, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -146,6 +146,7 @@ export default function PullTaskDialog({ task }: Props) {
               </>
             )}
           </DialogTitle>
+          <DialogDescription>{t('timeLogs.pull.taskDialogDescription')}</DialogDescription>
         </DialogHeader>
 
         <WizardStepIndicator

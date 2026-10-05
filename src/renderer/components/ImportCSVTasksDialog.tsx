@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FileUp, CheckCircle2, AlertCircle, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { importTasksFromCSV } from '../services/tasksService';
 import { parseTasksCsvChunked } from '../lib/csvTasks';
@@ -110,6 +110,7 @@ function ImportCSVTasksDialog() {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('tasks.importCSV.title')}</DialogTitle>
+          <DialogDescription>{t('tasks.importCSV.dialogDescription')}</DialogDescription>
         </DialogHeader>
 
         {/* ── Step: upload ──────────────────────────────────────────────── */}

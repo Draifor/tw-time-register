@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Download, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { WizardStepIndicator } from './ui/wizard-step-indicator';
@@ -331,6 +331,7 @@ function ImportTasksDialog() {
             <Download className="h-5 w-5" />
             {t('tasks.importTW.title')}
           </DialogTitle>
+          <DialogDescription>{t('tasks.importTW.dialogDescription')}</DialogDescription>
         </DialogHeader>
 
         <WizardStepIndicator
