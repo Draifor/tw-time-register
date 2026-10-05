@@ -405,6 +405,7 @@ const en = {
         uploadHint: 'Select a .csv file with the following columns (header optional):',
         typeAutoCreate: 'If a Type does not exist yet it will be created automatically.',
         dropzoneHint: 'Click to select a CSV file',
+        dropzoneAria: 'Import tasks from a CSV file. Press Enter to choose a file or drop one here.',
         browseBtn: 'Browse…',
         rowsParsed: '{{count}} rows parsed from {{file}}',
         changeFile: 'Change file',
