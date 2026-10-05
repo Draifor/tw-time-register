@@ -20,7 +20,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import i18n from '../../renderer/plugins/i18n';
+import i18n, { loadLanguage } from '../../renderer/plugins/i18n';
 
 // ── Controlled virtualizer window (TimeLogsTable renders via react-virtual) ──
 const virtualState = vi.hoisted(() => ({ start: 0, size: Number.POSITIVE_INFINITY }));
@@ -272,7 +272,13 @@ describe('UX-501/UX-502 accessible names and associations', () => {
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(i18n.t('timeLogs.filters'), 'i') }));
 
-    expect(screen.getByLabelText(i18n.t('reports.colTask'))).toBeInTheDocument();
+    const taskFilter = screen.getByLabelText(i18n.t('reports.colTask'));
+    expect(taskFilter).toBeInTheDocument();
+    // R3-3: the label must resolve to the combobox control itself — not just
+    // *some* element somewhere in the document. The filter Combobox renders a
+    // `role="combobox"` button carrying the id the label points at.
+    expect(taskFilter).toHaveAttribute('role', 'combobox');
+    expect(taskFilter).toHaveAttribute('id', 'time-logs-filter-task');
     expect(screen.getByLabelText(i18n.t('reports.from'))).toBeInTheDocument();
     expect(screen.getByLabelText(i18n.t('reports.to'))).toBeInTheDocument();
   });
@@ -342,8 +348,8 @@ describe('UX-501/UX-502 accessible names and associations', () => {
     expect(screen.getByLabelText(i18n.t('tasks.importTW.typeLabel'))).toBeInTheDocument();
   });
 
-  // ── UX-502: PullFromTWDialog external-link icon button ─────────────────────
-  it('names the PullFromTWDialog external-link icon button', async () => {
+  // ── UX-502 UX-501: PullFromTWDialog icon button + per-row field labels ─────
+  it('names the PullFromTWDialog external-link icon button and labels the missing-task row fields', async () => {
     // The external-link button only renders in the "add missing tasks" step.
     // Drive the dialog there: pull returns missing task ids, then open the step.
     const { pullEntriesFromTW, fetchTWTaskDetails } = await import('../../renderer/services/timesService');
@@ -378,5 +384,73 @@ describe('UX-501/UX-502 accessible names and associations', () => {
 
     const openLink = await screen.findByRole('button', { name: i18n.t('timeLogs.pull.openInTW') });
     expect(openLink.getAttribute('aria-label')).toBe(i18n.t('timeLogs.pull.openInTW'));
+
+    // R3-1: the per-row fields are reachable through their labels. The rendered
+    // ids carry the TW task id, proving the htmlFor/id wiring is actually
+    // per-row rather than a single shared control.
+    const localName = screen.getByLabelText(i18n.t('timeLogs.pull.localName'));
+    expect(localName.tagName).toBe('INPUT');
+    expect(localName).toHaveAttribute('id', 'pull-local-name-123');
+
+    const typeField = screen.getByLabelText(i18n.t('timeLogs.pull.typeLabel'));
+    expect(typeField.tagName).toBe('SELECT');
+    expect(typeField).toHaveAttribute('id', 'pull-type-123');
+  });
+});
+
+// ── R3-2: i18n expectations must resolve to real copy, not raw keys ──────────
+// The a11y assertions above derive expected names from the same `i18n.t()`
+// calls the components use, so a missing/placeholder key would let expectation
+// and render agree on the raw key and still pass. Pin the literal English copy
+// for every newly added/used key, then prove each key also resolves to real
+// (non-fallback) Spanish copy.
+const EN_COPY: Record<string, string> = {
+  'common.cancel': 'Cancel',
+  'workTimeForm.timer.start': 'Start timer',
+  'workTimeForm.removeEntry': 'Remove entry',
+  'settings.templates.edit': 'Edit template',
+  'settings.templates.delete': 'Delete template',
+  'settings.holidays.delete': 'Delete holiday',
+  'timeLogs.editEntry': 'Edit entry',
+  'timeLogs.duplicateEntry': 'Duplicate entry',
+  'timeLogs.sendToTW': 'Send to TeamWork',
+  'timeLogs.deleteEntry': 'Delete entry',
+  'reports.colTask': 'Task',
+  'reports.from': 'From',
+  'reports.to': 'To',
+  'timeLogs.pull.localName': 'Local name',
+  'timeLogs.pull.typeLabel': 'Type',
+  'timeLogs.pull.openInTW': 'Open in TeamWork',
+  'timeLogs.pull.taskTrigger': 'Pull entries from TW',
+  'timeLogs.pull.periodLabel': 'Period to import'
+};
+
+describe('R3-2 i18n keys resolve to real copy', () => {
+  beforeEach(async () => {
+    cleanup();
+    await i18n.changeLanguage('en');
+  });
+
+  it.each(Object.entries(EN_COPY))('pins the English copy for %s', (key, copy) => {
+    const resolved = String(i18n.t(key));
+    // A missing or placeholder key echoes itself; real copy never does.
+    expect(resolved).not.toBe(key);
+    expect(resolved.length).toBeGreaterThan(0);
+    expect(resolved).toBe(copy);
+  });
+
+  it('resolves every pinned key to real Spanish copy (not the raw key)', async () => {
+    await loadLanguage('es');
+    await i18n.changeLanguage('es');
+
+    expect(i18n.hasResourceBundle('es', 'translations')).toBe(true);
+
+    for (const key of Object.keys(EN_COPY)) {
+      const resolved = String(i18n.t(key));
+      expect(resolved).not.toBe(key);
+      expect(resolved.length).toBeGreaterThan(0);
+      // Genuinely translated, not the English fallback.
+      expect(resolved).not.toBe(EN_COPY[key]);
+    }
   });
 });
