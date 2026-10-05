@@ -230,47 +230,47 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 4 — Flujos, feedback y estados
 > Objetivo: que el usuario siempre sepa qué pasa y no pueda romper cosas por accidente.
 
-- [ ] **UX-401 · 🔴 Submit robusto en WorkTimeForm**
+- [x] **UX-401 · 🔴 Submit robusto en WorkTimeForm**
   - **Ubicación:** `WorkTimeForm.tsx:529-539,1360`
   - **Acción:** `isSubmitting` → `disabled` + spinner; evitar doble submit; evaluar barra de acción sticky / movimiento del CTA principal.
   - **Aceptación:** doble click no crea duplicados; el botón refleja el estado.
 
-- [ ] **UX-402 · 🔴 Confirmación + undo al borrar**
+- [x] **UX-402 · 🔴 Confirmación + undo al borrar**
   - **Ubicación:** `WorkTimeForm.tsx:290-299,1271-1283`
   - **Acción:** `AlertDialog` de confirmación (o toast con "Deshacer") para borrar entrada y para el atajo masivo.
   - **Aceptación:** ninguna entrada se pierde por un click/tecla accidental.
 
-- [ ] **UX-403 · 🔴 Estados vacío/carga/error consistentes y traducidos**
+- [x] **UX-403 · 🔴 Estados vacío/carga/error consistentes y traducidos**
   - **Ubicación:** `HomePage.tsx:56,68,85`, `DataTable.tsx:82-100,109`, `TimeLogsTable.tsx:567-574`
   - **Acción:** componente `EmptyState`/`ErrorState`/`LoadingState` compartido; Home debe mostrar error real, no ceros.
   - **Aceptación:** toda vista con datos tiene los 3 estados, traducidos.
 
-- [ ] **UX-404 · 🟡 Wizards con indicador de paso y cierre seguro**
+- [x] **UX-404 · 🟡 Wizards con indicador de paso y cierre seguro**
   - **Ubicación:** `PullFromTWDialog.tsx:256-549`, `ImportTasksDialog.tsx:307-605,291`, `PullTaskDialog.tsx`
   - **Acción:** stepper visible; bloquear overlay/ESC durante operación en vuelo; foco inicial en el primer control.
   - **Aceptación:** el usuario sabe en qué paso está y no puede cerrar a mitad de una operación destructiva.
 
-- [ ] **UX-405 · 🔴 Quitar "Debug API" de la UI**
+- [x] **UX-405 · 🔴 Quitar "Debug API" de la UI**
   - **Ubicación:** `PullFromTWDialog.tsx:325-364`
   - **Acción:** eliminar o mover detrás de un flag de desarrollo.
   - **Aceptación:** el panel no existe en builds de producción.
 
-- [ ] **UX-406 · 🟡 Flujos destructivos con AlertDialog**
+- [x] **UX-406 · 🟡 Flujos destructivos con AlertDialog**
   - **Ubicación:** `DeleteEntryDialog.tsx:33`
   - **Acción:** usar `AlertDialog` (role `alertdialog`, foco inicial en confirmar).
   - **Aceptación:** todo borrado usa `AlertDialog`.
 
-- [ ] **UX-407 · 🟡 Formatos de hora y pickers unificados**
+- [x] **UX-407 · 🟡 Formatos de hora y pickers unificados**
   - **Ubicación:** `WorkTimeForm.tsx:400,414,433`, `time-picker.tsx:61`, `TimeLogsTable.tsx:640-655`, `PullFromTWDialog.tsx:297`
   - **Acción:** elegir 12h o 24h y aplicarlo en toda la app; usar `InputDate`/`TimePicker` en todos lados (quitar `<input type="date">` sueltos).
   - **Aceptación:** un solo formato y un solo picker de fecha/hora.
 
-- [ ] **UX-408 · 🟡 Validación con semántica y required consistente**
+- [x] **UX-408 · 🟡 Validación con semántica y required consistente**
   - **Ubicación:** `WorkTimeForm.tsx:313,378,421`, `TasksTable.tsx:151,170`, `TypeTasksTable.tsx:82`
   - **Acción:** `aria-invalid`/`aria-describedby`; mensajes i18n (no hardcodeados); `*` de requerido donde aplique.
   - **Aceptación:** errores anunciados y consistentes.
 
-- [ ] **UX-409 · ⚪ Feedback optimista donde aplique**
+- [x] **UX-409 · ⚪ Feedback optimista donde aplique**
   - **Ubicación:** `TimeLogsTable.tsx:406,475`, `WorkTimeForm.tsx:1072-1077`
   - **Acción:** evaluación caso a caso; mantener invalidación pero mejorar percepción.
   - **Aceptación:** acciones frecuentes se sienten instantáneas sin desincronizar datos.
