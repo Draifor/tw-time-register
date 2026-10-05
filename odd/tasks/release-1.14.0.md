@@ -69,8 +69,8 @@ Under the ~400-line delivery budget, so one work unit.
 | R-2 | Bump version, write `[1.14.0]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | delegated (one writer) | [x] — +32/−1 |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one worker) | [x] — all green (see evidence) |
 | R-4 | Commit `chore(release): 1.14.0` | — | direct inline | [x] — `62672aa` |
-| R-5 | Promote to `main` + tag `v1.14.0` | — | direct | [ ] |
-| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
+| R-5 | Promote to `main` + tag `v1.14.0` | — | direct | [x] — main/staging FF to `1a698c2`; tag `v1.14.0` |
+| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [x] — run `37254867537` green |
 
 ## Acceptance criteria
 
@@ -97,7 +97,13 @@ Non-failing warnings observed (pre-existing, out of scope): Vite `configLoader: 
 
 ## Release outcome
 
-_(filled by R-5/R-6)_
+- `main` fast-forwarded `a67119d..1a698c2` (after merging `origin/main` into the release branch); `staging`
+  fast-forwarded `8d05c41..1a698c2`; annotated tag `v1.14.0` pushed at `1a698c2`. Publish run
+  [37254867537](https://github.com/Draifor/tw-time-register/actions/runs/37254867537) — **green on the
+  first attempt**, `Pre-create the GitHub release` held and the R4 asset gate passed.
+- **Verified final state:** exactly **1** release for `v1.14.0` (not draft, not prerelease); 3 assets —
+  `latest.yml` (364 B), `TW-Time-Register-Setup-1.14.0.exe` (126,309,484 B),
+  `TW-Time-Register-Setup-1.14.0.exe.blockmap` (133,620 B); `latest.yml` reports `version: 1.14.0`.
 
 ## Progress
 
@@ -112,3 +118,7 @@ _(filled by R-5/R-6)_
   RDD assessment (`--base-ref origin/staging --committed-only --json`): **medium**
   (`configuration_change: package.json`), `review_due: false` — `under_budget` (4 paths, 143 lines). No
   native review required for this work unit.
+- 2026-10-05 — **R-5/R-6 done:** merged `origin/main` into `release/1.14.0` (`1a698c2`) to absorb the
+  main-only post-1.13.0 commits; `main` FF `a67119d..1a698c2`, `staging` FF `8d05c41..1a698c2`; tag
+  `v1.14.0` pushed. Publish run `37254867537` green on the first attempt; release verified (1 release,
+  3 assets, `latest.yml` `1.14.0`).
