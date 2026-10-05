@@ -302,6 +302,7 @@ const EntryCard = React.memo(function EntryCard({
                       className="text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => onStartTimer(index)}
                       disabled={activeTimer !== null}
+                      aria-label={t('workTimeForm.timer.start')}
                     >
                       <Timer className="h-4 w-4" />
                     </Button>
@@ -319,6 +320,7 @@ const EntryCard = React.memo(function EntryCard({
               className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
               onClick={() => onRemove(index)}
               disabled={!canRemove}
+              aria-label={t('workTimeForm.removeEntry')}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
