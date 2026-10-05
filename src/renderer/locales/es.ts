@@ -21,6 +21,9 @@ const es = {
       noData: 'Sin datos',
       done: 'Listo',
       back: 'Atrás',
+      close: 'Cerrar',
+      language: 'Idioma',
+      actions: 'Acciones',
       errorOccurred: 'Ha ocurrido un error',
       loading: 'Cargando...',
       retry: 'Reintentar',
@@ -29,8 +32,22 @@ const es = {
       stepOf: 'Paso {{current}} de {{total}}',
       required: 'obligatorio'
     },
+    appBar: {
+      minimize: 'Minimizar',
+      restore: 'Restaurar',
+      maximize: 'Maximizar'
+    },
+    deleteButton: {
+      title: '¿Estás seguro?',
+      deletePrefix: 'Esto eliminará permanentemente',
+      thisItem: 'este elemento',
+      deleteSuffix: '. Esta acción no se puede deshacer.'
+    },
     combobox: {
-      positionAnnouncement: '{{current}} de {{total}}: {{label}}'
+      positionAnnouncement: '{{current}} de {{total}}: {{label}}',
+      selectOption: 'Selecciona una opción',
+      searchPlaceholder: 'Buscar...',
+      noResults: 'No se encontraron resultados.'
     },
     progress: {
       statusOvertime: 'Tiempo extra',
@@ -72,6 +89,7 @@ const es = {
       createEntry: 'Crea una entrada en la pantalla principal',
       searchPlaceholder: 'Buscar por tarea o descripción...',
       filters: 'Filtros',
+      syncCount: 'Sincronizar {{count}}',
       allTasks: 'Todas las tareas',
       searchTask: 'Buscar tarea...',
       of: 'de',
@@ -93,6 +111,7 @@ const es = {
       deletedLocalOnly: 'Eliminado solo en local — no se encontró ID de TW',
       deleting: 'Eliminando…',
       yes: 'Sí',
+      no: 'No',
       editResync: 'Editar y reenviar a TW',
       editEntry: 'Editar entrada',
       sendToTW: 'Enviar a TeamWork',
@@ -239,6 +258,7 @@ const es = {
       subtitle: 'Configura tu horario de trabajo y festivos',
       saved: 'Configuración guardada',
       saveError: 'Error al guardar',
+      loadError: 'Error al cargar la configuración',
       language: {
         title: 'Idioma',
         description: 'Selecciona el idioma de la interfaz'
@@ -246,9 +266,12 @@ const es = {
       teamwork: {
         description: 'Configura tus credenciales de API para sincronizar tiempos',
         domain: 'Dominio de TeamWork',
+        domainPlaceholder: 'miempresa',
         username: 'Usuario / Email',
+        usernamePlaceholder: 'usuario@empresa.com',
         password: 'Contraseña',
         userId: 'ID de usuario en TW',
+        userIdPlaceholder: '123456',
         userIdHint: '(se auto-rellena al probar la conexión)',
         connectedAs: 'Conectado como {{name}}',
         testConnection: 'Probar conexión',
@@ -331,6 +354,27 @@ const es = {
       typesTableTitle: 'Tipos de Tarea',
       colEstimatedTime: 'Tiempo estimado',
       colProgress: 'Progreso',
+      colTaskName: 'Nombre de tarea',
+      colTaskType: 'Tipo de tarea',
+      colTaskLink: 'Enlace de TW',
+      colName: 'Nombre',
+      colSync: 'Sincronizar',
+      colComment: 'Comentario',
+      viewInTW: 'Ver en TW',
+      editLink: 'Editar link',
+      editEstimatedTime: 'Editar tiempo estimado',
+      noTypeAssigned: 'Sin tipo asignado',
+      assignType: 'Asignar tipo…',
+      linkPlaceholder: 'https://...',
+      timePlaceholder: 'HH:MM',
+      overTime: 'Tiempo extra',
+      margin: 'Margen: {{time}}',
+      thisTask: 'esta tarea',
+      thisType: 'este tipo',
+      updateSuccess: 'Tarea actualizada correctamente',
+      updateError: 'Error al actualizar la tarea',
+      deleteSuccess: 'Tarea eliminada correctamente',
+      deleteError: 'Error al eliminar la tarea',
       typeForm: {
         addTypeBtn: 'Nuevo tipo',
         typeNameLabel: 'Nombre del tipo',
@@ -338,7 +382,11 @@ const es = {
         submitBtn: 'Agregar tipo',
         nameRequired: 'El nombre es obligatorio',
         addSuccess: 'Tipo agregado correctamente',
-        addError: 'Error al agregar el tipo'
+        addError: 'Error al agregar el tipo',
+        updateSuccess: 'Tipo actualizado correctamente',
+        updateError: 'Error al actualizar el tipo',
+        deleteSuccess: 'Tipo eliminado correctamente',
+        deleteError: 'Error al eliminar el tipo'
       },
       form: {
         addTaskBtn: 'Nueva tarea',
@@ -423,6 +471,7 @@ const es = {
         dialogDescription: 'Importa tareas en lote desde un archivo CSV con las columnas Tarea, Tipo y Link.',
         uploadHint: 'Selecciona un archivo .csv con las siguientes columnas (encabezado opcional):',
         typeAutoCreate: 'Si un Tipo no existe aún, se creará automáticamente.',
+        parseError: 'No se pudo leer el archivo CSV. Verifica el formato.',
         dropzoneHint: 'Haz clic para seleccionar un archivo CSV',
         dropzoneAria: 'Importar tareas desde un archivo CSV. Presiona Enter para elegir un archivo o arrástralo aquí.',
         browseBtn: 'Examinar…',

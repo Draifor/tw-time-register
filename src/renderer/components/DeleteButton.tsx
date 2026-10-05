@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -20,6 +21,7 @@ interface DeleteButtonProps {
 }
 
 function DeleteButton({ itemName, onConfirm, disabled = false }: DeleteButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const handleConfirm = () => {
@@ -36,18 +38,19 @@ function DeleteButton({ itemName, onConfirm, disabled = false }: DeleteButtonPro
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{t('deleteButton.title')}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete <strong>{itemName || 'this item'}</strong>. This action cannot be undone.
+            {t('deleteButton.deletePrefix')} <strong>{itemName || t('deleteButton.thisItem')}</strong>
+            {t('deleteButton.deleteSuffix')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Delete
+            {t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

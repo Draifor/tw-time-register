@@ -21,6 +21,9 @@ const en = {
       noData: 'No data',
       done: 'Done',
       back: 'Back',
+      close: 'Close',
+      language: 'Language',
+      actions: 'Actions',
       errorOccurred: 'An error occurred',
       loading: 'Loading...',
       retry: 'Retry',
@@ -29,8 +32,22 @@ const en = {
       stepOf: 'Step {{current}} of {{total}}',
       required: 'required'
     },
+    appBar: {
+      minimize: 'Minimize',
+      restore: 'Restore',
+      maximize: 'Maximize'
+    },
+    deleteButton: {
+      title: 'Are you sure?',
+      deletePrefix: 'This will permanently delete',
+      thisItem: 'this item',
+      deleteSuffix: '. This action cannot be undone.'
+    },
     combobox: {
-      positionAnnouncement: '{{current}} of {{total}}: {{label}}'
+      positionAnnouncement: '{{current}} of {{total}}: {{label}}',
+      selectOption: 'Select an option',
+      searchPlaceholder: 'Search...',
+      noResults: 'No results found.'
     },
     progress: {
       statusOvertime: 'Overtime',
@@ -72,6 +89,7 @@ const en = {
       createEntry: 'Create an entry on the home screen',
       searchPlaceholder: 'Search by task or description...',
       filters: 'Filters',
+      syncCount: 'Sync {{count}}',
       allTasks: 'All tasks',
       searchTask: 'Search task...',
       of: 'of',
@@ -93,6 +111,7 @@ const en = {
       deletedLocalOnly: 'Deleted locally only — no TW entry ID found',
       deleting: 'Deleting…',
       yes: 'Yes',
+      no: 'No',
       editResync: 'Edit & re-sync to TW',
       editEntry: 'Edit entry',
       sendToTW: 'Send to TeamWork',
@@ -238,6 +257,7 @@ const en = {
       subtitle: 'Configure your work schedule and holidays',
       saved: 'Settings saved',
       saveError: 'Error saving settings',
+      loadError: 'Error loading settings',
       language: {
         title: 'Language',
         description: 'Select the interface language'
@@ -245,9 +265,12 @@ const en = {
       teamwork: {
         description: 'Configure your API credentials to sync time entries',
         domain: 'TeamWork Domain',
+        domainPlaceholder: 'mycompany',
         username: 'Username / Email',
+        usernamePlaceholder: 'user@company.com',
         password: 'Password',
         userId: 'TW User ID',
+        userIdPlaceholder: '123456',
         userIdHint: '(auto-filled when testing connection)',
         connectedAs: 'Connected as {{name}}',
         testConnection: 'Test connection',
@@ -330,6 +353,27 @@ const en = {
       typesTableTitle: 'Task Types',
       colEstimatedTime: 'Est. Time',
       colProgress: 'Progress',
+      colTaskName: 'Task Name',
+      colTaskType: 'Task Type',
+      colTaskLink: 'Task Link',
+      colName: 'Name',
+      colSync: 'Sync',
+      colComment: 'Comment',
+      viewInTW: 'View in TW',
+      editLink: 'Edit link',
+      editEstimatedTime: 'Edit estimated time',
+      noTypeAssigned: 'No type assigned',
+      assignType: 'Assign type…',
+      linkPlaceholder: 'https://...',
+      timePlaceholder: 'HH:MM',
+      overTime: 'Over time',
+      margin: 'Margin: {{time}}',
+      thisTask: 'this task',
+      thisType: 'this type',
+      updateSuccess: 'Task updated successfully',
+      updateError: 'Failed to update task',
+      deleteSuccess: 'Task deleted successfully',
+      deleteError: 'Failed to delete task',
       typeForm: {
         addTypeBtn: 'New type',
         typeNameLabel: 'Type name',
@@ -337,7 +381,11 @@ const en = {
         submitBtn: 'Add type',
         nameRequired: 'Name is required',
         addSuccess: 'Type added successfully',
-        addError: 'Failed to add type'
+        addError: 'Failed to add type',
+        updateSuccess: 'Type updated successfully',
+        updateError: 'Failed to update type',
+        deleteSuccess: 'Type deleted successfully',
+        deleteError: 'Failed to delete type'
       },
       form: {
         addTaskBtn: 'New task',
@@ -421,6 +469,7 @@ const en = {
         dialogDescription: 'Import tasks in bulk from a CSV file with the columns Task, Type, and Link.',
         uploadHint: 'Select a .csv file with the following columns (header optional):',
         typeAutoCreate: 'If a Type does not exist yet it will be created automatically.',
+        parseError: 'Failed to parse the CSV file. Please check the format.',
         dropzoneHint: 'Click to select a CSV file',
         dropzoneAria: 'Import tasks from a CSV file. Press Enter to choose a file or drop one here.',
         browseBtn: 'Browse…',

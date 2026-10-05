@@ -126,7 +126,13 @@ export const TimeLogRow = React.memo(function TimeLogRow({
               <span
                 aria-hidden="true"
                 className={`w-2 h-2 rounded-full ${getStatusDotColor(progress.status)}`}
-                title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
+                title={`${Math.round(progress.pct)}% — ${
+                  progress.status === 'overtime'
+                    ? t('progress.statusOvertime')
+                    : progress.status === 'warning'
+                      ? t('progress.statusWarning')
+                      : t('progress.statusOnTime')
+                }`}
               />
               <span className="sr-only">
                 {t('progress.detail', {
@@ -199,7 +205,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
             {t('timeLogs.yes')}
           </Badge>
         ) : (
-          <span className="text-muted-foreground text-xs">No</span>
+          <span className="text-muted-foreground text-xs">{t('timeLogs.no')}</span>
         )}
       </td>
       <td className="px-4 py-3 text-center">
@@ -653,7 +659,7 @@ function TimeLogsTable() {
               disabled={syncingAll || pendingCount === 0}
             >
               {syncingAll ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {`Sync ${pendingCount}`}
+              {t('timeLogs.syncCount', { count: pendingCount })}
             </Button>
             {/* Pull from TW button */}
             <PullFromTWDialog />

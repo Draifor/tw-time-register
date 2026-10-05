@@ -14,10 +14,10 @@ function SwitchDarkMode() {
     // https://uiverse.io/andrew-demchenk0/honest-stingray-90
     <label className="switch" htmlFor="checkbox">
       <span className="moon">
-        <img src={svgMoon} alt="moon" />
+        <img src={svgMoon} alt="" />
       </span>
       <span className="sun">
-        <img src={svgSun} alt="sun" />
+        <img src={svgSun} alt="" />
       </span>
       <input
         id="checkbox"

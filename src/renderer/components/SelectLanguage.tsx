@@ -19,7 +19,7 @@ const languages = [
 ];
 
 function SelectLanguage() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Load language from DB on mount (only once)
   useEffect(() => {
@@ -60,7 +60,7 @@ function SelectLanguage() {
           ) : (
             <Globe className="h-4 w-4" />
           )}
-          <span className="hidden sm:inline">{currentLanguage?.value || 'Language'}</span>
+          <span className="hidden sm:inline">{currentLanguage?.value || t('common.language')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
