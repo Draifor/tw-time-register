@@ -66,33 +66,39 @@ WorkTimeForm calculation logic, E2E visual/a11y automation (axe CI) — separate
     external-link. Sweep confirmed no remaining unlabeled icon-only buttons. 4 locale keys added (en/es).
   - Acceptance: zero icon-only buttons without an accessible name.
 
-- [ ] **T3 · UX-505 — Dialog descriptions**
-  - Render `DialogDescription` (i18n) in the 5 dialogs; keep focus management intact.
+- [x] **T3 · UX-505 — Dialog descriptions** — ✅ 2026-10-04, commit `f14570f`
+  - `DialogDescription` (i18n) rendered in PullFromTW, ImportTasks, PullTask, TaskComment and
+    ImportCSVTasks dialogs; 6 locale keys added. Focus/behavior unchanged.
   - Acceptance: no Radix "missing DialogDescription" warnings; each dialog announces its purpose.
 
-- [ ] **T4 · UX-506 — Focus visible + reduced motion**
-  - Replace `outline-hidden`-without-ring in `useTasks`/`useTypeTasks` with a visible `focus-visible` ring;
-    give `SwitchDarkMode` an accessible name; add a global `:focus-visible` baseline and a
-    `prefers-reduced-motion` guard for the ping/pulse/spin animations.
+- [x] **T4 · UX-506 — Focus visible + reduced motion** — ✅ 2026-10-04, commit `f14570f`
+  - Visible `focus-visible:ring` on `useTasks`/`useTypeTasks` inline inputs; `SwitchDarkMode` gets an
+    accessible name (`common.toggleDarkMode`); global `:focus-visible` baseline + `prefers-reduced-motion`
+    guard in `index.css`.
   - Acceptance: focus always visible; motion reduced on request; theme switch announced.
 
-- [ ] **T5 · UX-503 — Combobox ARIA completion**
-  - Add listbox `id`, `aria-controls`, `aria-activedescendant`, Home/End keys, and an accessible
-    highlight announcement.
+- [x] **T5 · UX-503 — Combobox ARIA completion** — ✅ 2026-10-04, commit `bc98e2a`
+  - Stable listbox `id` + per-option ids; `aria-controls` + `aria-activedescendant` (on the focused search
+    input, which becomes `role="combobox"` while open — one owner at a time); Home/End; polite live
+    announcement of the highlighted option.
   - Acceptance: combobox follows the ARIA combobox pattern and is fully keyboard-operable/announced.
 
-- [ ] **T6 · UX-504 — State not only by color**
-  - Add non-color affordance (text/icon/`aria-label`) to the progress dots in `TimeLogsTable` and
-    `combobox`.
+- [x] **T6 · UX-504 — State not only by color** — ✅ 2026-10-04, commit `bc98e2a`
+  - Progress dots in `combobox` and `TimeLogsTable` are `aria-hidden` decoration; a visually-hidden,
+    i18n status/progress description carries the state in text.
   - Acceptance: state is distinguishable without color.
 
-- [ ] **T7 · UX-507 — Table semantics + keyboard dropzone**
-  - Add `scope` to table headers (shared `TableHead` default + the plain tables); make the CSV dropzone
-    keyboard-operable (focusable, Enter/Space opens picker, drop handled).
+- [x] **T7 · UX-507 — Table semantics + keyboard dropzone** — ✅ 2026-10-04, commit `d734698`
+  - Shared `TableHead` defaults `scope="col"`; `scope="col"` added to the plain headers in `TimeLogsTable`,
+    `ReportsPage` and `ImportCSVTasksDialog` (all column headers — no row headers found). CSV dropzone is
+    now `role="button"`, focusable, Enter/Space opens the picker, drag-and-drop routes through the same
+    parse path.
   - Acceptance: tables expose header scope; dropzone operable by keyboard and screen reader.
 
-- [ ] **T8 · Closure — verification + review advisories**
-  - Full checks; native review per work unit; close advisories; update roadmap checkboxes and this doc.
+- [x] **T8 · Closure — verification + review advisories** — ✅ 2026-10-04
+  - Slice-1 advisories closed in `b4a89be` (literal-copy + es-resolution pins, per-row label association,
+    combobox label→control pin). Full suite green; roadmap updated.
+  - Acceptance: all checks green; advisories closed or explicitly accepted.
 
 ## Authorized files
 
@@ -142,11 +148,28 @@ render description (T3); reduced-motion CSS present and theme switch named (T4);
     so missing/placeholder keys (e.g. `workTimeForm.timer.start`, `common.cancel`) go undetected.
   - **R3-3 (SUGGESTION)** — the `Combobox` label wiring (`time-logs-filter-task`) is not pinned to the
     control; `getByLabelText` resolves anywhere in the document.
+  - **Advisory closure** — commit `b4a89be` (R3-1 per-row association pin, R3-2 literal EN copy + ES
+    resolution pins, R3-3 label→control role/id pin). Assessed `under_budget` (82 lines) → no review due.
+
+- **Slices 2–4** — each assessed independently against the tracker tip (`1ceec28`); all
+  `review_due_reason = under_budget`, so no native review was due:
+  - Slice 2 (T3+T4, commit `f14570f`, 304 lines) — `under_budget`.
+  - Slice 3 (T5+T6, commit `bc98e2a`, 370 lines) — `under_budget`.
+  - Slice 4 (T7, commit `d734698`, 330 lines) — `under_budget`.
 
 ## Delivery
 
-- Forecast: ~550–700 authored changed lines (code + tests) across 7 tasks. Exceeds the ~400-line
-  planning heuristic → delivery strategy decision required before PR creation.
+- Strategy: `feature-branch-chain` (user-approved). Tracker branch `feat/ux-fase-5-a11y`; child slices off
+  the tracker, one cohesive unit each. Confirmed at PR time with one honest slicing pass.
+- Forecast: ~550–700 authored changed lines (code + tests) across 7 tasks; actual ≈ 1.29k additions
+  (a large share is test code) across 4 slices.
+
+| Slice | Tasks | Branch | Commit(s) | Lines |
+| --- | --- | --- | --- | --- |
+| 1 | UX-501 + UX-502 + advisory closure | `feat/ux-fase-5-01-names` | `57581e0`, `b4a89be` | 532 |
+| 2 | UX-505 + UX-506 | `feat/ux-fase-5-02-dialogs-focus` | `f14570f` | 304 |
+| 3 | UX-503 + UX-504 | `feat/ux-fase-5-03-combobox-color` | `bc98e2a` | 370 |
+| 4 | UX-507 | `feat/ux-fase-5-04-tables-dropzone` | `d734698` | 330 |
 
 ## Progress log
 
@@ -156,3 +179,16 @@ render description (T3); reduced-motion CSS present and theme switch named (T4);
 - 2026-10-04 — Slice 1 (T1+T2) done: `aria-label`/`htmlFor`/`role=group` sweep + 4 locale keys + new
   `a11yNames.test.tsx` (8 tests, RED→GREEN). Full suite 64 files / 444 tests green. Commit `57581e0`
   (`feat/ux-fase-5-01-names`). Native review approved; advisories R3-1..R3-3 queued.
+- 2026-10-04 — Slice 2 (T3+T4) done: `DialogDescription` in 5 dialogs + focus rings + accessible theme
+  switch + `:focus-visible` baseline + `prefers-reduced-motion`. 4 test files (10 tests, RED→GREEN).
+  Commit `f14570f`; assess `under_budget` (no review due).
+- 2026-10-04 — Slice 3 (T5+T6) done: combobox ARIA 1.2 completion (listbox id, `aria-controls`,
+  `aria-activedescendant`, Home/End, polite live region) + non-color status text in combobox/table dots.
+  2 test files (11 tests, RED→GREEN). Commit `bc98e2a`; assess `under_budget`.
+- 2026-10-04 — Slice 4 (T7) done: `TableHead` default `scope="col"` + plain-table headers + keyboard/drop
+  CSV dropzone (shared `processFile`, stopPropagation guards). 1 test file (9 tests, RED→GREEN). Commit
+  `d734698`; assess `under_budget`.
+- 2026-10-04 — Slice 1 advisory closure `b4a89be` (test-only, 82 lines): R3-1/R3-2/R3-3 pins; suite
+  27 tests. Assess `under_budget`.
+- 2026-10-04 — Closure: integration branch merged slices 1–4, full checks green; roadmap Fase 5 marked
+  done; slice PRs opened against the tracker.
