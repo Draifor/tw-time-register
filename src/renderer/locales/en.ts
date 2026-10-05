@@ -1,7 +1,6 @@
 const en = {
   translations: {
     common: {
-      selectLanguage: 'Select Language',
       toggleDarkMode: 'Toggle dark mode',
       cancel: 'Cancel',
       save: 'Save',
@@ -9,7 +8,6 @@ const en = {
       delete: 'Delete',
       add: 'Add',
       import: 'Import',
-      export: 'Export',
       date: 'Date',
       description: 'Description',
       entries: 'entries',
@@ -18,7 +16,6 @@ const en = {
       sent: 'Sent',
       pending: 'Pending',
       billable: 'Billable',
-      noData: 'No data',
       done: 'Done',
       back: 'Back',
       close: 'Close',
@@ -57,10 +54,8 @@ const en = {
     },
     table: {
       searchPlaceholder: 'Search...',
-      addRow: 'Add Row',
       emptyTitle: 'No data yet',
       emptyDescription: 'Get started by adding your first entry. Your data will appear here.',
-      addFirstEntry: 'Add First Entry',
       errorTitle: 'Something went wrong',
       noResults: 'No results found for "{{query}}"',
       clearSearch: 'Clear search',
@@ -71,17 +66,12 @@ const en = {
     },
     timeLogs: {
       deleteSuccess: 'Entry "{{name}}" deleted',
-      deleteError: 'Failed to delete entry',
       saveError: 'Failed to save changes',
       changesSaved: 'Changes saved',
       updatedPending: 'Entry updated and marked as pending — sync it again to update TW',
-      noTaskLink: 'No task_link for "{{name}}"',
-      noTWTaskId: 'Could not extract TW task ID from URL: {{url}}',
-      durationZero: 'Duration is 0 — check start/end time',
       syncFailed: 'Sync failed',
       entrySentToTW: '✓ "{{name}}" sent to TW',
       entryUpdatedInTW: '✓ "{{name}}" updated in TW',
-      noTWUserId: 'TW user ID not configured — open Settings and test the connection',
       noPending: 'No pending entries',
       allSent: '{{count}} entries sent to TeamWork',
       partialSent: '{{success}} sent, {{fail}} failed',
@@ -418,7 +408,6 @@ const en = {
         typeRequired: 'Task type is required',
         fetchFailed: 'Failed to fetch subtasks',
         fetchError: 'Error fetching subtasks',
-        importFailed: 'Import failed',
         importError: 'Import error',
         duplicateLinksWarning: 'Detected {{count}} duplicate links in your DB. The first match will be used.',
         parentLinkLabel: 'Parent task link (TW URL)',
@@ -435,9 +424,6 @@ const en = {
         alreadyLinkedCount: '{{count}} task(s) were already linked and will not change.',
         duplicatesFound: 'Found {{count}} task(s) already linked. Decide if you want to update their data.',
         subtaskNotFound: 'Subtask not found in TW',
-        diagnosticTitle: 'TW returned {{count}} subtask(s) — click to inspect',
-        diagnosticHint: 'Patterns expect names starting with e.g. "2. ", "3. ", etc.',
-        noSubtasks: 'No subtasks returned. Make sure the link points to the correct parent task.',
         backBtn: 'Back',
         importingBtn: 'Importing...',
         importBtn: 'Import {{count}} tasks',
@@ -455,9 +441,6 @@ const en = {
         doneTitle: 'Import complete!',
         doneSubtitle: 'The tasks have been saved and are now available in the task selector.',
         importAnotherBtn: 'Import another',
-        importedCount: 'Imported {{count}} tasks',
-        notFoundDesc: 'Could not find: {{names}}',
-        importSuccessCount: '{{count}} tasks imported successfully!',
         importApplied: 'Import applied',
         importAppliedDesc: '{{created}} new, {{updated}} updated, {{skipped}} unchanged',
         noChanges: 'No changes to apply',
@@ -577,7 +560,6 @@ const en = {
       notifyCount: '{{count}} person(s) selected',
       notifySearch: 'Search person...',
       notifyEmpty: 'No results',
-      notifyLoading: 'Loading people...',
       removeNotify: 'Remove'
     }
   }
