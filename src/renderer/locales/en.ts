@@ -446,6 +446,7 @@ const en = {
       addEntryTooltip: 'Add new entry',
       insertEntry: 'Insert entry here',
       register: 'Save to local database',
+      saving: 'Saving...',
       saveTooltip: 'Save entries locally (not sent to TeamWork yet)',
       escHint: 'Press Esc to remove last entry',
       savedTitle: 'Entries saved successfully!',

@@ -10,7 +10,7 @@ import {
   UseFormSetValue
 } from 'react-hook-form';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Send, Keyboard, DollarSign, UtensilsCrossed, Timer, GripVertical, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -481,6 +481,12 @@ const EntryCard = React.memo(function EntryCard({
 export default function WorkTimeForm() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // Pending state for the primary save. The ref is the synchronous re-entry
+  // guard (a click and the Ctrl+S form submit can fire before React re-renders),
+  // while the state drives the button's disabled/spinner UI.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   // Create default entry from next available slot
   const createDefaultEntry = useCallback((slot: NextSlotSuggestion | null): WorkTimeEntry => {
@@ -1025,6 +1031,10 @@ export default function WorkTimeForm() {
   }, [result, setValue]);
 
   const onSubmit = async (data: { entries: WorkTimeEntry[] }) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+
     try {
       // Group entries by date and validate against max hours
       const entriesByDate: Record<string, number> = {};
@@ -1078,6 +1088,9 @@ export default function WorkTimeForm() {
       toast.error(t('workTimeForm.saveErrorTitle'), {
         description: t('workTimeForm.saveErrorDesc')
       });
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -1345,9 +1358,18 @@ export default function WorkTimeForm() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button type="submit">
-                  <Send className="h-4 w-4 mr-2" />
-                  {t('workTimeForm.register')}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t('workTimeForm.saving')}
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      {t('workTimeForm.register')}
+                    </>
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>

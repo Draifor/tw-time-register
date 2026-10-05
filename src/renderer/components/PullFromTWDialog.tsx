@@ -11,8 +11,7 @@ import {
   AlertCircle,
   Plus,
   Tag,
-  ExternalLink,
-  Bug
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -20,13 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import {
-  pullEntriesFromTW,
-  fetchTWTaskDetails,
-  PullFromTWResult,
-  TWTaskDetail,
-  debugRawTWEntries
-} from '../services/timesService';
+import { pullEntriesFromTW, fetchTWTaskDetails, PullFromTWResult, TWTaskDetail } from '../services/timesService';
 import { addTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
 import { queryKeys } from '../lib/queryKeys';
@@ -73,10 +66,6 @@ export default function PullFromTWDialog() {
   // Step 2
   const [result, setResult] = useState<PullFromTWResult | null>(null);
 
-  // Debug
-  const [isDebugging, setIsDebugging] = useState(false);
-  const [debugData, setDebugData] = useState<string | null>(null);
-
   // Step 3
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [missingRows, setMissingRows] = useState<MissingTaskRow[]>([]);
@@ -90,7 +79,6 @@ export default function PullFromTWDialog() {
     setToDate('');
     setResult(null);
     setMissingRows([]);
-    setDebugData(null);
   }
 
   function handleClose(value: boolean) {
@@ -199,25 +187,6 @@ export default function PullFromTWDialog() {
     }
   }
 
-  async function handleDebug() {
-    setIsDebugging(true);
-    setDebugData(null);
-    const options =
-      mode === 'custom' ? { fromDate: fromDate || undefined, toDate: toDate || undefined } : getPeriodDates(mode);
-    try {
-      const res = await debugRawTWEntries({ ...options, limit: 5 });
-      if (res.success) {
-        setDebugData(JSON.stringify(res.raw, null, 2));
-      } else {
-        toast.error('Debug failed', { description: res.message });
-      }
-    } catch (err) {
-      toast.error('Debug error', { description: (err as Error).message });
-    } finally {
-      setIsDebugging(false);
-    }
-  }
-
   const modeOptions: { value: PeriodMode; label: string }[] = [
     { value: 'lastWeek', label: t('timeLogs.pull.lastWeek') },
     { value: 'lastMonth', label: t('timeLogs.pull.lastMonth') },
@@ -322,17 +291,6 @@ export default function PullFromTWDialog() {
               </p>
             )}
             <div className="flex gap-2 justify-end pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDebug}
-                disabled={isPulling || isDebugging}
-                className="gap-1.5 text-muted-foreground"
-                title="Fetch 5 raw entries from TW to inspect field values"
-              >
-                {isDebugging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bug className="h-4 w-4" />}
-                Debug API
-              </Button>
               <Button variant="outline" size="sm" onClick={() => handleClose(false)} disabled={isPulling}>
                 {t('common.cancel')}
               </Button>
@@ -350,16 +308,6 @@ export default function PullFromTWDialog() {
                 )}
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* ── Debug panel ───────────────────────────────────────────── */}
-        {step === 'config' && debugData !== null && (
-          <div className="mt-2 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Raw API response (first 5 entries):</p>
-            <pre className="max-h-64 overflow-auto rounded border bg-muted/30 p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">
-              {debugData}
-            </pre>
           </div>
         )}
 
