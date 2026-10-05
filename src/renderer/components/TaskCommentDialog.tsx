@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { MessageSquarePlus, Paperclip, X, Send, Loader2, UploadCloud, ChevronDown, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Label } from './ui/label';
 import {
   DropdownMenu,
@@ -212,6 +212,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
               <MessageSquarePlus className="h-5 w-5 text-primary" />
               {t('taskComment.title')}
             </DialogTitle>
+            <DialogDescription>{t('taskComment.dialogDescription')}</DialogDescription>
             <p className="text-sm text-muted-foreground truncate">{taskName}</p>
           </DialogHeader>
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import '../styles/switch_dark_mode.css';
 import useDarkMode from '../hooks/useDarkMode';
 
@@ -6,6 +7,7 @@ const svgMoon = new URL(`../assets/moon.svg`, import.meta.url).href;
 const svgSun = new URL(`../assets/sun.svg`, import.meta.url).href;
 
 function SwitchDarkMode() {
+  const { t } = useTranslation();
   const { isDark, darkModeHandler } = useDarkMode();
 
   return (
@@ -17,7 +19,14 @@ function SwitchDarkMode() {
       <span className="sun">
         <img src={svgSun} alt="sun" />
       </span>
-      <input id="checkbox" type="checkbox" className="input" checked={isDark} onChange={darkModeHandler} />
+      <input
+        id="checkbox"
+        type="checkbox"
+        className="input"
+        checked={isDark}
+        onChange={darkModeHandler}
+        aria-label={t('common.toggleDarkMode')}
+      />
       <span className="slider" />
     </label>
   );

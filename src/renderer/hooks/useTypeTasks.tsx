@@ -60,7 +60,7 @@ function useTypeTasks() {
                 <input
                   key={value}
                   defaultValue={value}
-                  className="w-full bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-hidden px-1 py-0.5 text-sm transition-colors"
+                  className="w-full bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 px-1 py-0.5 text-sm transition-colors"
                   onBlur={(e) => {
                     const newVal = e.target.value.trim();
                     if (newVal && newVal !== value && row.original.id) {
