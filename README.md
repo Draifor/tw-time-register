@@ -343,6 +343,16 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
   - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 
+### ✅ v1.14.0 — UX Fases 0–5: IA, design system, layout, flujos y accesibilidad AA (PUBLICADA - Oct 2026)
+
+- [x] UX Fase 0 — IA y Home operativo: shell con mapa de secciones, Home como centro de mando (timer en vivo, registro rápido, resumen) y naming unificado (`UX-001..UX-005`)
+- [x] UX Fase 1 — un solo menú: se elimina el menú del renderer; menú nativo mínimo de Electron y ayuda compacta; atajos documentados (`UX-101`, `UX-102`, `UX-104`)
+- [x] UX Fase 2 — design system: tokens semánticos, primitivas compartidas, toolbars/empty-states unificados y contraste AA (`UX-201..UX-205`)
+- [x] UX Fase 3 — layout y ventana: mínimo 900×600, fix del solape AppBar/NavBar, navbar responsive, icono Maximize real (`UX-301..UX-307`)
+- [x] UX Fase 4 — flujos y feedback: anti doble-submit, confirmación al borrar, estados vacío/carga/error, stepper en wizards, 24h unificado, validación accesible (`UX-401..UX-409`)
+- [x] UX Fase 5 — accesibilidad WCAG 2.2 AA: label↔control, nombres accesibles, combobox ARIA, estado no solo por color, foco visible, tablas y dropzone por teclado (`UX-501..UX-507`)
+- [x] CI — gate de lockfile pnpm en los PRs
+
 ### v2.0.0 — Multi-plataforma
 
 - [ ] Soporte macOS (Apple Silicon + Intel)

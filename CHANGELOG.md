@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-10-04
+
+### Added
+
+- **UX Fase 0 — Arquitectura de información (UX-001..UX-005)**: nuevo shell con mapa de secciones y **Home operativo** como centro de mando (timer en vivo, registro rápido, resumen de hoy y últimas entradas), más glosario/naming unificado (`85bd5d7`; `odd/tasks/ux-fase-0-ia.md`)
+- **UX Fase 1 — un solo menú (UX-101, UX-102, UX-104)**: se elimina la barra de menú del renderer y se reemplaza por un menú nativo mínimo de Electron (`src/main/menu.ts`) con roles de reload/zoom/fullscreen/quit y DevTools solo-dev, más una ayuda compacta; atajos documentados (`66ee0c6`; `odd/tasks/ux-fase-1-menus.md`)
+- **UX Fase 2 — design system (UX-201..UX-205)**: tokens semánticos, primitivas compartidas (`StatusBadge`, `Switch`, `Select`, `DropdownMenu`), toolbars y empty-states unificados y contraste AA verificado (`73d944a`, `21f5dc8`, `29ef53a`, `537fa27`; `odd/tasks/ux-fase-2-design-system.md`)
+- **UX Fase 3 — layout y ventana (UX-301..UX-307)**: mínimo de ventana 900×600, corrección del solape AppBar/NavBar, anchos y scaffold alineados, navbar responsive, toolbars con wrap y sincronización real del icono Maximize (`ec979f1`, `cff853e`, `033bed6`, `c441ea3`; `odd/tasks/ux-fase-3-layout.md`)
+- **UX Fase 4 — flujos, feedback y estados (UX-401..UX-409)**: guard anti doble-submit, confirmación con `AlertDialog` al borrar, estados vacío/carga/error consistentes y traducidos, stepper y cierre seguro en wizards, formato 24h en toda la app, validación con `aria-invalid`/`required` y feedback optimista (`c231492`, `17841cd`, `1f41ea1`, `1281593`, `107af7d`, `6004740`, `b163d49`; `odd/tasks/ux-fase-4-flows.md`)
+- **UX Fase 5 — accesibilidad WCAG 2.2 AA (UX-501..UX-507)**: asociación label↔control, nombres accesibles en botones icon-only, combobox ARIA completo, estado distinguible sin color, diálogos con descripción y foco, foco visible + `prefers-reduced-motion`, `scope="col"` en tablas y dropzone operable por teclado (`57581e0`, `f14570f`, `bc98e2a`, `d734698`; `odd/tasks/ux-fase-5-a11y.md`)
+- **CI**: gate en los PRs que exige `pnpm-lock.yaml` en sincronía (`3e7e96f`)
+
+### Changed
+
+- **README**: stack tecnológico y conteo de tests actualizados a la toolchain de 1.13.0 (`118ffd2`)
+- **Cobertura**: la suite pasa de 285 a **493** tests (71 archivos)
+
+### Fixed
+
+- **Verificación end-to-end del relanzado tras actualización asistida**: se registró el resultado PASS en un build empaquetado, cerrando el pendiente de `v1.13.0` (`8670962`; `odd/tasks/update-ux.md`)
+
 ## [1.13.0] - 2026-10-03
 
 ### Added
