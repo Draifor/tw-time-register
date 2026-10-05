@@ -107,6 +107,7 @@ export default function PullTaskDialog({ task }: Props) {
                 className="h-7 w-7"
                 disabled={!hasLink}
                 title={hasLink ? t('timeLogs.pull.taskTrigger') : t('timeLogs.pull.noTaskLink')}
+                aria-label={hasLink ? t('timeLogs.pull.taskTrigger') : t('timeLogs.pull.noTaskLink')}
               >
                 <ArrowDownToLine className="h-3.5 w-3.5" />
               </Button>
@@ -162,8 +163,10 @@ export default function PullTaskDialog({ task }: Props) {
               <p className="text-sm text-muted-foreground">{t('timeLogs.pull.taskSubtitle')}</p>
 
               {/* Period selector */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">{t('timeLogs.pull.periodLabel')}</Label>
+              <div className="space-y-2" role="group" aria-labelledby="pull-task-period-label">
+                <Label id="pull-task-period-label" className="text-xs text-muted-foreground">
+                  {t('timeLogs.pull.periodLabel')}
+                </Label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {periodOptions.map((opt, i) => (
                     <button

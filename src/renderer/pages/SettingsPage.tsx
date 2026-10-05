@@ -716,7 +716,12 @@ export default function SettingsPage() {
                   {holiday.isCustom && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t('settings.holidays.delete')}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -844,6 +849,7 @@ export default function SettingsPage() {
                         variant="ghost"
                         className="h-8 w-8"
                         onClick={() => setEditingTpl({ id: tpl.templateId, title: tpl.title, body: tpl.body })}
+                        aria-label={t('settings.templates.edit')}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -854,6 +860,7 @@ export default function SettingsPage() {
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8 text-destructive hover:text-destructive"
+                            aria-label={t('settings.templates.delete')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
