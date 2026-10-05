@@ -62,13 +62,13 @@ import {
 } from '../components/ui/alert-dialog';
 
 const DAYS_OF_WEEK = [
-  { id: 1, key: 'monday', label: 'Monday', labelEs: 'Lunes' },
-  { id: 2, key: 'tuesday', label: 'Tuesday', labelEs: 'Martes' },
-  { id: 3, key: 'wednesday', label: 'Wednesday', labelEs: 'Miércoles' },
-  { id: 4, key: 'thursday', label: 'Thursday', labelEs: 'Jueves' },
-  { id: 5, key: 'friday', label: 'Friday', labelEs: 'Viernes' },
-  { id: 6, key: 'saturday', label: 'Saturday', labelEs: 'Sábado' },
-  { id: 7, key: 'sunday', label: 'Sunday', labelEs: 'Domingo' }
+  { id: 1, key: 'monday', label: 'Monday' },
+  { id: 2, key: 'tuesday', label: 'Tuesday' },
+  { id: 3, key: 'wednesday', label: 'Wednesday' },
+  { id: 4, key: 'thursday', label: 'Thursday' },
+  { id: 5, key: 'friday', label: 'Friday' },
+  { id: 6, key: 'saturday', label: 'Saturday' },
+  { id: 7, key: 'sunday', label: 'Sunday' }
 ];
 
 interface SettingsFormData {

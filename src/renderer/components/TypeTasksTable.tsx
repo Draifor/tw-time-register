@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import DataTable from './DataTable';
 import useTypeTasks from '../hooks/useTypeTasks';
 import { addTypeTask } from '../services/typeTasksService';
-import { TypeTasks } from '../../types/typeTasks';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -135,7 +134,6 @@ function TypeTasksTable() {
         isEditable={isEditable}
         error={error ? { message: String((error as Error)?.message) || t('common.errorOccurred') } : null}
         columns={columns}
-        onPersist={(row: TypeTasks) => row}
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ExternalLink, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchTasks, addTask, editTask, deleteTask } from '../services/tasksService';
+import { fetchTasks, editTask, deleteTask } from '../services/tasksService';
 import fetchTypeTasks from '../services/typeTasksService';
 import { Task } from '../../types/tasks';
 import Select from '../components/ui/select-custom';
@@ -194,46 +194,12 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
 
   const isEditable = true;
 
-  const { mutate: onSubmit, isPending: isLoadingMutation } = useMutation({
-    mutationFn: addTask,
-    onMutate: async (newTask) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
-
-      // Snapshot every cached `tasks` search variant, not just an exact `['tasks']`
-      // entry (which no query ever registers).
-      const previousTasks = queryClient.getQueriesData<Task[]>({ queryKey: queryKeys.tasks.all });
-
-      // Append to every variant that already has data; variants still loading have
-      // nothing to optimistically update.
-      queryClient.setQueriesData<Task[]>({ queryKey: queryKeys.tasks.all }, (old) => (old ? [...old, newTask] : old));
-
-      return { previousTasks };
-    },
-    onError: (err, _variables, context) => {
-      console.error(err);
-      for (const [key, data] of context?.previousTasks ?? []) {
-        if (data !== undefined) {
-          queryClient.setQueryData(key, data);
-        }
-      }
-      toast.error('Failed to add task', {
-        description: err.message
-      });
-    },
-    onSuccess: () => {
-      toast.success('Task added successfully');
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
-    }
-  });
-
   const { mutate: onEdit } = useMutation({
     mutationFn: editTask,
     onMutate: async (updatedTask) => {
-      // Mirror the add-task optimistic contract: cancel in-flight reads, snapshot
-      // every cached `tasks` search variant, then replace the edited task in place
-      // so the inline edit is reflected before the server responds.
+      // Cancel in-flight reads, snapshot every cached `tasks` search variant, then
+      // replace the edited task in place so the inline edit is reflected before the
+      // server responds.
       await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
 
       const previousTasks = queryClient.getQueriesData<Task[]>({ queryKey: queryKeys.tasks.all });
@@ -410,15 +376,6 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
     [isEditable, typeTasks, typeOptions, handleDelete, onEdit]
   );
 
-  function handleAddRow() {
-    onSubmit({
-      taskName: '',
-      typeName: 'RECA',
-      taskLink: '',
-      description: ''
-    });
-  }
-
   return {
     data: useMemo(
       () =>
@@ -428,12 +385,8 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
     isLoading,
     error,
     columns,
-    onSubmit,
-    isLoadingMutation,
     onEdit,
-    onDelete: handleDelete,
-    isEditable,
-    handleAddRow
+    isEditable
   };
 }
 
