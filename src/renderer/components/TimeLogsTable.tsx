@@ -48,7 +48,7 @@ interface EditData {
   isBillable: boolean;
 }
 
-import { parseDuration, formatDuration, formatTime24h } from '../lib/timeUtils';
+import { parseDuration, formatDuration, formatTime24h, formatMinutesToHHMM } from '../lib/timeUtils';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo, getStatusDotColor } from '../lib/progressUtils';
@@ -119,10 +119,30 @@ export const TimeLogRow = React.memo(function TimeLogRow({
       <td className="px-4 py-3 align-top">
         <div className="flex items-start gap-2 max-w-[260px]">
           {progress && (
-            <div
-              className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${getStatusDotColor(progress.status)}`}
-              title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
-            />
+            <span className="mt-1.5 inline-flex shrink-0">
+              {/* Color-only dot stays decorative; the status is also exposed
+                  as text so it is perceivable without color and announced by
+                  screen readers (UX-504). */}
+              <span
+                aria-hidden="true"
+                className={`w-2 h-2 rounded-full ${getStatusDotColor(progress.status)}`}
+                title={`${Math.round(progress.pct)}% — ${progress.status === 'overtime' ? 'Overtime' : progress.status === 'warning' ? 'Warning' : 'On time'}`}
+              />
+              <span className="sr-only">
+                {t('progress.detail', {
+                  status:
+                    progress.status === 'overtime'
+                      ? t('progress.statusOvertime')
+                      : progress.status === 'warning'
+                        ? t('progress.statusWarning')
+                        : t('progress.statusOnTime'),
+                  logged: formatMinutesToHHMM(progress.logged),
+                  estimated: formatMinutesToHHMM(progress.estimated),
+                  pct: Math.round(progress.pct),
+                  margin: formatMinutesToHHMM(progress.margin)
+                })}
+              </span>
+            </span>
           )}
           <TooltipProvider>
             <Tooltip>
@@ -207,6 +227,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
                   className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                   disabled={isRowLocked}
                   onClick={() => onStartEdit(entry)}
+                  aria-label={entry.isSent ? t('timeLogs.editResync') : t('timeLogs.editEntry')}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -226,6 +247,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
                   className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                   disabled={isRowLocked || isDuplicating}
                   onClick={() => onDuplicate(entry)}
+                  aria-label={t('timeLogs.duplicateEntry')}
                 >
                   {isDuplicating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                 </Button>
@@ -253,6 +275,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
                     className="h-8 w-8 p-0"
                     disabled={isSyncing || isRowLocked}
                     onClick={() => onSyncOne(entry)}
+                    aria-label={t('timeLogs.sendToTW')}
                   >
                     {isSyncing ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -277,6 +300,7 @@ export const TimeLogRow = React.memo(function TimeLogRow({
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                   disabled={isRowLocked || isDeleting}
                   onClick={() => onRequestDelete(entry)}
+                  aria-label={t('timeLogs.deleteEntry')}
                 >
                   {isDeleting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 </Button>
@@ -641,8 +665,11 @@ function TimeLogsTable() {
           <div className="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-2.5">
             {/* Task filter */}
             <div className="space-y-1 min-w-[220px]">
-              <label className="text-xs font-medium text-muted-foreground">{t('reports.colTask')}</label>
+              <label htmlFor="time-logs-filter-task" className="text-xs font-medium text-muted-foreground">
+                {t('reports.colTask')}
+              </label>
               <Combobox
+                id="time-logs-filter-task"
                 options={taskOptions.map((n) => ({ value: n, label: n }))}
                 placeholder={t('timeLogs.allTasks')}
                 searchPlaceholder={t('timeLogs.searchTask')}
@@ -652,8 +679,11 @@ function TimeLogsTable() {
             </div>
             {/* Date from */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{t('reports.from')}</label>
+              <label htmlFor="time-logs-filter-from" className="text-xs font-medium text-muted-foreground">
+                {t('reports.from')}
+              </label>
               <input
+                id="time-logs-filter-from"
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
@@ -662,8 +692,11 @@ function TimeLogsTable() {
             </div>
             {/* Date to */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{t('reports.to')}</label>
+              <label htmlFor="time-logs-filter-to" className="text-xs font-medium text-muted-foreground">
+                {t('reports.to')}
+              </label>
               <input
+                id="time-logs-filter-to"
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
@@ -693,15 +726,33 @@ function TimeLogsTable() {
         <table className="w-full min-w-[840px] text-sm">
           <thead className="sticky top-0 z-10 bg-muted/50">
             <tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colDate')}</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('reports.colTask')}</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t('common.description')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colStart')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colEnd')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colDuration')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('common.billable')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colStatus')}</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">{t('timeLogs.colActions')}</th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                {t('reports.colDate')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                {t('reports.colTask')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
+                {t('common.description')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colStart')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colEnd')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colDuration')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('common.billable')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colStatus')}
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">
+                {t('timeLogs.colActions')}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -808,6 +859,7 @@ function TimeLogsTable() {
                                 className="h-8 w-8 p-0 text-success hover:text-success/80"
                                 disabled={savingEdit}
                                 onClick={() => handleSaveEdit(entry)}
+                                aria-label={t('timeLogs.saveChanges')}
                               >
                                 {savingEdit ? (
                                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -829,6 +881,7 @@ function TimeLogsTable() {
                                 size="sm"
                                 className="h-8 w-8 p-0 text-muted-foreground"
                                 onClick={handleCancelEdit}
+                                aria-label={t('common.cancel')}
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -848,6 +901,7 @@ function TimeLogsTable() {
                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                                 disabled={savingEdit || deletingId === entry.entryId}
                                 onClick={() => setDeleteTarget(entry)}
+                                aria-label={t('timeLogs.deleteEntry')}
                               >
                                 {deletingId === entry.entryId ? (
                                   <RefreshCw className="h-4 w-4 animate-spin" />

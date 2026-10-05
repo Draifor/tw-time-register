@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `En progreso` — Fases 0–3 implementadas (PR #24, #25, #26 y rama `feat/ux-fase-0-ia`); Fases 4–6 y el backlog de Reportes (Fase 7) pendientes
+- **Estado general:** `En progreso` — Fases 0–5 implementadas (PR #24, #25, #26, rama `feat/ux-fase-0-ia`, PR #28/#37 y rama `feat/ux-fase-5-a11y`); Fase 6 y el backlog de Reportes (Fase 7) pendientes
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -280,40 +280,40 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 ### Fase 5 — Accesibilidad (WCAG 2.2 AA)
 > Objetivo: app operable por teclado y por lector de pantalla. Complementa Fase 1/2 (no lo repite).
 
-- [ ] **UX-501 · 🔴 Asociación label ↔ control**
-  - **Ubicación:** `WorkTimeForm.tsx:307,317,381,405`, `combobox.tsx:147-157`, `input-time.tsx`
-  - **Acción:** exponer `id` en los controles custom o usar `aria-labelledby`.
-  - **Aceptación:** cada label anuncia su control.
+- [x] **UX-501 · 🔴 Asociación label ↔ control** — ✅ 2026-10-04, Fase 5 slice 1 (los controles custom ya reenviaban `id`; se cerraron los gaps de `TimeLogsTable`, `PullFromTWDialog` y `PullTaskDialog`)
+  - **Ubicación:** `WorkTimeForm.tsx`, `combobox.tsx`, `input-time.tsx`, `input-date.tsx`, `TimeLogsTable.tsx`, `PullFromTWDialog.tsx`
+  - **Acción:** exponer `id` en los controles custom o usar `aria-labelledby` / `role="group"`.
+  - **Aceptación:** cada label anuncia su control. ✅
 
-- [ ] **UX-502 · 🔴 Nombres accesibles en botones icon-only**
-  - **Ubicación:** `WorkTimeForm.tsx:273-299`, `TimeLogsTable.tsx:200-291`, `SettingsPage.tsx:843-861,721-723`
-  - **Acción:** `aria-label` (patrón correcto ya existe en `TaskCommentDialog.tsx:205,345,402`).
-  - **Aceptación:** cero botones sin nombre accesible.
+- [x] **UX-502 · 🔴 Nombres accesibles en botones icon-only** — ✅ 2026-10-04, Fase 5 slice 1
+  - **Ubicación:** `WorkTimeForm.tsx`, `TimeLogsTable.tsx`, `SettingsPage.tsx`, `PullTaskDialog.tsx`, `PullFromTWDialog.tsx`
+  - **Acción:** `aria-label` (i18n) en cada botón solo-icono; Tooltip no aporta nombre.
+  - **Aceptación:** cero botones sin nombre accesible. ✅
 
-- [ ] **UX-503 · 🟡 Combobox completo**
-  - **Ubicación:** `combobox.tsx:112-157`
-  - **Acción:** `aria-controls`/`aria-activedescendant`, Home/End, type-ahead, anuncio del resaltado.
-  - **Aceptación:** navegable y anunciado según patrón ARIA combobox.
+- [x] **UX-503 · 🟡 Combobox completo** — ✅ 2026-10-04, Fase 5 slice 3
+  - **Ubicación:** `combobox.tsx`
+  - **Acción:** `id` de listbox, `aria-controls`/`aria-activedescendant`, Home/End, type-ahead y anuncio del resaltado (`aria-live`).
+  - **Aceptación:** navegable y anunciado según patrón ARIA combobox. ✅
 
-- [ ] **UX-504 · 🟡 Estado no solo por color**
-  - **Ubicación:** `TimeLogsTable.tsx:118-126`, `combobox.tsx:227-235`
-  - **Acción:** agregar texto/icono/patrón además del color.
-  - **Aceptación:** el estado es distinguible sin color.
+- [x] **UX-504 · 🟡 Estado no solo por color** — ✅ 2026-10-04, Fase 5 slice 3
+  - **Ubicación:** `TimeLogsTable.tsx`, `combobox.tsx`
+  - **Acción:** texto/icono/`sr-only` además del color en los puntos de progreso.
+  - **Aceptación:** el estado es distinguible sin color. ✅
 
-- [ ] **UX-505 · 🟡 Diálogos con descripción y foco**
-  - **Ubicación:** `PullFromTWDialog.tsx:240`, `ImportTasksDialog.tsx:300`, `DeleteEntryDialog.tsx:35`
+- [x] **UX-505 · 🟡 Diálogos con descripción y foco** — ✅ 2026-10-04, Fase 5 slice 2
+  - **Ubicación:** `PullFromTWDialog.tsx`, `ImportTasksDialog.tsx`, `PullTaskDialog.tsx`, `TaskCommentDialog.tsx`, `ImportCSVTasksDialog.tsx`
   - **Acción:** `DialogDescription` en todos; foco inicial correcto.
-  - **Aceptación:** sin warnings de Radix y con foco gestionado.
+  - **Aceptación:** sin warnings de Radix y con foco gestionado. ✅
 
-- [ ] **UX-506 · 🟡 Foco visible y contraste**
-  - **Ubicación:** `MenuHandler.tsx:28`, `MenuItem.tsx:17`, `SwitchDarkMode.tsx:13-22`, `index.css`
-  - **Acción:** `ring` en controles con `outline-hidden`; nombre accesible en el switch de tema; revisar contraste (ver UX-205).
-  - **Aceptación:** foco siempre visible; contraste AA.
+- [x] **UX-506 · 🟡 Foco visible y contraste** — ✅ 2026-10-04, Fase 5 slice 2
+  - **Ubicación:** `useTasks.tsx`, `useTypeTasks.tsx`, `SwitchDarkMode.tsx`, `index.css`
+  - **Acción:** `focus-visible:ring` donde faltaba; nombre accesible en el switch de tema; baseline `:focus-visible` y `prefers-reduced-motion`.
+  - **Aceptación:** foco siempre visible; contraste AA; movimiento reducido a pedido. ✅
 
-- [ ] **UX-507 · ⚪ Semántica de tablas y dropzone**
-  - **Ubicación:** `ImportCSVTasksDialog.tsx:130-143,179-188`, `TimeLogsTable.tsx:677-689`
-  - **Acción:** `scope` en headers; dropzone activable por teclado; tablas con primitivas semánticas.
-  - **Aceptación:** tablas navegables y dropzone operable por teclado.
+- [x] **UX-507 · ⚪ Semántica de tablas y dropzone** — ✅ 2026-10-04, Fase 5 slice 4
+  - **Ubicación:** `ui/table.tsx`, `TimeLogsTable.tsx`, `ReportsPage.tsx`, `ImportCSVTasksDialog.tsx`
+  - **Acción:** `scope="col"` en headers; dropzone activable por teclado (Enter/Space) y por drag & drop.
+  - **Aceptación:** tablas navegables y dropzone operable por teclado. ✅
 
 ---
 

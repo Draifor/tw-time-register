@@ -2,6 +2,7 @@ const es = {
   translations: {
     common: {
       selectLanguage: 'Seleccione el idioma',
+      toggleDarkMode: 'Alternar modo oscuro',
       cancel: 'Cancelar',
       save: 'Guardar',
       saving: 'Guardando...',
@@ -27,6 +28,15 @@ const es = {
       stepProgress: 'Progreso',
       stepOf: 'Paso {{current}} de {{total}}',
       required: 'obligatorio'
+    },
+    combobox: {
+      positionAnnouncement: '{{current}} de {{total}}: {{label}}'
+    },
+    progress: {
+      statusOvertime: 'Tiempo extra',
+      statusWarning: 'Advertencia',
+      statusOnTime: 'En tiempo',
+      detail: '{{status}} — {{logged}} / {{estimated}} ({{pct}}%), margen {{margin}}'
     },
     table: {
       searchPlaceholder: 'Buscar...',
@@ -91,6 +101,8 @@ const es = {
       pull: {
         trigger: 'Importar desde TW',
         title: 'Importar registros de TW',
+        dialogDescription:
+          'Importa registros de tiempo de TeamWork a tu historial local y agrega las tareas faltantes.',
         subtitle: 'Descarga tus time entries de TeamWork al historial local. Solo se importan entradas nuevas.',
         stepConfig: 'Período',
         stepResult: 'Resultado',
@@ -133,6 +145,7 @@ const es = {
         taskTrigger: 'Importar registros desde TW',
         noTaskLink: 'Esta tarea no tiene enlace de TW configurado',
         taskTitle: 'Sincronizar: {{name}}',
+        taskDialogDescription: 'Importa a tu base de datos local los registros de tiempo de esta tarea en TeamWork.',
         taskSubtitle: 'Importa desde TW los registros de esta tarea que aún no están en tu BD local.',
         successToast: '{{count}} entradas importadas desde TW',
         noneImported: 'No hay entradas nuevas para importar',
@@ -260,6 +273,7 @@ const es = {
         description: 'Los días festivos no cuentan como días laborales',
         noHolidays: 'No hay festivos registrados',
         holidayName: 'Nombre del festivo',
+        delete: 'Eliminar festivo',
         deleteTitle: '¿Eliminar festivo?',
         deleteDescription: '¿Estás seguro de eliminar "{{name}}"?',
         added: 'Festivo agregado',
@@ -285,6 +299,8 @@ const es = {
         addError: 'Error al guardar la plantilla',
         updateSuccess: 'Plantilla actualizada',
         deleteSuccess: 'Plantilla eliminada',
+        edit: 'Editar plantilla',
+        delete: 'Eliminar plantilla',
         deleteTitle: '¿Eliminar plantilla?',
         deleteDescription: '¿Estás seguro de eliminar "{{name}}"? Esta acción no se puede deshacer.'
       },
@@ -346,6 +362,8 @@ const es = {
       importTW: {
         trigger: 'Importar desde TW',
         title: 'Importar Tareas desde TeamWork',
+        dialogDescription:
+          'Crea o actualiza tus tareas locales a partir de una tarea padre de TeamWork y sus subtareas.',
         stepForm: 'Formulario',
         stepPreview: 'Vista previa',
         stepDone: 'Listo',
@@ -402,9 +420,11 @@ const es = {
       importCSV: {
         trigger: 'Importar CSV',
         title: 'Importar Tareas desde CSV',
+        dialogDescription: 'Importa tareas en lote desde un archivo CSV con las columnas Tarea, Tipo y Link.',
         uploadHint: 'Selecciona un archivo .csv con las siguientes columnas (encabezado opcional):',
         typeAutoCreate: 'Si un Tipo no existe aún, se creará automáticamente.',
         dropzoneHint: 'Haz clic para seleccionar un archivo CSV',
+        dropzoneAria: 'Importar tareas desde un archivo CSV. Presiona Enter para elegir un archivo o arrástralo aquí.',
         browseBtn: 'Examinar…',
         rowsParsed: '{{count}} filas leídas de {{file}}',
         changeFile: 'Cambiar archivo',
@@ -459,6 +479,7 @@ const es = {
       afterLunch: 'Post-almuerzo',
       addEntry: 'Agregar Entrada',
       addEntryTooltip: 'Agregar nueva entrada',
+      removeEntry: 'Eliminar entrada',
       insertEntry: 'Insertar entrada aquí',
       register: 'Guardar en base de datos local',
       saving: 'Guardando...',
@@ -493,6 +514,7 @@ const es = {
     taskComment: {
       triggerTooltip: 'Agregar comentario en TW',
       title: 'Nuevo comentario',
+      dialogDescription: 'Agrega un comentario y archivos adjuntos opcionales a esta tarea en TeamWork.',
       bodyLabel: 'Comentario',
       bodyPlaceholder: '¿Qué quieres comentar?',
       dropZoneHint: 'Arrastra archivos aquí',

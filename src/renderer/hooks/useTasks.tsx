@@ -39,7 +39,7 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
             if (e.key === 'Enter') handleSave();
             if (e.key === 'Escape') handleCancel();
           }}
-          className="h-6 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden"
+          className="h-6 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           placeholder="https://..."
         />
         <button type="button" onClick={handleSave} className="text-success hover:text-success/80">
@@ -112,7 +112,7 @@ function EstimatedTimeCell({ task, onSave }: { task: Task; onSave: (updated: Tas
             if (e.key === 'Enter') handleSave();
             if (e.key === 'Escape') handleCancel();
           }}
-          className="h-6 min-w-0 w-20 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden"
+          className="h-6 min-w-0 w-20 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           placeholder="HH:MM"
         />
         <button type="button" onClick={handleSave} className="text-success hover:text-success/80">

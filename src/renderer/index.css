@@ -251,3 +251,30 @@
 .dark .dayContainer {
   background: hsl(var(--popover));
 }
+
+/* ── Focus visibility baseline (UX-506) ─────────────────────────────────────
+   A visible keyboard focus outline for elements that do not opt into a shadcn
+   ring. Kept inside `@layer base` so component `focus-visible:*` utilities in
+   `@layer utilities` still win and cannot be double-outlined. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+/* ── Reduced motion (UX-506) ────────────────────────────────────────────────
+   Users who request reduced motion get non-essential animation neutralized.
+   Spinners/pulses still render their glyph (progress state is not hidden) —
+   only the movement is removed. Unlayered + `!important` so it also overrides
+   Tailwind's `animate-*` utilities. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
@@ -245,6 +245,7 @@ export default function PullFromTWDialog() {
               </>
             )}
           </DialogTitle>
+          <DialogDescription>{t('timeLogs.pull.dialogDescription')}</DialogDescription>
         </DialogHeader>
 
         <WizardStepIndicator
@@ -258,8 +259,10 @@ export default function PullFromTWDialog() {
         {step === 'config' && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{t('timeLogs.pull.subtitle')}</p>
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">{t('timeLogs.pull.periodLabel')}</Label>
+            <div className="space-y-2" role="group" aria-labelledby="pull-from-tw-period-label">
+              <Label id="pull-from-tw-period-label" className="text-xs font-medium">
+                {t('timeLogs.pull.periodLabel')}
+              </Label>
               <div className="grid grid-cols-2 gap-2">
                 {modeOptions.map((opt, i) => (
                   <button
@@ -431,6 +434,7 @@ export default function PullFromTWDialog() {
                               title={t('timeLogs.pull.openInTW')}
                               onClick={() => window.Main.openExternal(row.taskLink)}
                               className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                              aria-label={t('timeLogs.pull.openInTW')}
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                             </button>
@@ -465,8 +469,14 @@ export default function PullFromTWDialog() {
                       {row.selected && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="space-y-0.5">
-                            <Label className="text-xs text-muted-foreground">{t('timeLogs.pull.localName')}</Label>
+                            <Label
+                              htmlFor={`pull-local-name-${row.twTaskId}`}
+                              className="text-xs text-muted-foreground"
+                            >
+                              {t('timeLogs.pull.localName')}
+                            </Label>
                             <Input
+                              id={`pull-local-name-${row.twTaskId}`}
                               value={row.localName}
                               onChange={(e) =>
                                 setMissingRows((prev) =>
@@ -477,8 +487,11 @@ export default function PullFromTWDialog() {
                             />
                           </div>
                           <div className="space-y-0.5">
-                            <Label className="text-xs text-muted-foreground">{t('timeLogs.pull.typeLabel')}</Label>
+                            <Label htmlFor={`pull-type-${row.twTaskId}`} className="text-xs text-muted-foreground">
+                              {t('timeLogs.pull.typeLabel')}
+                            </Label>
                             <select
+                              id={`pull-type-${row.twTaskId}`}
                               value={row.typeName}
                               onChange={(e) =>
                                 setMissingRows((prev) =>

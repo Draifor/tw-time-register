@@ -2,6 +2,7 @@ const en = {
   translations: {
     common: {
       selectLanguage: 'Select Language',
+      toggleDarkMode: 'Toggle dark mode',
       cancel: 'Cancel',
       save: 'Save',
       saving: 'Saving...',
@@ -27,6 +28,15 @@ const en = {
       stepProgress: 'Progress',
       stepOf: 'Step {{current}} of {{total}}',
       required: 'required'
+    },
+    combobox: {
+      positionAnnouncement: '{{current}} of {{total}}: {{label}}'
+    },
+    progress: {
+      statusOvertime: 'Overtime',
+      statusWarning: 'Warning',
+      statusOnTime: 'On time',
+      detail: '{{status}} — {{logged}} / {{estimated}} ({{pct}}%), margin {{margin}}'
     },
     table: {
       searchPlaceholder: 'Search...',
@@ -91,6 +101,7 @@ const en = {
       pull: {
         trigger: 'Import from TW',
         title: 'Import entries from TW',
+        dialogDescription: 'Import TeamWork time entries into your local history and add any missing tasks.',
         subtitle: 'Download your TeamWork time entries into the local history. Only new entries will be imported.',
         stepConfig: 'Period',
         stepResult: 'Result',
@@ -133,6 +144,7 @@ const en = {
         taskTrigger: 'Pull entries from TW',
         noTaskLink: 'This task has no TW link configured',
         taskTitle: 'Sync: {{name}}',
+        taskDialogDescription: "Import this task's TeamWork time entries into your local database.",
         taskSubtitle: 'Pull time entries from TW for this task into your local database.',
         successToast: '{{count}} entries imported from TW',
         noneImported: 'No new entries to import',
@@ -260,6 +272,7 @@ const en = {
         description: 'Holidays are not counted as work days',
         noHolidays: 'No holidays registered',
         holidayName: 'Holiday name',
+        delete: 'Delete holiday',
         deleteTitle: 'Delete holiday?',
         deleteDescription: 'Are you sure you want to delete "{{name}}"?',
         added: 'Holiday added',
@@ -285,6 +298,8 @@ const en = {
         addError: 'Error saving template',
         updateSuccess: 'Template updated',
         deleteSuccess: 'Template deleted',
+        edit: 'Edit template',
+        delete: 'Delete template',
         deleteTitle: 'Delete template?',
         deleteDescription: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.'
       },
@@ -346,6 +361,7 @@ const en = {
       importTW: {
         trigger: 'Import from TW',
         title: 'Import Tasks from TeamWork',
+        dialogDescription: 'Create or update your local tasks from a TeamWork parent task and its subtasks.',
         stepForm: 'Form',
         stepPreview: 'Preview',
         stepDone: 'Done',
@@ -402,9 +418,11 @@ const en = {
       importCSV: {
         trigger: 'Import CSV',
         title: 'Import Tasks from CSV',
+        dialogDescription: 'Import tasks in bulk from a CSV file with the columns Task, Type, and Link.',
         uploadHint: 'Select a .csv file with the following columns (header optional):',
         typeAutoCreate: 'If a Type does not exist yet it will be created automatically.',
         dropzoneHint: 'Click to select a CSV file',
+        dropzoneAria: 'Import tasks from a CSV file. Press Enter to choose a file or drop one here.',
         browseBtn: 'Browse…',
         rowsParsed: '{{count}} rows parsed from {{file}}',
         changeFile: 'Change file',
@@ -459,6 +477,7 @@ const en = {
       afterLunch: 'Post-lunch',
       addEntry: 'Add Entry',
       addEntryTooltip: 'Add new entry',
+      removeEntry: 'Remove entry',
       insertEntry: 'Insert entry here',
       register: 'Save to local database',
       saving: 'Saving...',
@@ -493,6 +512,7 @@ const en = {
     taskComment: {
       triggerTooltip: 'Add comment in TW',
       title: 'New Comment',
+      dialogDescription: 'Add a comment and optional attachments to this task in TeamWork.',
       bodyLabel: 'Comment',
       bodyPlaceholder: 'What do you want to comment?',
       dropZoneHint: 'Drag files here',
