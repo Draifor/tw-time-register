@@ -29,6 +29,15 @@ const es = {
       stepOf: 'Paso {{current}} de {{total}}',
       required: 'obligatorio'
     },
+    combobox: {
+      positionAnnouncement: '{{current}} de {{total}}: {{label}}'
+    },
+    progress: {
+      statusOvertime: 'Tiempo extra',
+      statusWarning: 'Advertencia',
+      statusOnTime: 'En tiempo',
+      detail: '{{status}} — {{logged}} / {{estimated}} ({{pct}}%), margen {{margin}}'
+    },
     table: {
       searchPlaceholder: 'Buscar...',
       addRow: 'Agregar fila',

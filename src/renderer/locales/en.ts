@@ -29,6 +29,15 @@ const en = {
       stepOf: 'Step {{current}} of {{total}}',
       required: 'required'
     },
+    combobox: {
+      positionAnnouncement: '{{current}} of {{total}}: {{label}}'
+    },
+    progress: {
+      statusOvertime: 'Overtime',
+      statusWarning: 'Warning',
+      statusOnTime: 'On time',
+      detail: '{{status}} — {{logged}} / {{estimated}} ({{pct}}%), margin {{margin}}'
+    },
     table: {
       searchPlaceholder: 'Search...',
       addRow: 'Add Row',
