@@ -63,8 +63,8 @@ doc). Under the ~400-line delivery budget, so one work unit.
 | R-2 | Bump version, write `[1.15.0]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | direct inline | [x] |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one verifier) | [x] — all green (see evidence) |
 | R-4 | Commit `chore(release): 1.15.0` | — | direct inline | [x] — `4721181` |
-| R-5 | Promote to `main` + `staging` (FF) + tag `v1.15.0` | — | direct | [ ] |
-| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
+| R-5 | Promote to `main` + `staging` (FF) + tag `v1.15.0` | — | direct | [x] — main `1a698c2..a4e2ce0`; staging `1044083..a4e2ce0`; tag `v1.15.0` |
+| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [x] — run `37531266283` green; R4 asset gate passed |
 
 ## Acceptance criteria
 
@@ -93,7 +93,13 @@ Non-failing warnings observed (pre-existing, out of scope): Vite `configLoader: 
 
 ## Release outcome
 
-_Pending._
+- `main` fast-forwarded `1a698c2..a4e2ce0`; `staging` fast-forwarded `1044083..a4e2ce0`; annotated tag
+  `v1.15.0` pushed at `a4e2ce0`. Publish run
+  [37531266283](https://github.com/Draifor/tw-time-register/actions/runs/37531266283) — **green on the
+  first attempt**; the `Pre-create the GitHub release` step held and the R4 asset gate passed.
+- **Verified final state:** exactly **1** release for `v1.15.0` (not draft, not prerelease); 3 assets —
+  `latest.yml` (364 B), `TW-Time-Register-Setup-1.15.0.exe` (126,309,285 B),
+  `TW-Time-Register-Setup-1.15.0.exe.blockmap` (133,676 B); `latest.yml` reports `version: 1.15.0`.
 
 ## Progress
 
@@ -107,3 +113,6 @@ _Pending._
   RDD assessment (`--base-ref origin/staging --committed-only --json`): **medium**
   (`configuration_change: package.json`), `review_due: false` — `under_budget` (4 paths, 126 lines). No
   native review required for this work unit.
+- 2026-10-06 — **R-5/R-6 done:** `release/1.15.0` pushed; `main` FF `1a698c2..a4e2ce0`, `staging` FF
+  `1044083..a4e2ce0`; tag `v1.15.0` pushed. Publish run `37531266283` green on the first attempt; release
+  verified (1 release, 3 assets, `latest.yml` `1.15.0`).
