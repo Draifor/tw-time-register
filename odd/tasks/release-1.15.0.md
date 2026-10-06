@@ -62,7 +62,7 @@ doc). Under the ~400-line delivery budget, so one work unit.
 | R-1 | Create `release/1.15.0` from `origin/staging` + this document; delete stale Fase 6 branches | this document | direct inline | [x] |
 | R-2 | Bump version, write `[1.15.0]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | direct inline | [x] |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one verifier) | [x] — all green (see evidence) |
-| R-4 | Commit `chore(release): 1.15.0` | — | direct inline | [ ] |
+| R-4 | Commit `chore(release): 1.15.0` | — | direct inline | [x] — `4721181` |
 | R-5 | Promote to `main` + `staging` (FF) + tag `v1.15.0` | — | direct | [ ] |
 | R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
 
@@ -103,3 +103,7 @@ _Pending._
 - 2026-10-06 — **R-2 done:** `package.json` → `1.15.0`; `[1.15.0]` CHANGELOG entry (Changed: UX Fase 6
   i18n/copy + coverage 493→563; Removed: UX-603 dead code); README `v1.15.0` section. **R-3 done** (one
   verifier): all five gates green — see *Verification evidence*.
+- 2026-10-06 — **R-4 done:** `4721181` `chore(release): 1.15.0` (4 files, +125/−1, includes this doc).
+  RDD assessment (`--base-ref origin/staging --committed-only --json`): **medium**
+  (`configuration_change: package.json`), `review_due: false` — `under_budget` (4 paths, 126 lines). No
+  native review required for this work unit.
