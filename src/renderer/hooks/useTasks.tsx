@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Column, Row, ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ExternalLink, Pencil, Check, X } from 'lucide-react';
@@ -15,6 +16,7 @@ import { queryKeys } from '../lib/queryKeys';
 
 // ── Inline editable task link cell ────────────────────────────────────────────
 function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) => void }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(task.taskLink ?? '');
 
@@ -40,7 +42,7 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
             if (e.key === 'Escape') handleCancel();
           }}
           className="h-6 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          placeholder="https://..."
+          placeholder={t('tasks.linkPlaceholder')}
         />
         <button type="button" onClick={handleSave} className="text-success hover:text-success/80">
           <Check className="h-3.5 w-3.5" />
@@ -65,7 +67,7 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
           className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
         >
           <ExternalLink className="h-3 w-3 shrink-0" />
-          {taskId ? `#${taskId}` : 'Ver en TW'}
+          {taskId ? `#${taskId}` : t('tasks.viewInTW')}
         </button>
       ) : (
         <span className="text-muted-foreground text-xs">—</span>
@@ -76,7 +78,7 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
           setValue(task.taskLink ?? '');
           setEditing(true);
         }}
-        title="Editar link"
+        title={t('tasks.editLink')}
         className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
       >
         <Pencil className="h-3 w-3" />
@@ -87,6 +89,7 @@ function TaskLinkCell({ task, onSave }: { task: Task; onSave: (updated: Task) =>
 
 // ── Inline editable estimated time cell ───────────────────────────────────────
 function EstimatedTimeCell({ task, onSave }: { task: Task; onSave: (updated: Task) => void }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(formatMinutesToHHMM(task.estimatedTime ?? 0));
 
@@ -113,7 +116,7 @@ function EstimatedTimeCell({ task, onSave }: { task: Task; onSave: (updated: Tas
             if (e.key === 'Escape') handleCancel();
           }}
           className="h-6 min-w-0 w-20 rounded border border-border bg-background px-1.5 text-xs focus:border-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          placeholder="HH:MM"
+          placeholder={t('tasks.timePlaceholder')}
         />
         <button type="button" onClick={handleSave} className="text-success hover:text-success/80">
           <Check className="h-3.5 w-3.5" />
@@ -136,7 +139,7 @@ function EstimatedTimeCell({ task, onSave }: { task: Task; onSave: (updated: Tas
           setValue(formatMinutesToHHMM(task.estimatedTime ?? 0));
           setEditing(true);
         }}
-        title="Editar tiempo estimado"
+        title={t('tasks.editEstimatedTime')}
         className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
       >
         <Pencil className="h-3 w-3" />
@@ -147,6 +150,7 @@ function EstimatedTimeCell({ task, onSave }: { task: Task; onSave: (updated: Tas
 
 // ── Progress cell (logged vs estimated) ───────────────────────────────────────
 function ProgressCell({ task }: { task: Task }) {
+  const { t } = useTranslation();
   const estimated = task.estimatedTime ?? 0;
   const logged = task.totalLoggedMinutes ?? 0;
 
@@ -173,15 +177,18 @@ function ProgressCell({ task }: { task: Task }) {
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round(Math.min(100, pct))}%` }} />
       </div>
-      {isOver && <span className="text-[10px] text-destructive">Over time</span>}
+      {isOver && <span className="text-[10px] text-destructive">{t('tasks.overTime')}</span>}
       {!isOver && estimated - logged > 0 && (
-        <span className="text-[10px] text-muted-foreground">Margin: {formatMinutesToHHMM(estimated - logged)}</span>
+        <span className="text-[10px] text-muted-foreground">
+          {t('tasks.margin', { time: formatMinutesToHHMM(estimated - logged) })}
+        </span>
       )}
     </div>
   );
 }
 
 function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
+  const { t } = useTranslation();
   const {
     data,
     isPending: isLoading,
@@ -217,12 +224,12 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to update task', {
+      toast.error(t('tasks.updateError'), {
         description: error.message
       });
     },
     onSuccess: () => {
-      toast.success('Task updated successfully');
+      toast.success(t('tasks.updateSuccess'));
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
@@ -233,10 +240,10 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
     mutationFn: deleteTask,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
-      toast.success('Task deleted successfully');
+      toast.success(t('tasks.deleteSuccess'));
     },
     onError: (error) => {
-      toast.error('Failed to delete task', {
+      toast.error(t('tasks.deleteError'), {
         description: error.message
       });
     }
@@ -272,25 +279,25 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
   const columns = useMemo<ColumnDef<Task>[]>(
     () => [
       {
-        header: 'Teamwork Tasks',
+        header: t('tasks.tableTitle'),
         footer: (props: ColumnFooterProps) => props.column.id,
         columns: [
           {
             accessorFn: (row: Task) => row.taskName,
             id: 'taskName',
-            header: () => 'Task Name',
+            header: () => t('tasks.colTaskName'),
             footer: (props: ColumnFooterProps) => props.column.id
           },
           {
             accessorFn: (row: Task) => row.typeName,
             id: 'typeName',
-            header: () => 'Task Type',
+            header: () => t('tasks.colTaskType'),
             cell: ({ row }) => {
               const isOrphan = !row.original.typeName;
               return (
                 <div className="flex items-center gap-1.5">
                   {isOrphan && (
-                    <span title="Sin tipo asignado">
+                    <span title={t('tasks.noTypeAssigned')}>
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
                     </span>
                   )}
@@ -300,7 +307,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
                       value={
                         row.original.typeName ? { value: row.original.typeName, label: row.original.typeName } : null
                       }
-                      placeholder="Asignar tipo…"
+                      placeholder={t('tasks.assignType')}
                       onChange={(selectedOption: { value: string; label: string } | null) =>
                         onEdit({ ...row.original, typeName: selectedOption?.value ?? '' })
                       }
@@ -316,27 +323,27 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
           {
             accessorFn: (row: Task) => row.taskLink,
             id: 'taskLink',
-            header: () => 'Task Link',
+            header: () => t('tasks.colTaskLink'),
             cell: ({ row }) => <TaskLinkCell task={row.original} onSave={onEdit} />,
             footer: (props: ColumnFooterProps) => props.column.id
           },
           {
             accessorFn: (row: Task) => row.description,
             id: 'description',
-            header: () => 'Description',
+            header: () => t('common.description'),
             footer: (props: ColumnFooterProps) => props.column.id
           },
           {
             accessorFn: (row: Task) => row.estimatedTime,
             id: 'estimatedTime',
-            header: () => 'Est. Time',
+            header: () => t('tasks.colEstimatedTime'),
             cell: ({ row }) => <EstimatedTimeCell task={row.original} onSave={onEdit} />,
             footer: (props: ColumnFooterProps) => props.column.id
           },
           {
             accessorFn: (row: Task) => row.totalLoggedMinutes,
             id: 'progress',
-            header: () => 'Progress',
+            header: () => t('tasks.colProgress'),
             cell: ({ row }) => <ProgressCell task={row.original} />,
             footer: (props: ColumnFooterProps) => props.column.id
           }
@@ -345,13 +352,17 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
       ...(isEditable
         ? [
             {
-              header: 'Actions',
+              header: t('common.actions'),
               footer: (props: ColumnFooterProps) => props.column.id,
               columns: [
-                { id: 'pull', header: 'Sync', cell: ({ row }: RowT) => <PullTaskDialog task={row.original} /> },
+                {
+                  id: 'pull',
+                  header: t('tasks.colSync'),
+                  cell: ({ row }: RowT) => <PullTaskDialog task={row.original} />
+                },
                 {
                   id: 'comment',
-                  header: 'Comment',
+                  header: t('tasks.colComment'),
                   cell: ({ row }: RowT) => {
                     const task = row.original;
                     const twId = task.taskLink?.match(/\/tasks\/(\d+)/)?.[1];
@@ -360,10 +371,10 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
                 },
                 {
                   id: 'delete',
-                  header: 'Delete',
+                  header: t('common.delete'),
                   cell: ({ row }: RowT) => (
                     <DeleteButton
-                      itemName={row.original.taskName || 'this task'}
+                      itemName={row.original.taskName || t('tasks.thisTask')}
                       onConfirm={() => handleDelete(row.original)}
                     />
                   )
@@ -373,7 +384,7 @@ function useTasks({ searchTerm = '' }: { searchTerm?: string } = {}) {
           ]
         : [])
     ],
-    [isEditable, typeTasks, typeOptions, handleDelete, onEdit]
+    [isEditable, typeTasks, typeOptions, handleDelete, onEdit, t]
   );
 
   return {

@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AppBar from './components/AppBar';
@@ -21,6 +22,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const { t } = useTranslation();
+
   useEffect(() => {
     window.Main.removeLoading();
   }, []);
@@ -40,7 +43,9 @@ function App() {
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
           <Suspense
             fallback={
-              <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">Loading...</div>
+              <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+                {t('common.loading')}
+              </div>
             }
           >
             <Routes>
