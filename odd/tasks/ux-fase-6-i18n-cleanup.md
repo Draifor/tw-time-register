@@ -193,18 +193,21 @@ one verb per action after T4.
 ## Delivery
 
 - Strategy: `feature-branch-chain` (user-approved 2026-10-05). Tracker branch
-  `feat/ux-fase-6-i18n-cleanup`; child slices off the tracker, one cohesive unit each; child PRs target the
-  tracker. Slicing confirmed at PR time with one honest pass.
+  `feat/ux-fase-6-i18n-cleanup`; slices stacked. Per the `chained-pr` skill, child PR #1 targets the tracker
+  and each later child targets its immediate parent branch (single honest slicing pass).
+- PRs: tracker **#44** (draft, → `staging`, no-merge); children **#45** (UX-603 → tracker), **#46**
+  (UX-601 → #45 branch), **#47** (UX-602 → #46 branch), **#48** (UX-604 → #47 branch), **#49**
+  (closure → #48 branch). Merge bottom-up.
 - Forecast: ~400–650 authored changed lines (locale keys dominate) across 4 tasks; actual ≈ 1.31k changed
   lines across 5 slices (a large share is new guard/test code, which the forecast underestimated).
 
-| Slice | Task | Branch | Commit(s) | Lines |
-| --- | --- | --- | --- | --- |
-| 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | `e3c4242` | 349 |
-| 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | `13df113` | 523 |
-| 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | `4bcc96a` | 166 |
-| 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | `81700ca` | 124 |
-| 5 | Closure (advisory hardening + roadmap) | `feat/ux-fase-6-05-closure` | `d622340` | 145 |
+| Slice | Task | Branch | Commit(s) | Lines | PR |
+| --- | --- | --- | --- | --- | --- |
+| 1 | UX-603 dead code | `feat/ux-fase-6-01-dead-code` | `e3c4242` | 349 | #45 |
+| 2 | UX-601 hardcoded strings | `feat/ux-fase-6-02-i18n-strings` | `13df113` | 523 | #46 |
+| 3 | UX-602 locales | `feat/ux-fase-6-03-locales` | `4bcc96a` | 166 | #47 |
+| 4 | UX-604 action copy | `feat/ux-fase-6-04-action-copy` | `81700ca` | 124 | #48 |
+| 5 | Closure (advisory hardening + roadmap) | `feat/ux-fase-6-05-closure` | `d622340`, `19fdca3` | 145 | #49 |
 
 ## Progress log
 
