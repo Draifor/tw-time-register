@@ -87,9 +87,7 @@ vi.mock('../../renderer/hooks/useTasks', () => {
     error: null,
     columns: [] as unknown[],
     onEdit: vi.fn(),
-    onSubmit: vi.fn(),
-    onDelete: vi.fn(),
-    handleAddRow: vi.fn()
+    onSubmit: vi.fn()
   };
   return { default: () => result };
 });

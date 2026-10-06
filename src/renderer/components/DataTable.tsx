@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useEffect } from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Plus, Loader2, Inbox, SearchX } from 'lucide-react';
+import { Loader2, Inbox, SearchX } from 'lucide-react';
 import useTable from '../hooks/useTable';
 import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -24,21 +24,12 @@ interface DataTableProps<T extends FieldValues> {
   isEditable?: boolean;
   error: { message: string } | null;
   title?: string;
-  onAddRow?: () => void;
   onPersist?: (row: T) => void;
   hideSearch?: boolean;
 }
 
 // Skeleton loader component
-function SkeletonTable({
-  title,
-  columnCount,
-  showAddButton
-}: {
-  title?: string;
-  columnCount: number;
-  showAddButton: boolean;
-}) {
+function SkeletonTable({ title, columnCount }: { title?: string; columnCount: number }) {
   return (
     <Card>
       {title && (
@@ -49,7 +40,6 @@ function SkeletonTable({
       <CardContent>
         <div className="flex items-center justify-between gap-4 mb-4">
           <Skeleton className="h-9 w-[200px]" />
-          {showAddButton && <Skeleton className="h-9 w-[100px]" />}
         </div>
         <div className="rounded-md border">
           <Table>
@@ -87,7 +77,6 @@ function DataTable<T extends FieldValues>({
   isEditable = false,
   error,
   title,
-  onAddRow,
   onPersist,
   hideSearch = false
 }: DataTableProps<T>) {
@@ -165,7 +154,7 @@ function DataTable<T extends FieldValues>({
     };
   }, []);
 
-  if (isLoading) return <SkeletonTable title={title} columnCount={columns.length} showAddButton={isEditable} />;
+  if (isLoading) return <SkeletonTable title={title} columnCount={columns.length} />;
   if (error) return <ErrorState title={t('table.errorTitle')} message={error.message || t('common.errorOccurred')} />;
 
   return (
@@ -183,12 +172,6 @@ function DataTable<T extends FieldValues>({
               onChange={setGlobalFilter}
               placeholder={t('table.searchPlaceholder')}
             />
-          )}
-          {isEditable && onAddRow && (
-            <Button onClick={onAddRow} size="sm" className="gap-1">
-              <Plus className="h-4 w-4" />
-              {t('table.addRow')}
-            </Button>
           )}
         </TableToolbar>
 
@@ -236,14 +219,6 @@ function DataTable<T extends FieldValues>({
                         icon={Inbox}
                         title={t('table.emptyTitle')}
                         description={t('table.emptyDescription')}
-                        action={
-                          isEditable && onAddRow ? (
-                            <Button onClick={onAddRow} size="sm" className="gap-1">
-                              <Plus className="h-4 w-4" />
-                              {t('table.addFirstEntry')}
-                            </Button>
-                          ) : undefined
-                        }
                       />
                     )}
                   </TableCell>

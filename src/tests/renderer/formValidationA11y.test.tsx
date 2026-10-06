@@ -44,9 +44,7 @@ vi.mock('../../renderer/hooks/useTasks', () => {
     error: null,
     columns: [] as unknown[],
     onEdit: vi.fn(),
-    onSubmit: vi.fn(),
-    onDelete: vi.fn(),
-    handleAddRow: vi.fn()
+    onSubmit: vi.fn()
   };
   return { default: () => result };
 });
@@ -124,7 +122,7 @@ Object.assign(Element.prototype, {
   scrollIntoView: () => {}
 });
 
-// Minimal harness for the inline-edit control (`FormField` -> `InputForm`) used
+// Minimal harness for the inline-edit control (`InputForm`) used
 // by the catalog tables, so the validation semantics of that control are pinned
 // without booting the whole table.
 function RequiredInputForm() {
