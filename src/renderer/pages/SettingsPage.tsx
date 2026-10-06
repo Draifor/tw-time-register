@@ -163,13 +163,16 @@ export default function SettingsPage() {
         setTwUserId(twCreds.userId || '');
       } catch (error) {
         console.error('Error loading settings:', error);
-        toast.error('Error loading settings');
+        toast.error(t('settings.loadError'));
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
+    // Mount-time load: re-running it on language change would discard unsaved edits,
+    // so `t` is intentionally omitted from the dependency list.
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [reset]);
 
   const onSubmit = async (data: SettingsFormData) => {
@@ -441,7 +444,7 @@ export default function SettingsPage() {
                 </span>
                 <Input
                   id="twDomain"
-                  placeholder="miempresa"
+                  placeholder={t('settings.teamwork.domainPlaceholder')}
                   value={twDomain}
                   onChange={(e) => {
                     setTwDomain(e.target.value);
@@ -459,7 +462,7 @@ export default function SettingsPage() {
               <Input
                 id="twUsername"
                 type="text"
-                placeholder="usuario@empresa.com"
+                placeholder={t('settings.teamwork.usernamePlaceholder')}
                 autoComplete="username"
                 value={twUsername}
                 onChange={(e) => {
@@ -490,7 +493,7 @@ export default function SettingsPage() {
               <Input
                 id="twUserId"
                 type="text"
-                placeholder="123456"
+                placeholder={t('settings.teamwork.userIdPlaceholder')}
                 value={twUserId}
                 onChange={(e) => setTwUserId(e.target.value)}
                 className="max-w-[180px]"

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
@@ -8,6 +9,7 @@ import DeleteButton from '../components/DeleteButton';
 import { queryKeys } from '../lib/queryKeys';
 
 function useTypeTasks() {
+  const { t } = useTranslation();
   const {
     data = [],
     isPending: isLoading,
@@ -22,38 +24,38 @@ function useTypeTasks() {
     mutationFn: (typeName: string) => addTypeTask(typeName),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
-      toast.success('Type added successfully');
+      toast.success(t('tasks.typeForm.addSuccess'));
     },
-    onError: (err: Error) => toast.error('Failed to add type', { description: err.message })
+    onError: (err: Error) => toast.error(t('tasks.typeForm.addError'), { description: err.message })
   });
 
   const { mutate: onEdit } = useMutation({
     mutationFn: ({ id, typeName }: { id: number; typeName: string }) => updateTypeTask(id, typeName),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
-      toast.success('Type updated successfully');
+      toast.success(t('tasks.typeForm.updateSuccess'));
     },
-    onError: (err: Error) => toast.error('Failed to update type', { description: err.message })
+    onError: (err: Error) => toast.error(t('tasks.typeForm.updateError'), { description: err.message })
   });
 
   const { mutate: onDelete } = useMutation({
     mutationFn: (id: number) => deleteTypeTask(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.typeTasks.all });
-      toast.success('Type deleted successfully');
+      toast.success(t('tasks.typeForm.deleteSuccess'));
     },
-    onError: (err: Error) => toast.error('Failed to delete type', { description: err.message })
+    onError: (err: Error) => toast.error(t('tasks.typeForm.deleteError'), { description: err.message })
   });
 
   const columns = useMemo<ColumnDef<TypeTasks>[]>(
     () => [
       {
-        header: 'Task Types',
+        header: t('tasks.typesTableTitle'),
         columns: [
           {
             accessorKey: 'typeName',
             id: 'typeName',
-            header: () => 'Name',
+            header: () => t('tasks.colName'),
             cell: ({ row, table }) => {
               const value = row.original.typeName;
               return (
@@ -83,10 +85,10 @@ function useTypeTasks() {
           },
           {
             id: 'delete',
-            header: 'Actions',
+            header: t('common.actions'),
             cell: ({ row }) => (
               <DeleteButton
-                itemName={row.original.typeName || 'this type'}
+                itemName={row.original.typeName || t('tasks.thisType')}
                 onConfirm={() => row.original.id && onDelete(row.original.id)}
               />
             )
@@ -94,7 +96,7 @@ function useTypeTasks() {
         ]
       }
     ],
-    [onEdit, onDelete]
+    [onEdit, onDelete, t]
   );
 
   const sortedData = useMemo(() => [...data].sort((a, b) => a.typeName.localeCompare(b.typeName)), [data]);

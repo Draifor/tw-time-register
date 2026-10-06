@@ -80,21 +80,21 @@ function AppBar() {
           <button
             onClick={window.Main.Minimize}
             className="undraggable w-12 h-full flex items-center justify-center hover:bg-accent transition-colors"
-            aria-label="Minimize"
+            aria-label={t('appBar.minimize')}
           >
             <Minus className="h-4 w-4" />
           </button>
           <button
             onClick={handleToggle}
             className="undraggable w-12 h-full flex items-center justify-center hover:bg-accent transition-colors"
-            aria-label={isMaximize ? 'Restore' : 'Maximize'}
+            aria-label={isMaximize ? t('appBar.restore') : t('appBar.maximize')}
           >
             {isMaximize ? <Maximize2 className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
           </button>
           <button
             onClick={window.Main.Close}
             className="undraggable w-12 h-full flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="h-4 w-4" />
           </button>

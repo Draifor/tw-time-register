@@ -368,10 +368,12 @@ describe('WorkTimeForm validation a11y (UX-408)', () => {
   });
 
   it('exposes aria-invalid/aria-describedby/aria-required on the TasksTable add-task form after an invalid submit', () => {
-    const { container, getByRole } = renderWithClient(<TasksTable />);
+    const { container, getByRole, getAllByRole } = renderWithClient(<TasksTable />);
 
-    fireEvent.click(getByRole('button', { name: /New task/i }));
+    // Opener and submit share the canonical "Add task" label (UX-604); the
+    // opener is unique while the form is closed, then the submit is the last match.
     fireEvent.click(getByRole('button', { name: /^Add task$/i }));
+    fireEvent.click(getAllByRole('button', { name: /^Add task$/i })[1]);
 
     const name = container.querySelector('#new-task-name') as HTMLInputElement;
     const type = container.querySelector('#new-task-type') as HTMLElement;
@@ -389,10 +391,12 @@ describe('WorkTimeForm validation a11y (UX-408)', () => {
   });
 
   it('exposes aria-invalid/aria-describedby/aria-required on the TypeTasksTable add-type form after an invalid submit', () => {
-    const { container, getByRole } = renderWithClient(<TypeTasksTable />);
+    const { container, getByRole, getAllByRole } = renderWithClient(<TypeTasksTable />);
 
-    fireEvent.click(getByRole('button', { name: /New type/i }));
+    // Opener and submit share the canonical "Add type" label (UX-604); the
+    // opener is unique while the form is closed, then the submit is the last match.
     fireEvent.click(getByRole('button', { name: /^Add type$/i }));
+    fireEvent.click(getAllByRole('button', { name: /^Add type$/i })[1]);
 
     const name = container.querySelector('#new-type-name') as HTMLInputElement;
     expect(name.getAttribute('aria-invalid')).toBe('true');

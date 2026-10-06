@@ -67,7 +67,7 @@ function ImportCSVTasksDialog() {
         setRows(parsedRows);
         setStep('preview');
       } catch {
-        setParseError('Failed to parse the CSV file. Please check the format.');
+        setParseError(t('tasks.importCSV.parseError'));
       }
     };
     reader.readAsText(file);
@@ -145,11 +145,11 @@ function ImportCSVTasksDialog() {
             <p className="text-sm text-muted-foreground">{t('tasks.importCSV.uploadHint')}</p>
 
             <div className="rounded-md border bg-muted/50 px-4 py-3 font-mono text-sm">
-              <span className="text-info">TareaTW</span>
+              <span className="text-info">{t('tasks.importCSV.colTaskName')}</span>
               <span className="text-muted-foreground">, </span>
-              <span className="text-success">Tipo</span>
+              <span className="text-success">{t('tasks.importCSV.colType')}</span>
               <span className="text-muted-foreground">, </span>
-              <span className="text-warning">Link</span>
+              <span className="text-warning">{t('tasks.importCSV.colLink')}</span>
             </div>
 
             <p className="text-sm text-muted-foreground">{t('tasks.importCSV.typeAutoCreate')}</p>

@@ -43,16 +43,18 @@ interface ComboboxInnerProps extends React.AriaAttributes {
 
 function ComboboxInner({
   options,
-  placeholder = 'Select an option',
+  placeholder,
   value,
   onChange,
   className,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder,
   showProgress = false,
   id: idProp,
   ...triggerProps
 }: ComboboxInnerProps) {
   const { t } = useTranslation();
+  const effectivePlaceholder = placeholder ?? t('combobox.selectOption');
+  const effectiveSearchPlaceholder = searchPlaceholder ?? t('combobox.searchPlaceholder');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -209,7 +211,7 @@ function ComboboxInner({
           !value && 'text-muted-foreground'
         )}
       >
-        <span className="whitespace-normal break-words text-left">{value ? value.label : placeholder}</span>
+        <span className="whitespace-normal break-words text-left">{value ? value.label : effectivePlaceholder}</span>
         <ChevronDown
           className={cn(
             'h-4 w-4 opacity-50 shrink-0 ml-2 mt-0.5 transition-transform duration-150',
@@ -238,7 +240,7 @@ function ComboboxInner({
                 setSearch(e.target.value);
                 setHighlightedIndex(0);
               }}
-              placeholder={searchPlaceholder}
+              placeholder={effectiveSearchPlaceholder}
               className="w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
             />
           </div>
@@ -246,7 +248,7 @@ function ComboboxInner({
           {/* Options list */}
           <ul id={listboxId} ref={listRef} role="listbox" className="max-h-48 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-muted-foreground text-center">No results found.</li>
+              <li className="px-3 py-2 text-sm text-muted-foreground text-center">{t('combobox.noResults')}</li>
             ) : (
               filtered.map((option, i) => {
                 const estimated = option.estimatedTime ?? 0;
@@ -281,7 +283,12 @@ function ComboboxInner({
                     )}
                     title={
                       hasProgress
-                        ? `Progreso: ${formatMins(option.totalLoggedMinutes ?? 0)} / ${formatMins(estimated)} (${Math.round(pct)}%) — Margen: ${formatMins(margin)}`
+                        ? t('workTimeForm.progressInfo', {
+                            logged: formatMins(option.totalLoggedMinutes ?? 0),
+                            estimated: formatMins(estimated),
+                            pct: Math.round(pct),
+                            margin: formatMins(margin)
+                          })
                         : undefined
                     }
                   >
