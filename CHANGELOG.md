@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-10-06
+
+### Changed
+
+- **UX Fase 6 — i18n y limpieza de copy (UX-601, UX-602, UX-604)**: todo el texto de UI pasa por i18n (sin literales hardcodeados salvo marca y tokens de formato), locales `en`/`es` espejados, corregidos y sin keys huérfanas, y copy de acciones unificado a un verbo por acción según el glosario UX-003 (`13df113`, `4bcc96a`, `81700ca`; `odd/tasks/ux-fase-6-i18n-cleanup.md`)
+- **Cobertura**: nuevos guards deterministas de i18n, paridad de locales y copy de acciones; la suite pasa de 493 a **563** tests (74 archivos) (`d622340`)
+
+### Removed
+
+- **UX-603 — dead code de UI**: se eliminan los componentes huérfanos `DynamicForm`, `FormField` y `Filter`, los props/campos sin uso (`FormFieldProps`, `NewRecord`, `DataTableProps`, `DAYS_OF_WEEK.labelEs`) y las rutas muertas (`onPersist` no-op, `onAddRow`, returns sin uso del hook de tareas) (`e3c4242`; `odd/tasks/ux-fase-6-i18n-cleanup.md`)
+
 ## [1.14.0] - 2026-10-04
 
 ### Added

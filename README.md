@@ -343,6 +343,14 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
   - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 
+### ✅ v1.15.0 — UX Fase 6: i18n y limpieza de copy (PUBLICADA - Oct 2026)
+
+- [x] UX-601 — sin strings hardcodeados: todo el texto de UI pasa por i18n (incluidos aria-labels de ventana y placeholders)
+- [x] UX-602 — locales `en`/`es` espejados, corregidos y sin keys huérfanas
+- [x] UX-603 — limpieza de dead code de UI: componentes huérfanos (`DynamicForm`/`FormField`/`Filter`), props/campos y rutas muertas
+- [x] UX-604 — copy de acciones unificado a un verbo por acción (glosario UX-003)
+- [x] Cobertura — guards deterministas de i18n, paridad de locales y copy de acciones (suite **563** tests)
+
 ### ✅ v1.14.0 — UX Fases 0–5: IA, design system, layout, flujos y accesibilidad AA (PUBLICADA - Oct 2026)
 
 - [x] UX Fase 0 — IA y Home operativo: shell con mapa de secciones, Home como centro de mando (timer en vivo, registro rápido, resumen) y naming unificado (`UX-001..UX-005`)
