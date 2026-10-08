@@ -10,9 +10,6 @@ import {
 import { UseTableProps } from '../../types/dataTable';
 import { Input } from '../components/ui/input';
 
-const INITIAL_ROWS = 20;
-const ROWS_PER_LOAD = 10;
-
 function useSkipper() {
   const shouldSkipRef = useRef(true);
   const shouldSkip = shouldSkipRef.current;
@@ -68,24 +65,9 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
   const [localData, setLocalData] = useState(data || []);
   const { shouldSkip: autoResetPageIndex, skip: skipAutoResetPageIndex } = useSkipper();
   const [globalFilter, setGlobalFilter] = useState('');
-  const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
 
   // Stable across renders as long as editability does not change.
   const defaultColumnDef = useMemo(() => defaultColumn<T>(isEditable ?? false), [isEditable]);
-
-  // Infinite scroll: only relevant when no filter is active
-  const hasMoreRows = !globalFilter && visibleRowCount < localData.length;
-
-  const loadMoreRows = useCallback(() => {
-    if (hasMoreRows) {
-      setVisibleRowCount((prev) => Math.min(prev + ROWS_PER_LOAD, localData.length));
-    }
-  }, [hasMoreRows, localData.length]);
-
-  // Reset the visible window when either the filter or the data set changes.
-  useEffect(() => {
-    setVisibleRowCount(INITIAL_ROWS);
-  }, [globalFilter, data]);
 
   // Sync localData when external data changes (e.g. after query loads)
   useEffect(() => {
@@ -128,9 +110,6 @@ function useTable<T extends FieldValues>({ columns, data, isEditable, onPersist 
     table,
     globalFilter,
     setGlobalFilter,
-    loadMoreRows,
-    hasMoreRows,
-    visibleRowCount,
     totalRows: localData.length
   };
 }

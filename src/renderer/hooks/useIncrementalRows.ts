@@ -46,7 +46,10 @@ function useIncrementalRows(
   const reset = useCallback(() => setVisibleCount(initial), [initial]);
 
   return {
-    visibleCount,
+    // Clamp so a list shorter than the initial window never reports more
+    // visible rows than it holds (e.g. a filter that narrows to 7 rows must
+    // read "7", not the 20-row default).
+    visibleCount: Math.min(visibleCount, total),
     hasMore: visibleCount < total,
     showMore,
     reset

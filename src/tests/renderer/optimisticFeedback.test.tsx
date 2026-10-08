@@ -7,8 +7,8 @@
  * rolls the cache back to the previous entry so no optimistic value is ever
  * left behind as stale truth.
  *
- * The virtualizer is mocked to a full window (jsdom has no layout) so every
- * seeded entry is mounted, matching `timeLogsTableVirtual.test.tsx`.
+ * `useIncrementalRows` starts at its 20-row default, so both seeded entries are
+ * always within the initial window (no windowing mock needed).
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -19,33 +19,6 @@ import '../../renderer/plugins/i18n';
 import type { TimeEntry } from '../../renderer/services/timesService';
 
 const entriesRef = vi.hoisted(() => ({ data: [] as unknown[] }));
-
-vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: (options: {
-    count: number;
-    estimateSize: (index: number) => number;
-    getItemKey?: (index: number) => string | number;
-  }) => {
-    const count = options.count;
-    const rowHeight = options.estimateSize(0) || 48;
-    const items = Array.from({ length: count }, (_, index) => ({
-      index,
-      key: options.getItemKey ? options.getItemKey(index) : index,
-      start: index * rowHeight,
-      end: (index + 1) * rowHeight,
-      size: rowHeight,
-      lane: 0
-    }));
-    return {
-      getVirtualItems: () => items,
-      getTotalSize: () => count * rowHeight,
-      measureElement: () => undefined,
-      scrollToOffset: () => undefined,
-      scrollToIndex: () => undefined,
-      getScrollElement: () => null
-    };
-  }
-}));
 
 vi.mock('../../renderer/services/tasksService', () => ({
   fetchTasks: vi.fn().mockResolvedValue([])
@@ -102,10 +75,10 @@ describe('TimeLogsTable optimistic inline edit (UX-409)', () => {
 
   it('updates the workTimes cache before save settles and rolls back on rejection', async () => {
     const { container, client } = renderTable();
-    await waitFor(() => expect(container.querySelectorAll('tbody tr[data-index]')).toHaveLength(2));
+    await waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(2));
 
     // Open the inline editor on the first row and type a new description.
-    const firstRow = container.querySelector('tbody tr[data-index]') as HTMLTableRowElement;
+    const firstRow = container.querySelector('tbody tr') as HTMLTableRowElement;
     fireEvent.click(within(firstRow).getAllByRole('button')[0]);
 
     const description = container.querySelector('tbody input[type="text"]') as HTMLInputElement;
@@ -121,7 +94,7 @@ describe('TimeLogsTable optimistic inline edit (UX-409)', () => {
         })
     );
 
-    const editRow = container.querySelector('tbody tr[data-index]') as HTMLTableRowElement;
+    const editRow = container.querySelector('tbody tr') as HTMLTableRowElement;
     fireEvent.click(within(editRow).getAllByRole('button')[0]); // save
 
     // The cache holds the edit before the server promise settles; the sibling

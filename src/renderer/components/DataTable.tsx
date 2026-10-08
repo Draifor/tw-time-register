@@ -1,11 +1,14 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React from 'react';
 import { ColumnDef, RowData, flexRender } from '@tanstack/react-table';
 import { FieldValues } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Inbox, SearchX } from 'lucide-react';
+import { Inbox, SearchX } from 'lucide-react';
 import useTable from '../hooks/useTable';
+import useIncrementalRows from '../hooks/useIncrementalRows';
+import useInfiniteScroll from '../hooks/useInfiniteScroll';
 import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { TableRowCount } from './ui/table-row-count';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { EmptyState, ErrorState } from './ui/empty-state';
@@ -81,78 +84,24 @@ function DataTable<T extends FieldValues>({
   hideSearch = false
 }: DataTableProps<T>) {
   const { t } = useTranslation();
-  const { table, globalFilter, setGlobalFilter, loadMoreRows, hasMoreRows, visibleRowCount, totalRows } = useTable({
+  const { table, globalFilter, setGlobalFilter } = useTable({
     columns,
     data,
     isEditable,
     onPersist
   });
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const loadingRef = useRef(false);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep the latest values available to the identity-stable scroll handler so
-  // the listener can attach once instead of on every data change.
-  const hasMoreRowsRef = useRef(hasMoreRows);
-  const loadMoreRowsRef = useRef(loadMoreRows);
-
-  useEffect(() => {
-    hasMoreRowsRef.current = hasMoreRows;
-  }, [hasMoreRows]);
-
-  useEffect(() => {
-    loadMoreRowsRef.current = loadMoreRows;
-  }, [loadMoreRows]);
-
-  // When filtering: show all matching rows; when not: respect the infinite-scroll window
+  // Row windowing is unified on `useIncrementalRows` (D-3): only the first
+  // `visibleCount` rows of the filtered model are mounted, and the sentinel below
+  // the table reveals the next batch as the document scrolls. `getRowModel()`
+  // already applies the global filter, so the window always tracks the visible
+  // result set. The sentinel is mounted only while `hasMore`, and
+  // `useInfiniteScroll`'s callback ref re-attaches it after the loading ->
+  // loaded transition (the hooks must stay above the early returns).
   const allRows = table.getRowModel().rows;
-  const rowsToRender = globalFilter ? allRows : allRows.slice(0, visibleRowCount);
-
-  // Handle scroll to load more rows
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container || loadingRef.current || !hasMoreRowsRef.current) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const scrollThreshold = 100; // pixels from bottom
-
-    if (scrollHeight - scrollTop - clientHeight < scrollThreshold) {
-      loadingRef.current = true;
-      loadMoreRowsRef.current();
-      // Reset loading flag after a short delay
-      if (resetTimerRef.current !== null) clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = setTimeout(() => {
-        loadingRef.current = false;
-        resetTimerRef.current = null;
-      }, 100);
-    }
-  }, []);
-
-  // Attach the listener to the scroll container once per mount. Using a ref
-  // callback means the listener is not re-attached when data changes.
-  const attachScrollContainer = useCallback(
-    (node: HTMLDivElement | null) => {
-      const previous = scrollContainerRef.current;
-      if (previous && previous !== node) {
-        previous.removeEventListener('scroll', handleScroll);
-      }
-      scrollContainerRef.current = node;
-      if (node) {
-        node.addEventListener('scroll', handleScroll);
-      }
-    },
-    [handleScroll]
-  );
-
-  // Clear any pending "reset loadingRef" timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (resetTimerRef.current !== null) {
-        clearTimeout(resetTimerRef.current);
-        resetTimerRef.current = null;
-      }
-    };
-  }, []);
+  const { visibleCount, hasMore, showMore } = useIncrementalRows(allRows.length);
+  const rowsToRender = allRows.slice(0, visibleCount);
+  const sentinelRef = useInfiniteScroll({ hasMore, loadMore: showMore });
 
   if (isLoading) return <SkeletonTable title={title} columnCount={columns.length} />;
   if (error) return <ErrorState title={t('table.errorTitle')} message={error.message || t('common.errorOccurred')} />;
@@ -175,9 +124,9 @@ function DataTable<T extends FieldValues>({
           )}
         </TableToolbar>
 
-        <div ref={attachScrollContainer} className="rounded-md border max-h-[60vh] overflow-auto">
+        <div className="rounded-md border">
           <Table>
-            <TableHeader className="sticky top-0 bg-background z-10">
+            <TableHeader className="sticky top-[5.5rem] bg-background z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -226,24 +175,14 @@ function DataTable<T extends FieldValues>({
               )}
             </TableBody>
           </Table>
+          {/* Sentinel: mounted only while more rows remain (D-3). A false -> true
+              `hasMore` transition mounts a fresh node the callback ref can
+              observe (R3-HASMORE-REARM contract). */}
+          {hasMore && <div ref={sentinelRef} data-sentinel="catalog" aria-hidden="true" />}
         </div>
 
-        {/* Infinite scroll status */}
-        {totalRows > 0 && (
-          <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
-            <span>
-              {globalFilter
-                ? t('table.resultsOf', { count: allRows.length, total: totalRows })
-                : t('table.showingRows', { shown: Math.min(visibleRowCount, totalRows), total: totalRows })}
-            </span>
-            {hasMoreRows && (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{t('table.scrollForMore')}</span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Shared record count (D-4). */}
+        <TableRowCount shown={visibleCount} total={allRows.length} filtered={Boolean(globalFilter)} hasMore={hasMore} />
       </CardContent>
     </Card>
   );

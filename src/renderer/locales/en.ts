@@ -250,8 +250,7 @@ const en = {
       presetThisMonth: 'This month',
       presetThisWeek: 'This week',
       presetPreviousMonth: 'Previous month',
-      presetCustom: 'Custom',
-      showMore: 'Show more ({{count}})'
+      presetCustom: 'Custom'
     },
     settings: {
       title: 'Settings',
