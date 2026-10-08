@@ -251,8 +251,7 @@ const es = {
       presetThisMonth: 'Este mes',
       presetThisWeek: 'Esta semana',
       presetPreviousMonth: 'Mes anterior',
-      presetCustom: 'Personalizado',
-      showMore: 'Mostrar más ({{count}})'
+      presetCustom: 'Personalizado'
     },
     settings: {
       title: 'Configuración',
