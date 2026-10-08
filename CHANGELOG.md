@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-10-08
+
+### Added
+
+- **UX Fase 7 — Reportes (UX-701..UX-703)**: presets de rango (este mes / esta semana / mes anterior + personalizado) con el último rango recordado en `localStorage`; desglose de minutos **enviadas vs locales** por tarea y por día con barra de ratio; y una vista **semanal por día** (lunes→domingo, total semanal y estado de envío) (`4721a59`; `odd/tasks/ux-fase-7-reports.md`)
+- **Consistencia de tablas y scroll**: todas las tablas de datos (Historial, Reportes y Catálogo) pasan a un único modelo —scroll de página sin caja interna, cabecera *sticky* opaca bajo el chrome de la app (`top-[5.5rem]`), carga incremental automática por `IntersectionObserver` (sin botones "Mostrar más") y conteo de registros visible por tabla— mediante el hook compartido `useInfiniteScroll` y el footer `TableRowCount` (`365906c`, `b08eb39`, `1b81590`, `6a9d577`; `odd/tasks/ux-table-consistency.md`)
+
+### Fixed
+
+- **Scroll del Historial**: se elimina el contenedor `70vh` anidado y la virtualización con `@tanstack/react-virtual`, que provocaban una barra de scroll extra y el colapso de la banda de filas al hacer scroll de página (el "desaparece la vista"); el desplazamiento queda en el documento con carga incremental (`b08eb39`)
+
+### Changed
+
+- **Cobertura**: la suite pasa de **563** tests (74 archivos) a **624** tests (80 archivos), con cobertura del scroll incremental multi-batch, el conteo por tabla y las guardas de Reportes (rango, enviadas/locales y semana) (`0a5ec0e`, `01b77b1`)
+
 ## [1.15.0] - 2026-10-06
 
 ### Changed

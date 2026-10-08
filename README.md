@@ -343,6 +343,15 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
   - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 
+### ✅ v1.16.0 — UX Fase 7 (Reportes) & consistencia de tablas y scroll (PUBLICADA - Oct 2026)
+
+- [x] UX-701 — presets de rango en Reportes (este mes / esta semana / mes anterior + personalizado) con el último rango recordado
+- [x] UX-702 — horas **enviadas vs locales** por tarea y por día, con barra de ratio
+- [x] UX-703 — vista **semanal por día** (lunes→domingo, total semanal y estado de envío)
+- [x] Consistencia de tablas — Historial, Reportes y Catálogo con scroll de página, cabecera *sticky* opaca, carga automática al hacer scroll (sin "Mostrar más") y conteo de registros
+- [x] Fix — scroll del Historial: se elimina el contenedor anidado y la virtualización que duplicaban la barra de scroll y colapsaban las filas al scrollear
+- [x] Cobertura — suite de **624** tests (80 archivos)
+
 ### ✅ v1.15.0 — UX Fase 6: i18n y limpieza de copy (PUBLICADA - Oct 2026)
 
 - [x] UX-601 — sin strings hardcodeados: todo el texto de UI pasa por i18n (incluidos aria-labels de ventana y placeholders)
