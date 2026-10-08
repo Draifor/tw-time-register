@@ -88,13 +88,16 @@ client-side, as today); `WorkTimeForm` calculation logic.
   `b08eb39` (migration). Global scroll (dropped the `70vh` box), removed virtualization → incremental
   slicing + `useInfiniteScroll` sentinel (mounted while `hasMore`), sticky opaque header (`top-[5.5rem]`),
   always-on `TableRowCount`; scroll bug fixed by removing the nested scroll. Suite 79 files / 613 tests green.
-- [ ] **T3 · Reports (`ReportsPage`)** — sticky opaque headers on the three tables, replace "Show more" with
-  automatic load, add per-table count. Acceptance: no click needed; header sticks.
-- [ ] **T4 · Catalog (`DataTable` + `useTable` + `ui/table`)** — drop the `60vh` box, `Table` wrapper
-  `overflow-visible`, sticky header offset, swap to the shared hook + `useIncrementalRows`, keep the count.
-  Acceptance: same behaviour as T2/T3, no regression in Catalog filters.
-- [ ] **T5 · Closure** — i18n cleanup, docs, full gates (`pnpm lint`, `pnpm type-check`, `pnpm test`,
-  `pnpm build`) and manual smoke. Acceptance: all checks green.
+- [x] **T3 · Reports (`ReportsPage`)** — ✅ 2026-10-08, commit `1b81590`. Sticky opaque headers on the
+  by-task and by-day tables (by-week is a card list → sentinel + count only), "Show more" replaced by
+  automatic load, per-table `TableRowCount`. Suite 79 files / 617 tests green.
+- [x] **T4 · Catalog (`DataTable` + `useTable` + `ui/table`)** — ✅ 2026-10-08, commits `6a9d577`
+  (migration), `a964d1a` (count clamp). Dropped the `60vh` box, `Table` wrapper `overflow-visible`, sticky
+  header at `top-[5.5rem]`, shared hook + `useIncrementalRows`, shared count; `useTable` windowing removed.
+  Suite 80 files / 622 tests green.
+- [x] **T5 · Closure** — ✅ 2026-10-08. Removed the orphan `reports.showMore` key; full gates green:
+  `pnpm lint` 0 errors / 82 warnings, `pnpm type-check` clean, `pnpm test` 80 files / 624 tests, `pnpm build`
+  green. Manual smoke (Electron scroll/sticky on a large dataset) remains a human step.
 
 ## Authorized files
 
@@ -153,6 +156,18 @@ mounts all rows at once by default.
   - **R3-WINDOW-FILTER-RESET (SUGGESTION, inferential)** — no explicit window reset on filter change; relies
     on `useIncrementalRows` resetting when the filtered length changes. **Accepted:** resets on any length
     change; a same-length filter is a negligible edge case.
+- **T3+T4 (Reports + Catalog)** — base `b08eb39` (last reviewed boundary), range through `a964d1a`
+  (10 paths / 624 lines): risk `medium`, `review_due_reason = slice_budget_reached`. Consent granted; lens
+  `review-reliability`; lineage `review-294a5d753bf042ff` (one empty reviewer result was retried on the same
+  slot). Result **approved**; acknowledgement burned authority.
+  - **R3-MULTIBATCH-REARM (WARNING, inferential, introduced)** — claimed a second auto-load batch was
+    unproved. **Verified non-defect and closed:** `useInfiniteScroll` re-observes the still-mounted sentinel
+    after each load; a multi-batch test (20 → 40 → 50) now proves it.
+  - **R3-TABLE-OVERFLOW-WRAPPER (WARNING, inferential, introduced)** — `ui/table` wrapper `overflow-auto` →
+    `overflow-visible` removes horizontal scroll for consumers. **Accepted:** a horizontal scroll container
+    would re-clip the sticky header (D-2); Catalog is the only consumer and its columns fit.
+  - **R3-BY-WEEK-COVERAGE (SUGGESTION, inferential, introduced)** — by-week sentinel/count untested.
+    **Closed:** added a by-week case with a >20-week dataset.
 
 ## Delivery
 
@@ -173,3 +188,7 @@ mounts all rows at once by default.
   header + always-on count; `useInfiniteScroll` swap-leak hardened (`a15c04f`, `b08eb39`). Native review
   **approved** (lineage `review-b6741fb404c1cc2d`, authority burned); the coverage WARNING was closed by
   restoring the filter and inline-edit tests. Suite 79 files / 613 tests green (+2 coverage tests).
+- 2026-10-08 — **T3 done:** Reports tables → sticky opaque headers + automatic infinite scroll + per-table
+  count (`1b81590`). **T4 done:** Catalog `DataTable` + `useTable` + `ui/table` migrated; count clamp fix
+  (`6a9d577`, `a964d1a`). **T3+T4 review approved** (lineage `review-294a5d753bf042ff`, authority burned);
+  advisory coverage closed (`0a5ec0e`). **T5:** removed the orphan `reports.showMore` i18n key.
