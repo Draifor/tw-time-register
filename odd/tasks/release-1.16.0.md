@@ -51,8 +51,8 @@ doc). Under the ~400-line delivery budget, so one work unit.
 | R-2 | Bump version, write `[1.16.0]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | direct inline | [x] |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one verifier) | [x] — all green (see evidence) |
 | R-4 | Commit `chore(release): 1.16.0` | — | direct inline | [ ] |
-| R-5 | Promote to `main` + `staging` (FF) + tag `v1.16.0` | — | direct | [ ] |
-| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
+| R-5 | Promote to `main` + `staging` (FF) + tag `v1.16.0` | — | direct | [x] — main `a4e2ce0..3842f94`; staging `cf6eb10..3842f94`; tag `v1.16.0` |
+| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [x] — run `37846419248` green; R4 asset gate passed |
 
 ## Acceptance criteria
 
@@ -81,7 +81,13 @@ and `INEFFECTIVE_DYNAMIC_IMPORT` in `apiService.ts`.
 
 ## Release outcome
 
-_Pending (R-6)._
+- `main` fast-forwarded `a4e2ce0..3842f94`; `staging` fast-forwarded `cf6eb10..3842f94`; annotated tag
+  `v1.16.0` pushed at `3842f94`. Publish run
+  [37846419248](https://github.com/Draifor/tw-time-register/actions/runs/37846419248) — **green on the
+  first attempt**; the `Pre-create the GitHub release` step held and the R4 asset gate passed.
+- **Verified final state:** exactly **1** release for `v1.16.0` (not draft, not prerelease); 3 assets —
+  `latest.yml` (364 B), `TW-Time-Register-Setup-1.16.0.exe` (126,304,883 B),
+  `TW-Time-Register-Setup-1.16.0.exe.blockmap` (133,540 B); `latest.yml` reports `version: 1.16.0`.
 
 ## Progress
 
@@ -98,3 +104,6 @@ _Pending (R-6)._
   RDD assessment (`--base-ref origin/staging --committed-only --json`): **medium**
   (`configuration_change: package.json`), `review_due: false` — `under_budget` (4 paths, 122 lines). No
   native review required for this work unit.
+- 2026-10-08 — **R-5/R-6 done:** `release/1.16.0` pushed; `main` FF `a4e2ce0..3842f94`, `staging` FF
+  `cf6eb10..3842f94`; tag `v1.16.0` pushed. Publish run `37846419248` green on the first attempt; release
+  verified (1 release, 3 assets, `latest.yml` `1.16.0`).
