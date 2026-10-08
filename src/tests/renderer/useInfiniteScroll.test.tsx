@@ -135,6 +135,31 @@ describe('useInfiniteScroll', () => {
     expect(observer.disconnected).toBe(true);
   });
 
+  it('disconnects the previous observer when the sentinel node is swapped', () => {
+    const loadMore = vi.fn();
+    const { result } = renderHook(() => useInfiniteScroll({ hasMore: true, loadMore }));
+
+    const first = document.createElement('div');
+    act(() => result.current(first));
+    const firstObserver = MockIntersectionObserver.instances[0];
+    expect(firstObserver.disconnected).toBe(false);
+
+    // A different node replaces the sentinel before null is delivered: the old
+    // observer must be torn down, not merely unobserved, or it keeps watching a
+    // detached node (R3-SWAP-LEAK).
+    const second = document.createElement('div');
+    act(() => result.current(second));
+
+    expect(firstObserver.disconnected).toBe(true);
+
+    const secondObserver = MockIntersectionObserver.instances[1];
+    expect(secondObserver).toBeDefined();
+    expect(secondObserver.observed.has(second)).toBe(true);
+
+    act(() => secondObserver.trigger(true));
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
   it('no-ops safely when IntersectionObserver is unavailable', () => {
     vi.stubGlobal('IntersectionObserver', undefined);
     const loadMore = vi.fn();

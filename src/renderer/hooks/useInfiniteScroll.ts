@@ -12,6 +12,16 @@ import { useCallback, useEffect, useRef } from 'react';
  * the latest values without the observer being re-created on every render. The
  * observer itself is created only when the sentinel node is attached and is
  * disconnected when the node detaches or the consuming component unmounts.
+ *
+ * Contract for consumers:
+ * - Mount the sentinel **only while `hasMore` is true**. The hook re-arms a
+ *   still-visible sentinel (unobserve + observe) after every `loadMore`, so a
+ *   `false -> true` transition must produce a fresh node for the observer to be
+ *   (re-)attached; keeping one node mounted across that flip would not re-arm.
+ * - `loadMore` must advance the row window **synchronously** (as
+ *   `useIncrementalRows.showMore` does), or the consumer must unmount the
+ *   sentinel while loading. An async `loadMore` that leaves the sentinel visible
+ *   can re-fire once per intersection re-arm until the content grows.
  */
 export interface UseInfiniteScrollOptions {
   /** True while un-revealed rows remain; the sentinel only loads while true. */
@@ -52,7 +62,11 @@ export function useInfiniteScroll({
     (node: HTMLElement | null) => {
       const previous = nodeRef.current;
       if (previous && previous !== node) {
-        observerRef.current?.unobserve(previous);
+        // A different node replaced the sentinel: disconnect the old observer
+        // entirely (not just unobserve) so it cannot keep firing for a detached
+        // node. A fresh observer for the new node is created below.
+        observerRef.current?.disconnect();
+        observerRef.current = null;
       }
       nodeRef.current = node;
 
