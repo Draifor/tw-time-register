@@ -8,7 +8,7 @@
 - **Fecha de la auditoría:** 2026-10-04
 - **Versión auditada:** v1.13.0
 - **Alcance:** `src/renderer/**`, `src/main/index.ts`, `src/main/ipc/windowIpc.ts`, `src/main/preload.ts`, `src/renderer/index.css`
-- **Estado general:** `En progreso` — Fases 0–6 implementadas (PR #24, #25, #26, rama `feat/ux-fase-0-ia`, PR #28/#37, rama `feat/ux-fase-5-a11y` y cadena `feat/ux-fase-6-i18n-cleanup`, PRs #44–#49); el backlog de Reportes (Fase 7) pendiente
+- **Estado general:** `En progreso` — Fases 0–7 implementadas (Fase 0–5 en `main`, cadena Fase 6 recuperada por PR #50 y liberada en `v1.15.0`, Fase 7 Reportes en la rama `feat/ux-fase-7-reports`); Fase 7 pendiente de release
 - **Método:** lectura directa del código + dos mapeos read-only (shell/navegación y componentes de features) con evidencia `archivo:línea`, y spot-checks puntuales de los hallazgos de mayor impacto
 - **Nota:** este documento **no autoriza** implementación; define qué hacer y en qué orden. La Fase 0 requiere decisiones de producto tuyas antes de tocar código.
 
@@ -351,15 +351,15 @@ Hoy hay **5 rutas de primer nivel** sin agrupación ni jerarquía, con `Home` co
 > `dateFrom`/`dateTo`, pero pierde los presets mes/semana, el desglose por **minutos** enviados vs locales
 > (hoy "Sent to TW" cuenta entradas) y la barra semanal por día.
 
-- [ ] **UX-701 · 🔴 Reportes: presets de rango (mes/semana)**
+- [x] **UX-701 · 🔴 Reportes: presets de rango (mes/semana)** — ✅ 2026-10-06, rama `feat/ux-fase-7-reports` (presets + último rango persistido)
   - **Acción:** presets "Este mes" / "Esta semana" / "Mes anterior" + rango custom; recordar el último rango.
   - **Aceptación:** ver un mes o una semana es 1 click.
 
-- [ ] **UX-702 · 🟡 Reportes: horas enviadas vs locales**
+- [x] **UX-702 · 🟡 Reportes: horas enviadas vs locales** — ✅ 2026-10-06, rama `feat/ux-fase-7-reports` (desglose por minutos por tarea y por día + ratio)
   - **Acción:** desglose por minutos enviados/locales (por tarea y por día) y su ratio, además del total.
   - **Aceptación:** las horas enviadas vs locales se leen sin cruzar tablas.
 
-- [ ] **UX-703 · 🟡 Reportes: vista semanal por día**
+- [x] **UX-703 · 🟡 Reportes: vista semanal por día** — ✅ 2026-10-06, rama `feat/ux-fase-7-reports` (barras por día, total semanal y estado de envío)
   - **Acción:** agrupación por semana con barras por día, total semanal y estado de envío.
   - **Aceptación:** el avance de la semana se lee de un vistazo.
 
