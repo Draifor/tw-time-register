@@ -22,41 +22,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import i18n, { loadLanguage } from '../../renderer/plugins/i18n';
 
-// ── Controlled virtualizer window (TimeLogsTable renders via react-virtual) ──
-const virtualState = vi.hoisted(() => ({ start: 0, size: Number.POSITIVE_INFINITY }));
-
-vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: (options: {
-    count: number;
-    estimateSize: (index: number) => number;
-    getItemKey?: (index: number) => string | number;
-  }) => {
-    const count = options.count;
-    const rowHeight = options.estimateSize(0) || 48;
-    const visible = virtualState.size === Number.POSITIVE_INFINITY ? count : Math.min(virtualState.size, count);
-    const start = Math.min(virtualState.start, Math.max(0, count - visible));
-    const items = Array.from({ length: visible }, (_, i) => {
-      const index = start + i;
-      return {
-        index,
-        key: options.getItemKey ? options.getItemKey(index) : index,
-        start: index * rowHeight,
-        end: (index + 1) * rowHeight,
-        size: rowHeight,
-        lane: 0
-      };
-    });
-    return {
-      getVirtualItems: () => items,
-      getTotalSize: () => count * rowHeight,
-      measureElement: () => undefined,
-      scrollToOffset: () => undefined,
-      scrollToIndex: () => undefined,
-      getScrollElement: () => null
-    };
-  }
-}));
-
 const draftEntries = vi.hoisted(() => [
   {
     date: '2026-10-01',
@@ -227,8 +192,6 @@ describe('UX-501/UX-502 accessible names and associations', () => {
     await i18n.changeLanguage('en');
     localStorage.clear();
     vi.clearAllMocks();
-    virtualState.start = 0;
-    virtualState.size = Number.POSITIVE_INFINITY;
     entriesRef.data = [];
     holidaysRef.data = [];
     templatesRef.data = [];
