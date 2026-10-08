@@ -12,7 +12,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, cleanup } from '@testing-library/react';
+import { render, act, cleanup, fireEvent, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import i18n from '../../renderer/plugins/i18n';
@@ -161,5 +161,46 @@ describe('TimeLogsTable infinite scroll (T2)', () => {
     // Nothing left to load, so the sentinel unmounts.
     expect(container.querySelector('[data-sentinel="time-logs"]')).toBeNull();
     expect(container.textContent).toContain(i18n.t('table.showingRows', { shown: 30, total: 30 }));
+  });
+
+  it('narrows the rendered rows while searching and restores them when cleared', () => {
+    // A small dataset: the whole set fits the initial incremental window, so any
+    // row-count change is driven by the filter and not by pagination.
+    entriesRef.data = Array.from({ length: 5 }, (_, i) => makeEntry(i + 1));
+    const { container } = renderTable();
+    expect(dataRows(container)).toHaveLength(5);
+
+    const searchInput = within(container).getByPlaceholderText(i18n.t('timeLogs.searchPlaceholder'));
+    fireEvent.change(searchInput, { target: { value: 'entry-3' } });
+
+    // Only the single matching row is rendered, and the others are gone.
+    expect(dataRows(container)).toHaveLength(1);
+    expect(container.textContent).toContain('entry-3');
+    expect(container.textContent).not.toContain('entry-1');
+    expect(container.textContent).not.toContain('entry-5');
+
+    // Clearing the search restores the full small set.
+    fireEvent.change(searchInput, { target: { value: '' } });
+    expect(dataRows(container)).toHaveLength(5);
+    expect(container.textContent).toContain('entry-1');
+    expect(container.textContent).toContain('entry-5');
+  });
+
+  it('opens the inline edit row on edit and collapses it on cancel', () => {
+    const { container } = renderTable();
+    const firstRow = dataRows(container)[0] as HTMLElement;
+
+    // Row action buttons render in edit, duplicate, sync, delete order; the first
+    // button is the edit action.
+    fireEvent.click(within(firstRow).getAllByRole('button')[0]);
+
+    // The inline edit row exposes its date control.
+    expect(container.querySelector('tbody input[type="date"]')).not.toBeNull();
+
+    // Cancel lives in the editing row and returns it to the normal row.
+    const editRow = dataRows(container)[0] as HTMLElement;
+    fireEvent.click(within(editRow).getByLabelText(i18n.t('common.cancel')));
+
+    expect(container.querySelector('tbody input[type="date"]')).toBeNull();
   });
 });
