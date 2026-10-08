@@ -84,9 +84,10 @@ client-side, as today); `WorkTimeForm` calculation logic.
 - [x] **T1 · Shared foundation** — ✅ 2026-10-08, commits `afed6dd` (doc), `365906c` (hook + `TableRowCount`
   + tests). `useInfiniteScroll` (IntersectionObserver callback-ref) and `TableRowCount` (extracted from
   DataTable). Additive, no view change. Suite 79 files / 611 tests green. Acceptance met.
-- [ ] **T2 · History (`TimeLogsTable`)** — global scroll (drop the `70vh` box), drop virtualization →
-  incremental slicing + `useInfiniteScroll`, sticky opaque header (`top-[5.5rem]`), always-on count; fix the
-  scroll bug. Acceptance: page scrolls, header sticks opaque, rows load on scroll, count visible.
+- [x] **T2 · History (`TimeLogsTable`)** — ✅ 2026-10-08, commits `a15c04f` (hook swap-leak fix),
+  `b08eb39` (migration). Global scroll (dropped the `70vh` box), removed virtualization → incremental
+  slicing + `useInfiniteScroll` sentinel (mounted while `hasMore`), sticky opaque header (`top-[5.5rem]`),
+  always-on `TableRowCount`; scroll bug fixed by removing the nested scroll. Suite 79 files / 613 tests green.
 - [ ] **T3 · Reports (`ReportsPage`)** — sticky opaque headers on the three tables, replace "Show more" with
   automatic load, add per-table count. Acceptance: no click needed; header sticks.
 - [ ] **T4 · Catalog (`DataTable` + `useTable` + `ui/table`)** — drop the `60vh` box, `Table` wrapper
@@ -141,6 +142,17 @@ mounts all rows at once by default.
     conditionally on `hasMore` (remount re-observes); document this contract in the hook.
   - **R3-NO-IO-FALLBACK (SUGGESTION, inferential, introduced)** — no fallback when `IntersectionObserver` is
     undefined. **Deferred:** Electron/Chromium always provides it; not a supported environment.
+- **T2 (History)** — base `365906c` (last reviewed boundary), range through `b08eb39` (8 paths / 579 lines):
+  risk `medium`, `review_due_reason = slice_budget_reached`. Consent granted; lens `review-reliability`;
+  lineage `review-b6741fb404c1cc2d`. Result **approved**; acknowledgement burned authority.
+  - **R3-COVERAGE-FILTER-EDIT (WARNING, deterministic, introduced)** — the new History suite dropped the
+    search-narrows and inline-edit assertions the deleted virtualization suite had. **Fixed** by restoring
+    both in `timeLogsTableInfinite.test.tsx`.
+  - **R3-ROW-SELECTOR-PRECISION (SUGGESTION, inferential)** — `optimisticFeedback` row selector loosened from
+    `tr[data-index]` to `tr`. **Accepted:** the table body renders no placeholder rows; low risk.
+  - **R3-WINDOW-FILTER-RESET (SUGGESTION, inferential)** — no explicit window reset on filter change; relies
+    on `useIncrementalRows` resetting when the filtered length changes. **Accepted:** resets on any length
+    change; a same-length filter is a negligible edge case.
 
 ## Delivery
 
@@ -157,3 +169,7 @@ mounts all rows at once by default.
 - 2026-10-08 — **T1 done:** `useInfiniteScroll` + `TableRowCount` + tests (`afed6dd`, `365906c`). Native
   review **approved** (RDD on; assess `slice_budget_reached`, medium), lineage `review-435962cf9bf10d61`,
   authority burned; 4 advisory findings recorded (see Review). Suite 79 files / 611 tests green.
+- 2026-10-08 — **T2 done:** `TimeLogsTable` migrated to global scroll + auto infinite scroll + sticky opaque
+  header + always-on count; `useInfiniteScroll` swap-leak hardened (`a15c04f`, `b08eb39`). Native review
+  **approved** (lineage `review-b6741fb404c1cc2d`, authority burned); the coverage WARNING was closed by
+  restoring the filter and inline-edit tests. Suite 79 files / 613 tests green (+2 coverage tests).
