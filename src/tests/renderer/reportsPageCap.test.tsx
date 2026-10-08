@@ -81,6 +81,23 @@ function makeEntry(id: number): TimeEntry {
   };
 }
 
+/**
+ * One entry per Monday-first week starting 2025-01-06 (a Monday), so the
+ * by-week aggregation yields `weeks` distinct rows. Passing more than the
+ * initial window exercises the `reports-week` sentinel and its auto-load.
+ */
+function makeWeeklyEntries(weeks: number): TimeEntry[] {
+  const firstMonday = new Date(2025, 0, 6);
+  return Array.from({ length: weeks }, (_, i) => {
+    const date = new Date(firstMonday);
+    date.setDate(firstMonday.getDate() + i * 7);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate()
+    ).padStart(2, '0')}`;
+    return { ...makeEntry(i + 1), date: iso };
+  });
+}
+
 function renderReports() {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, gcTime: Infinity, retry: false } }
@@ -197,5 +214,28 @@ describe('ReportsPage infinite scroll & count (T3)', () => {
     expect(bodyRows(container)).toHaveLength(30);
     // Nothing left to load, so the sentinel unmounts.
     expect(sentinel(container, 'reports-day')).toBeNull();
+  });
+
+  it('applies the record count and the reports-week sentinel to the by-week tab', () => {
+    // 25 distinct weeks exceed the 20-row initial window, so the by-week panel
+    // mounts a windowed card list plus its own `reports-week` sentinel.
+    entriesRef.data = makeWeeklyEntries(25);
+    const { container, getByRole } = renderReports();
+
+    fireEvent.mouseDown(getByRole('tab', { name: /By week/i }));
+
+    const panel = activePanel(container);
+    expect(panel.textContent).toContain(i18n.t('table.showingRows', { shown: 20, total: 25 }));
+
+    const node = sentinel(container, 'reports-week');
+    expect(node).not.toBeNull();
+    const observer = observerFor(node as Element);
+    expect(observer).toBeDefined();
+
+    act(() => observer!.trigger(true));
+
+    // Nothing left to load, so the sentinel unmounts and the count reads full.
+    expect(sentinel(container, 'reports-week')).toBeNull();
+    expect(activePanel(container).textContent).toContain(i18n.t('table.showingRows', { shown: 25, total: 25 }));
   });
 });

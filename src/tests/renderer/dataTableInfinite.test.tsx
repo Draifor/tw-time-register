@@ -150,6 +150,33 @@ describe('DataTable infinite scroll (T4)', () => {
     expect(container.textContent).toContain(i18n.t('table.showingRows', { shown: 30, total: 30 }));
   });
 
+  it('loads a second automatic batch while the list outlives one window-plus-batch', () => {
+    // 50 rows span more than two windows (20 + 20): after the first auto-load
+    // `hasMore` stays true, so the still-mounted sentinel must load a second
+    // batch too (the hook re-observes the sentinel after every `loadMore`).
+    const { container } = renderTable(makeRows(50));
+    expect(bodyRows(container)).toHaveLength(20);
+
+    const sentinel = sentinelFor(container);
+    expect(sentinel).not.toBeNull();
+    const observer = observerFor(sentinel as Element);
+    expect(observer).toBeDefined();
+
+    act(() => observer!.trigger(true));
+
+    expect(bodyRows(container)).toHaveLength(40);
+    // Rows still remain, so the sentinel stays mounted (`hasMore` true).
+    expect(sentinelFor(container)).not.toBeNull();
+    expect(container.textContent).toContain(i18n.t('table.showingRows', { shown: 40, total: 50 }));
+
+    act(() => observer!.trigger(true));
+
+    expect(bodyRows(container)).toHaveLength(50);
+    // Nothing left to load, so the sentinel unmounts.
+    expect(sentinelFor(container)).toBeNull();
+    expect(container.textContent).toContain(i18n.t('table.showingRows', { shown: 50, total: 50 }));
+  });
+
   it('attaches the sentinel observer after the loading -> loaded transition', () => {
     const rows = makeRows();
     const { container, rerender } = renderTable(rows, { isLoading: true });
