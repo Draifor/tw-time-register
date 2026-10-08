@@ -81,9 +81,9 @@ client-side, as today); `WorkTimeForm` calculation logic.
 
 ## Tasks
 
-- [ ] **T1 · Shared foundation** — `useInfiniteScroll` hook (+ unit test) and a small count footer
-  (reused i18n keys). Additive, no view change. Acceptance: hook fires `loadMore` while `hasMore` and stops
-  at the end; unit tests green.
+- [x] **T1 · Shared foundation** — ✅ 2026-10-08, commits `afed6dd` (doc), `365906c` (hook + `TableRowCount`
+  + tests). `useInfiniteScroll` (IntersectionObserver callback-ref) and `TableRowCount` (extracted from
+  DataTable). Additive, no view change. Suite 79 files / 611 tests green. Acceptance met.
 - [ ] **T2 · History (`TimeLogsTable`)** — global scroll (drop the `70vh` box), drop virtualization →
   incremental slicing + `useInfiniteScroll`, sticky opaque header (`top-[5.5rem]`), always-on count; fix the
   scroll bug. Acceptance: page scrolls, header sticks opaque, rows load on scroll, count visible.
@@ -124,6 +124,24 @@ Task-specific: infinite scroll fires only while `hasMore` and never re-fires aft
 the rendered/filtered set; sticky header offset (5.5rem) correct; no nested scrollbars; History no longer
 mounts all rows at once by default.
 
+## Review (RDD on)
+
+- **T1 (foundation)** — base `origin/staging`, range through `365906c` (5 paths / 465 lines): risk `medium`,
+  `review_due_reason = slice_budget_reached`. Consent granted; lens `review-reliability`; lineage
+  `review-435962cf9bf10d61`. Result **approved**; acknowledgement burned authority.
+  - **R3-REARM-LOOP (WARNING, inferential, introduced)** — the intersection callback calls `loadMore` then
+    re-observes, so an async `loadMore` could re-fire once per frame. **Accepted for now:** every consumer
+    here advances the row window synchronously (`useIncrementalRows`/`useTable`), so the loop is bounded by
+    content growth and ends at `hasMore === false`. Revisit if a consumer ever loads asynchronously.
+  - **R3-SWAP-LEAK (SUGGESTION, deterministic, introduced)** — on a node swap the previous observer is only
+    unobserved, not disconnected. **Deferred:** React detaches via `null` first (which disconnects), so the
+    swap branch is rarely hit; harden when T2 touches the hook.
+  - **R3-HASMORE-REARM (SUGGESTION, inferential, introduced)** — no re-observe when `hasMore` flips
+    false→true while the sentinel stays visible. **Deferred:** consumers should mount the sentinel
+    conditionally on `hasMore` (remount re-observes); document this contract in the hook.
+  - **R3-NO-IO-FALLBACK (SUGGESTION, inferential, introduced)** — no fallback when `IntersectionObserver` is
+    undefined. **Deferred:** Electron/Chromium always provides it; not a supported environment.
+
 ## Delivery
 
 - Strategy: `single-pr`. Slices commit on `feat/ux-table-consistency`; one PR to `staging` when all slices
@@ -136,3 +154,6 @@ mounts all rows at once by default.
   scroll, record count) and fix the History scroll bug; chose full unification including Catalog. Branch
   `feat/ux-table-consistency` created from `origin/staging` (`71bd3ac`). Read-only map done (CodeGraph +
   delegated explorer). Task plan created.
+- 2026-10-08 — **T1 done:** `useInfiniteScroll` + `TableRowCount` + tests (`afed6dd`, `365906c`). Native
+  review **approved** (RDD on; assess `slice_budget_reached`, medium), lineage `review-435962cf9bf10d61`,
+  authority burned; 4 advisory findings recorded (see Review). Suite 79 files / 611 tests green.
