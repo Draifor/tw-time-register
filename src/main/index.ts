@@ -1,3 +1,7 @@
+// Bootstrap: must run before any other module reads `app.getPath('userData')`
+// at load time (e.g. database/database.ts computes DB_PATH on import).
+import './devUserData';
+
 // Native
 import { join } from 'path';
 import fs from 'fs';
