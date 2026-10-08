@@ -19,8 +19,10 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import useTimeLogs from '../hooks/useTimeLogs';
 import useIncrementalRows from '../hooks/useIncrementalRows';
+import useInfiniteScroll from '../hooks/useInfiniteScroll';
 import useDebouncedValue from '../hooks/useDebouncedValue';
 import { Skeleton } from '../components/ui/skeleton';
+import { TableRowCount } from '../components/ui/table-row-count';
 import { fetchTasks } from '../services/tasksService';
 import { queryKeys } from '../lib/queryKeys';
 import { getTaskProgressInfo, getStatusDotColor, formatMinutesToHHMM } from '../lib/progressUtils';
@@ -254,6 +256,13 @@ function ReportsPage() {
   const byDayRows = useIncrementalRows(byDay.length);
   const byWeekRows = useIncrementalRows(byWeek.length);
 
+  // One sentinel per tab, all wired unconditionally so the rules of hooks hold
+  // (only the active tab's content is mounted, so at most one observer is live).
+  // The sentinel itself is rendered only while that list `hasMore` (D-3).
+  const byTaskSentinelRef = useInfiniteScroll({ hasMore: byTaskRows.hasMore, loadMore: byTaskRows.showMore });
+  const byDaySentinelRef = useInfiniteScroll({ hasMore: byDayRows.hasMore, loadMore: byDayRows.showMore });
+  const byWeekSentinelRef = useInfiniteScroll({ hasMore: byWeekRows.hasMore, loadMore: byWeekRows.showMore });
+
   // ── render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -410,10 +419,10 @@ function ReportsPage() {
 
           {/* ── BY TASK ── */}
           <TabsContent value="task">
-            <div className="rounded-md border overflow-auto mt-3">
+            <div className="rounded-md border mt-3">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
+                <thead className="sticky top-[5.5rem] z-10 bg-background">
+                  <tr className="border-b bg-background">
                     <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       {t('reports.colTask')}
                     </th>
@@ -542,26 +551,25 @@ function ReportsPage() {
                   })}
                 </tbody>
               </table>
+              {/* Sentinel: mounted only while more rows remain (D-3). */}
+              {byTaskRows.hasMore && <div ref={byTaskSentinelRef} data-sentinel="reports-task" aria-hidden="true" />}
             </div>
-            {byTaskRows.hasMore && (
-              <div className="flex justify-center pt-2">
-                <button
-                  type="button"
-                  onClick={byTaskRows.showMore}
-                  className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                >
-                  {t('reports.showMore', { count: byTask.length - byTaskRows.visibleCount })}
-                </button>
-              </div>
-            )}
+            {/* Per-table record count (D-4). These tables are aggregations, not
+                a filtered set, so `filtered` is always false. */}
+            <TableRowCount
+              shown={byTaskRows.visibleCount}
+              total={byTask.length}
+              filtered={false}
+              hasMore={byTaskRows.hasMore}
+            />
           </TabsContent>
 
           {/* ── BY DAY ── */}
           <TabsContent value="day">
-            <div className="rounded-md border overflow-auto mt-3">
+            <div className="rounded-md border mt-3">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
+                <thead className="sticky top-[5.5rem] z-10 bg-background">
+                  <tr className="border-b bg-background">
                     <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                       {t('reports.colDate')}
                     </th>
@@ -619,18 +627,16 @@ function ReportsPage() {
                   })}
                 </tbody>
               </table>
+              {/* Sentinel: mounted only while more rows remain (D-3). */}
+              {byDayRows.hasMore && <div ref={byDaySentinelRef} data-sentinel="reports-day" aria-hidden="true" />}
             </div>
-            {byDayRows.hasMore && (
-              <div className="flex justify-center pt-2">
-                <button
-                  type="button"
-                  onClick={byDayRows.showMore}
-                  className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                >
-                  {t('reports.showMore', { count: byDay.length - byDayRows.visibleCount })}
-                </button>
-              </div>
-            )}
+            {/* Per-table record count (D-4). */}
+            <TableRowCount
+              shown={byDayRows.visibleCount}
+              total={byDay.length}
+              filtered={false}
+              hasMore={byDayRows.hasMore}
+            />
           </TabsContent>
 
           {/* ── BY WEEK ── */}
@@ -724,17 +730,16 @@ function ReportsPage() {
                 );
               })}
             </div>
-            {byWeekRows.hasMore && (
-              <div className="flex justify-center pt-2">
-                <button
-                  type="button"
-                  onClick={byWeekRows.showMore}
-                  className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                >
-                  {t('reports.showMore', { count: byWeek.length - byWeekRows.visibleCount })}
-                </button>
-              </div>
-            )}
+            {/* Sentinel: mounted only while more weeks remain (D-3). By-week is
+                a card list (not a table), so there is no header to stick. */}
+            {byWeekRows.hasMore && <div ref={byWeekSentinelRef} data-sentinel="reports-week" aria-hidden="true" />}
+            {/* Per-table record count (D-4). */}
+            <TableRowCount
+              shown={byWeekRows.visibleCount}
+              total={byWeek.length}
+              filtered={false}
+              hasMore={byWeekRows.hasMore}
+            />
           </TabsContent>
         </Tabs>
       )}
