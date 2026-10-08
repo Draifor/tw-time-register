@@ -94,3 +94,7 @@ _Pending (R-6)._
   `v1.16.0` section.
 - 2026-10-08 — **R-3 done** (one verifier): all five gates green — VERDICT PASS (see *Verification
   evidence*).
+- 2026-10-08 — **R-4 done:** `d89b237` `chore(release): 1.16.0` (4 files, +121/−1, includes this doc).
+  RDD assessment (`--base-ref origin/staging --committed-only --json`): **medium**
+  (`configuration_change: package.json`), `review_due: false` — `under_budget` (4 paths, 122 lines). No
+  native review required for this work unit.
