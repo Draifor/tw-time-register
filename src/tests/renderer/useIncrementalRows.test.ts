@@ -52,10 +52,12 @@ describe('useIncrementalRows', () => {
     expect(result.current.visibleCount).toBe(20);
   });
 
-  it('reports no more rows when the list fits in the initial window', () => {
+  it('clamps the window to the total when the list fits in the initial window', () => {
     const { result } = renderHook(() => useIncrementalRows(5, 20, 10));
 
-    expect(result.current.visibleCount).toBe(20);
+    // `visibleCount` is "rows to render from the start", so it can never exceed
+    // the list; otherwise a short table would read "20 of 5".
+    expect(result.current.visibleCount).toBe(5);
     expect(result.current.hasMore).toBe(false);
   });
 });
