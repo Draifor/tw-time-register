@@ -7,7 +7,7 @@
 - **Branch:** `fix/tw-sync-integrity` (off `staging` @ `7a66bb3`)
 - **Created:** 2026-10-09
 - **Source:** user report + empirical prod-DB inspection + TeamWork v1 API docs
-- **Status:** **IN PROGRESS**
+- **Status:** **APPROVED** — TS-01/TS-02 implemented, native review approved and authority burned (2026-10-09). Delivery (PR/push) is the user's decision.
 
 ## Objective
 
@@ -90,8 +90,8 @@ No dependency changes. No push, no PR, no merge (user owns those).
 
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
-| TS-01 | Fix `sendTimeEntryToTW` id capture: read `response.data['time-entry'].id` first, fall back to `timeLogEntryId`/`id`; coerce to Number. Update tests to the real shape (RED→GREEN). | `apiService.ts`, `apiService.test.ts` | delegated writer | [ ] |
-| TS-02 | Self-heal in `smartSyncEntries`: when `prevSync` exists but no `twTimeEntryId`, look up the user's TW entries for the entry's task+date, match by duration (+ exact description, else unique duration match), PUT + link; else POST. On lookup failure, fail the entry (do not POST) to avoid duplicates. | `syncService.ts`, `syncService.test.ts` | delegated writer | [ ] |
+| TS-01 | Fix `sendTimeEntryToTW` id capture: read `response.data['time-entry'].id` first, fall back to `timeLogEntryId`/`id`; coerce to Number. Update tests to the real shape (RED→GREEN). | `apiService.ts`, `apiService.test.ts` | delegated writer | [x] `b9e813c` |
+| TS-02 | Self-heal in `smartSyncEntries`: when `prevSync` exists but no `twTimeEntryId`, look up the user's TW entries for the entry's task+date, match by duration (+ exact description, else unique duration match), PUT + link; else POST. On lookup failure, fail the entry (do not POST) to avoid duplicates. | `syncService.ts`, `syncService.test.ts` | delegated writer | [x] `ca3d5f6` |
 
 ## Design decisions (T2)
 
@@ -117,6 +117,18 @@ No dependency changes. No push, no PR, no merge (user owns those).
 - Brand-new entries (no prior sync row) POST without any lookup call.
 - `npm test` green, `npm run type-check` clean, `npm run lint` 0 errors.
 
+## Findings during implementation (non-blocking advisories)
+
+Native review (`review-1d68c5a14be72da1`, lens `review-reliability`, medium, 462 lines) was
+**approved**; no correction was opened. Three non-blocking advisories were recorded for later
+work (do not re-review this candidate for them):
+
+| ID | Severity | Finding | Evidence |
+|---|---|---|---|
+| R3-AMBIG | WARNING | `matchExistingTWEntry` returns `null` both for "no candidate" and "ambiguous"; `smartSyncEntries` treats every `null` as "safe to create" and POSTs, so a legacy-unlinked entry whose description was edited on a task/day with ≥2 same-duration entries can still duplicate. | `src/main/services/syncService.ts:269-273` |
+| R3-LOOKUP-ARGS | SUGGESTION | The self-heal test asserts the lookup was called once but not its arguments (task id, user id, fromDate/toDate), so a mis-formatted range could silently fall through to POST unproved. | `src/tests/main/services/syncService.test.ts:239` |
+| R3-TASK-SCOPE | SUGGESTION | `matchExistingTWEntry` never filters by `candidate.taskId`; it relies on the caller's lookup being task-scoped. Filtering would harden the boundary. | `src/main/services/syncService.ts:138-141` |
+
 ## Route log
 
 | Task group | Route | Trigger evidence |
@@ -127,3 +139,11 @@ No dependency changes. No push, no PR, no merge (user owns those).
 
 - 2026-10-09 — Feature opened on `fix/tw-sync-integrity` (off staging @ `7a66bb3`). Root cause
   confirmed empirically (1018/1044 unlinked) and against TW API docs.
+- 2026-10-09 — **TS-01 + TS-02 implemented** by one delegated writer with TDD (RED→GREEN):
+  commits `b9e813c` (id capture) and `ca3d5f6` (self-heal). Focused tests 50/50; full suite
+  green; `type-check` clean; `lint` 0 errors.
+- 2026-10-09 — **Native review approved** (`review-1d68c5a14be72da1`, `review-reliability`,
+  medium, 462 lines, `slice_budget_reached`); authority burned. 3 non-blocking advisories
+  recorded above. First reviewer Task returned `opencode_task_output_empty` (client-runtime
+  flake, not Gentle AI); the same-lineage STATUS reoffered the bound slot and the retry was
+  admitted.
