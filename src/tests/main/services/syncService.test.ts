@@ -31,12 +31,7 @@ vi.mock('../../../main/services/timeLogService', () => ({
 import openDb from '../../../main/database/database';
 import { getTWCredentials } from '../../../main/services/settingsService';
 import { getLastSuccessfulSyncBatch, recordSyncBatch } from '../../../main/services/historyService';
-import {
-  sendTimeEntryToTW,
-  updateTimeEntryInTW,
-  fetchUserTimeEntriesForTask,
-  fetchUserTimeEntriesInRange
-} from '../../../main/services/apiService';
+import { sendTimeEntryToTW, updateTimeEntryInTW, fetchUserTimeEntriesInRange } from '../../../main/services/apiService';
 import { markEntriesAsSent } from '../../../main/services/timeLogService';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -215,13 +210,14 @@ describe('smartSyncEntries', () => {
         ]
       ])
     );
-    vi.mocked(fetchUserTimeEntriesForTask).mockResolvedValue({
+    vi.mocked(fetchUserTimeEntriesInRange).mockResolvedValue({
       success: true,
       entries: [
         {
           id: '321',
           taskId: '555',
           date: '20260301',
+          localDate: '2026-03-01',
           time: '09:00',
           hours: 1,
           minutes: 30,
@@ -236,7 +232,11 @@ describe('smartSyncEntries', () => {
 
     const result = await smartSyncEntries([1]);
 
-    expect(fetchUserTimeEntriesForTask).toHaveBeenCalledOnce();
+    expect(fetchUserTimeEntriesInRange).toHaveBeenCalledOnce();
+    expect(fetchUserTimeEntriesInRange).toHaveBeenCalledWith(
+      { fromDate: '2026-02-28', toDate: '2026-03-02' },
+      expect.objectContaining({ userId: '42' })
+    );
     expect(updateTimeEntryInTW).toHaveBeenCalledWith(
       '321',
       expect.objectContaining({ twTaskId: '555' }),
@@ -268,14 +268,14 @@ describe('smartSyncEntries', () => {
         ]
       ])
     );
-    vi.mocked(fetchUserTimeEntriesForTask).mockResolvedValue({ success: true, entries: [] });
+    vi.mocked(fetchUserTimeEntriesInRange).mockResolvedValue({ success: true, entries: [] });
     vi.mocked(sendTimeEntryToTW).mockResolvedValue({ success: true, twEntryId: 42 });
     vi.mocked(recordSyncBatch).mockResolvedValue(undefined);
     vi.mocked(markEntriesAsSent).mockResolvedValue(undefined);
 
     const result = await smartSyncEntries([1]);
 
-    expect(fetchUserTimeEntriesForTask).toHaveBeenCalledOnce();
+    expect(fetchUserTimeEntriesInRange).toHaveBeenCalledOnce();
     expect(sendTimeEntryToTW).toHaveBeenCalledOnce();
     expect(updateTimeEntryInTW).not.toHaveBeenCalled();
     expect(result.results[0].action).toBe('created');
@@ -293,7 +293,7 @@ describe('smartSyncEntries', () => {
 
     await smartSyncEntries([1]);
 
-    expect(fetchUserTimeEntriesForTask).not.toHaveBeenCalled();
+    expect(fetchUserTimeEntriesInRange).not.toHaveBeenCalled();
     expect(sendTimeEntryToTW).toHaveBeenCalledOnce();
   });
 
@@ -317,7 +317,7 @@ describe('smartSyncEntries', () => {
         ]
       ])
     );
-    vi.mocked(fetchUserTimeEntriesForTask).mockResolvedValue({ success: false, message: 'TW down' });
+    vi.mocked(fetchUserTimeEntriesInRange).mockResolvedValue({ success: false, message: 'TW down' });
     vi.mocked(recordSyncBatch).mockResolvedValue(undefined);
 
     const result = await smartSyncEntries([1]);
@@ -422,6 +422,7 @@ describe('matchExistingTWEntry', () => {
     id: '1',
     taskId: '555',
     date: '20260301',
+    localDate: '2026-03-01',
     time: '09:00',
     hours: 1,
     minutes: 30,
@@ -452,9 +453,18 @@ describe('matchExistingTWEntry', () => {
   });
 
   it('returns null when no candidate matches the target date', () => {
-    const candidates = [makeTWEntry({ id: '1', date: '20260302' })];
+    const candidates = [makeTWEntry({ id: '1', date: '20260302', localDate: '2026-03-02' })];
 
     expect(matchExistingTWEntry(candidates, target)).toBeNull();
+  });
+
+  it('matches on the local calendar day when TW returns an ISO UTC date instant', () => {
+    // Regression for the real bug: TW `date` is the UTC instant (2026-09-25T00:40:00Z)
+    // while the day the user sees is `dateUserPerspective` (2026-09-24).
+    const candidates = [makeTWEntry({ id: '25760074', date: '2026-09-25T00:40:00Z', localDate: '2026-09-24' })];
+    const bugTarget = { date: '2026-09-24', description: 'Test task', hours: 1, minutes: 30 };
+
+    expect(matchExistingTWEntry(candidates, bugTarget)?.id).toBe('25760074');
   });
 
   it('returns null when the duration does not match', () => {
@@ -491,6 +501,7 @@ describe('pullEntriesFromTW', () => {
           id: '9001',
           taskId: '555',
           date: '20260301',
+          localDate: '2026-03-01',
           time: '',
           hours: 1,
           minutes: 0,
@@ -522,6 +533,7 @@ describe('pullEntriesFromTW', () => {
           id: '8000',
           taskId: '555',
           date: '20260301',
+          localDate: '2026-03-01',
           time: '',
           hours: 1,
           minutes: 0,
@@ -532,6 +544,7 @@ describe('pullEntriesFromTW', () => {
           id: '9001',
           taskId: '555',
           date: '20260302',
+          localDate: '2026-03-02',
           time: '',
           hours: 2,
           minutes: 0,
@@ -542,6 +555,7 @@ describe('pullEntriesFromTW', () => {
           id: '9002',
           taskId: '999',
           date: '20260303',
+          localDate: '2026-03-03',
           time: '',
           hours: 3,
           minutes: 0,

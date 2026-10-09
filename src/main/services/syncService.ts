@@ -112,6 +112,19 @@ export function calcDuration(startTime: string, endTime: string): { hours: numbe
   return { hours: Math.floor(clamped / 60), minutes: clamped % 60 };
 }
 
+/** Normalize a date-like value to a bare YYYYMMDD key (first 8 digits). */
+function normalizeTwDay(value: string): string {
+  return value.replace(/-/g, '').slice(0, 8);
+}
+
+/** Shift an ISO `YYYY-MM-DD` date by whole days using UTC math (no TZ drift). */
+function shiftIsoDate(iso: string, days: number): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day));
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
+
 /**
  * Pick the TeamWork entry that most plausibly corresponds to a local entry.
  *
@@ -130,14 +143,14 @@ export function matchExistingTWEntry(
   candidates: TWTimeEntry[],
   target: { date: string; description: string; hours: number; minutes: number }
 ): TWTimeEntry | null {
-  const normalizeDate = (value: string): string => value.replace(/-/g, '');
-  const targetDate = normalizeDate(target.date);
+  const targetDay = normalizeTwDay(target.date);
   const targetMinutes = target.hours * 60 + target.minutes;
   const targetDescription = target.description.trim();
 
   const sameDay = candidates.filter(
     (candidate) =>
-      normalizeDate(candidate.date) === targetDate && candidate.hours * 60 + candidate.minutes === targetMinutes
+      normalizeTwDay(candidate.localDate ?? candidate.date) === targetDay &&
+      candidate.hours * 60 + candidate.minutes === targetMinutes
   );
   if (sameDay.length === 0) return null;
 
@@ -228,10 +241,12 @@ export async function smartSyncEntries(entryIds: number[]): Promise<SmartSyncRes
         // ── SELF-HEAL: prior sync succeeded but the TW id was never stored
         //    (legacy/unlinked entry). Look it up and adopt the match instead
         //    of POSTing a duplicate. ────────────────────────────────────
-        const lookup = await fetchUserTimeEntriesForTask(
-          twTaskId,
-          credentials.userId,
-          { fromDate: entry.date, toDate: entry.date },
+        // The task-scoped endpoint ignores date filters and returns only its
+        // oldest page, so scope the lookup with a ±1 day window on the global
+        // endpoint (which honors fromDate/toDate) and filter to this task
+        // client-side. The window absorbs TW's UTC↔local calendar-day shift.
+        const lookup = await fetchUserTimeEntriesInRange(
+          { fromDate: shiftIsoDate(entry.date, -1), toDate: shiftIsoDate(entry.date, 1) },
           credentials
         );
 
@@ -253,7 +268,8 @@ export async function smartSyncEntries(entryIds: number[]): Promise<SmartSyncRes
           };
         }
 
-        const match = matchExistingTWEntry(lookup.entries ?? [], {
+        const taskEntries = (lookup.entries ?? []).filter((candidate) => candidate.taskId === twTaskId);
+        const match = matchExistingTWEntry(taskEntries, {
           date: entry.date,
           description: entry.description,
           hours,
