@@ -156,14 +156,24 @@ describe('sendTimeEntryToTW', () => {
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
-  it('returns success=true with twEntryId on a successful POST', async () => {
+  it('returns success=true with twEntryId from the real TW v1 shape (time-entry.id)', async () => {
     vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
-    mockedAxios.post = vi.fn().mockResolvedValue({ data: { timeLogEntryId: 9999 } });
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { 'time-entry': { id: 9999 } } });
 
     const result = await sendTimeEntryToTW(sampleEntry);
 
     expect(result.success).toBe(true);
     expect(result.twEntryId).toBe(9999);
+  });
+
+  it('falls back to timeLogEntryId when the response omits time-entry', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { timeLogEntryId: 123 } });
+
+    const result = await sendTimeEntryToTW(sampleEntry);
+
+    expect(result.success).toBe(true);
+    expect(result.twEntryId).toBe(123);
   });
 
   it('posts to the correct TW endpoint using the task ID', async () => {

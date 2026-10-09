@@ -103,9 +103,10 @@ export async function sendTimeEntryToTW(
         ),
       { method: 'POST' }
     );
-    // TW API v1 returns the new entry id as `timeLogEntryId`; fallback to `id`
-    const rawId = response.data?.timeLogEntryId ?? response.data?.id;
-    return { success: true, twEntryId: rawId ? Number(rawId) : undefined };
+    // TW v1 returns the created entry under `time-entry.id`.
+    const rawId = response.data?.['time-entry']?.id ?? response.data?.timeLogEntryId ?? response.data?.id;
+    const parsed = rawId === undefined || rawId === null ? undefined : Number(rawId);
+    return { success: true, twEntryId: Number.isFinite(parsed) ? parsed : undefined };
   } catch (error) {
     const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
     const msg =
