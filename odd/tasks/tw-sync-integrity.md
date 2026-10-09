@@ -7,7 +7,7 @@
 - **Branch:** `fix/tw-sync-integrity` (off `staging` @ `7a66bb3`)
 - **Created:** 2026-10-09
 - **Source:** user report + empirical prod-DB inspection + TeamWork v1 API docs
-- **Status:** **APPROVED** — TS-01/TS-02 implemented, native review approved and authority burned (2026-10-09). Delivery (PR/push) is the user's decision.
+- **Status:** **REOPENED (round 2)** — TS-01/TS-02 approved but the human smoke test FAILED: editing and re-syncing still creates duplicates. New empirical root causes below (TS-03/TS-04/TS-05).
 
 ## Objective
 
@@ -147,3 +147,66 @@ work (do not re-review this candidate for them):
   recorded above. First reviewer Task returned `opencode_task_output_empty` (client-runtime
   flake, not Gentle AI); the same-lineage STATUS reoffered the bound slot and the retry was
   admitted.
+
+## Reopen — human smoke test FAILED (2026-10-09, round 2)
+
+The first fix did not stop duplicates. Re-investigated with live API evidence (read-only GETs
+against `grupocadena.teamwork.com` + dev DB `%APPDATA%/TW Time Register-dev/worktime-dev.sqlite`).
+
+### New empirical evidence
+
+- Dev DB entry `1099` (`'uuuu…'`, task `42651681`, `2026-09-24 19:40–21:30`): **3 successful
+  `created` syncs today**, all with `tw_time_entry_id = NULL` (history ids 1031/1032/1033).
+- Live TW shows the 3 real duplicates (`GET /time_entries.json?userId=440686&fromDate=20260923&toDate=20260925`):
+  ids `25760074` (20:56:14Z), `25760075` (20:56:31Z), `25760077` (20:57:21Z).
+- TW returns `date` as ISO UTC (`2026-09-25T00:40:00Z`) but `dateUserPerspective` as the user's
+  local wall-clock (`2026-09-24T19:40:00Z`). **Local day = `dateUserPerspective.slice(0,10)`.**
+- `GET /tasks/{id}/time_entries.json` **ignores** `fromDate`/`toDate` and returns only page 1
+  (oldest, date-asc). `GET /time_entries.json` (global) **honors** `fromDate`/`toDate`.
+- TW OpenAPI spec (authoritative): `POST /tasks/{id}/time_entries.json` → 200
+  `{ "id": <integer>, "STATUS": "OK" }`.
+
+### Corrected root causes
+
+- **RC-1 (matching):** `matchExistingTWEntry` compared `candidate.date` (ISO UTC) after only
+  stripping dashes → `"20260925T00:40:00Z"` never equals the local `YYYY-MM-DD` target
+  `"20260924"` → the self-heal lookup never adopted → always POSTed.
+- **RC-2 (reachability):** the self-heal lookup used the task endpoint (page 1 only, filters
+  ignored) → cannot find recent entries either.
+- **RC-3 (capture):** the POST id is still never captured in practice even though the code reads
+  `response.data.id`; the axios body is most likely an unparsed string. Hardened defensively.
+
+### Tasks (round 2)
+
+| ID | Task | Files | Route | Status |
+|---|---|---|---|---|
+| TS-03 | `TWTimeEntry` gains `localDate` (YYYY-MM-DD local day from `dateUserPerspective`); both mappers set it; `matchExistingTWEntry` matches on `localDate` (robust normalization). | `apiService.ts`, `syncService.ts` + tests | delegated writer | [x] `6fae7e1` |
+| TS-04 | Self-heal lookup switches to `fetchUserTimeEntriesInRange` over `[date-1, date+1]` (working filter), filters by `taskId`, then matches. | `syncService.ts` + tests | delegated writer | [x] `6fae7e1` |
+| TS-05 | `sendTimeEntryToTW` hardens id extraction: JSON-parse a string body, accept `time-entry(.id|[0].id)`, `timeEntry`/`time_entry`, `time-entries[0].id`, `id`, `timeLogEntryId`. | `apiService.ts` + tests | delegated writer | [x] `6fae7e1` |
+
+### Round-2 review
+
+Native RDD review `review-52ff5e92daccd741`, lens `review-reliability`, risk medium, 240 lines →
+**APPROVED**, authority burned (`review-acknowledged/v1`). Non-blocking advisories (follow-ups,
+do NOT re-review this candidate):
+
+| ID | Severity | Finding | Evidence |
+|---|---|---|---|
+| R3-A | WARNING | The self-heal range window can contain other tasks' entries; the new client-side `taskId` filter that discards them is unproved by a test seeding a foreign-task entry with the same day+duration. | `src/main/services/syncService.ts:271` |
+| R3-B | SUGGESTION | `deriveLocalDate` falls back to `date.slice(0,10)`, returning an 8-char `YYYYMMDD` when `date` is bare `YYYYMMDD`; only `normalizeTwDay` tolerates it, so the field's `YYYY-MM-DD` contract is unenforced for other readers (and the UTC fallback reproduces the day mismatch the fix targets). | `src/main/services/apiService.ts:251` |
+| R3-C | SUGGESTION | `extractTwEntryId` newly accepts `timeEntry`/`time_entry`/`time-entries[0].id`/`timeLogId` and the invalid-JSON catch, but tests only exercise the flat object and a valid JSON string. | `src/main/services/apiService.ts:90` |
+
+### Round-2 progress
+
+- 2026-10-09 — Round-2 implemented by one delegated writer with TDD (RED→GREEN): 8 focused
+  failures first, then 56/56 focused and 643/643 full suite green; `type-check` clean, `lint`
+  0 errors (82 pre-existing warnings elsewhere). Commit `6fae7e1`.
+- 2026-10-09 — Native review approved and authority burned (`review-52ff5e92daccd741`).
+- Human smoke test still pending (round 2): edit a synced entry (change billable and/or
+  description) and sync → TW must show the SAME entry updated, not a duplicate.
+
+### Round-2 evidence files
+
+- `src/main/services/apiService.ts` — `TWTimeEntry`, `fetchUserTimeEntriesForTask` (+`fetchUserTimeEntriesInRange`), `sendTimeEntryToTW`.
+- `src/main/services/syncService.ts` — `matchExistingTWEntry`, `smartSyncEntries` self-heal branch.
+- `src/tests/main/services/apiService.test.ts`, `src/tests/main/services/syncService.test.ts`.
