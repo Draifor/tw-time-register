@@ -60,7 +60,7 @@ export default function DeleteEntryDialog({ open, isSent, entryLabel, isDeleting
           <AlertDialogDescription>{t('timeLogs.deleteConfirmDesc')}</AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-4 py-1">
+        <div className="min-w-0 space-y-4 py-1">
           <p className="text-sm font-medium truncate" title={entryLabel}>
             &ldquo;{entryLabel}&rdquo;
           </p>
