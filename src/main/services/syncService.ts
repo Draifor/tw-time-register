@@ -19,7 +19,8 @@ import {
   sendTimeEntryToTW,
   updateTimeEntryInTW,
   fetchUserTimeEntriesInRange,
-  fetchUserTimeEntriesForTask
+  fetchUserTimeEntriesForTask,
+  type TWTimeEntry
 } from './apiService';
 import { recordSyncBatch, getLastSuccessfulSyncBatch } from './historyService';
 import type { SyncHistoryInput } from '../database/models/History';
@@ -111,6 +112,45 @@ export function calcDuration(startTime: string, endTime: string): { hours: numbe
   return { hours: Math.floor(clamped / 60), minutes: clamped % 60 };
 }
 
+/**
+ * Pick the TeamWork entry that most plausibly corresponds to a local entry.
+ *
+ * Adoption is a heuristic (there is no stored tw id to trust):
+ *  - Candidates must share the task (the query is task-scoped) and match the
+ *    normalized date (`YYYYMMDD`) and total duration in minutes (`hours*60 + minutes`).
+ *  - Among duration matches, an exact trimmed description match wins.
+ *  - Otherwise a candidate is adopted only when exactly ONE remains.
+ *  - With several exact matches (pre-existing duplicates), the lowest numeric id
+ *    is chosen deterministically; the extras are never deleted.
+ *
+ * Returns null when there is no match or the match is ambiguous (never risk a duplicate).
+ * Exported for unit testing.
+ */
+export function matchExistingTWEntry(
+  candidates: TWTimeEntry[],
+  target: { date: string; description: string; hours: number; minutes: number }
+): TWTimeEntry | null {
+  const normalizeDate = (value: string): string => value.replace(/-/g, '');
+  const targetDate = normalizeDate(target.date);
+  const targetMinutes = target.hours * 60 + target.minutes;
+  const targetDescription = target.description.trim();
+
+  const sameDay = candidates.filter(
+    (candidate) =>
+      normalizeDate(candidate.date) === targetDate && candidate.hours * 60 + candidate.minutes === targetMinutes
+  );
+  if (sameDay.length === 0) return null;
+
+  const exactDescription = sameDay.filter((candidate) => candidate.description.trim() === targetDescription);
+  if (exactDescription.length > 0) {
+    return exactDescription.reduce((lowest, candidate) =>
+      Number(candidate.id) < Number(lowest.id) ? candidate : lowest
+    );
+  }
+
+  return sameDay.length === 1 ? sameDay[0] : null;
+}
+
 // ── Main export ────────────────────────────────────────────────────────────────
 
 /**
@@ -171,22 +211,74 @@ export async function smartSyncEntries(entryIds: number[]): Promise<SmartSyncRes
         isBillable: entry.isBillable
       };
 
-      const existingTwId = lastSyncByEntry.get(entry.entryId)?.twTimeEntryId ?? null;
+      const prevSync = lastSyncByEntry.get(entry.entryId) ?? null;
+      const existingTwId = prevSync?.twTimeEntryId ?? null;
 
       let apiResult: { success: boolean; twEntryId?: number; message?: string };
+      // The TW id this sync is linked to (PUT target or freshly returned POST id).
+      let resolvedTwId: string | null = null;
 
       if (existingTwId) {
         // ── UPDATE existing TW entry (PUT) ────────────────────────────
         const putResult = await updateTimeEntryInTW(existingTwId, entryPayload, credentials);
         apiResult = { success: putResult.success, message: putResult.message };
         action = 'updated';
+        resolvedTwId = existingTwId;
+      } else if (prevSync) {
+        // ── SELF-HEAL: prior sync succeeded but the TW id was never stored
+        //    (legacy/unlinked entry). Look it up and adopt the match instead
+        //    of POSTing a duplicate. ────────────────────────────────────
+        const lookup = await fetchUserTimeEntriesForTask(
+          twTaskId,
+          credentials.userId,
+          { fromDate: entry.date, toDate: entry.date },
+          credentials
+        );
+
+        if (!lookup.success) {
+          // Never POST when we cannot confirm the entry is absent in TW — that
+          // is exactly how duplicates get created. Fail and record it instead.
+          const message = lookup.message ?? 'Could not reconcile previous TeamWork entry';
+          return {
+            result: { entryId: entry.entryId, success: false, action: 'updated', message },
+            historyInput: {
+              entryId: entry.entryId,
+              action: 'updated',
+              twTimeEntryId: null,
+              twTaskId,
+              success: false,
+              errorMessage: message
+            },
+            markSent: false
+          };
+        }
+
+        const match = matchExistingTWEntry(lookup.entries ?? [], {
+          date: entry.date,
+          description: entry.description,
+          hours,
+          minutes
+        });
+
+        if (match) {
+          // Adopt the existing TW entry and update it in place.
+          const putResult = await updateTimeEntryInTW(match.id, entryPayload, credentials);
+          apiResult = { success: putResult.success, message: putResult.message };
+          action = 'updated';
+          resolvedTwId = match.id;
+        } else {
+          // No match — the prior row was a false positive; safe to create.
+          apiResult = await sendTimeEntryToTW(entryPayload, credentials);
+          action = 'created';
+        }
       } else {
-        // ── CREATE new TW entry (POST) ────────────────────────────────
+        // ── CREATE new TW entry (POST) — brand new, no extra lookup ────
         apiResult = await sendTimeEntryToTW(entryPayload, credentials);
         action = 'created';
       }
 
-      const twEntryId = existingTwId ?? String(apiResult.twEntryId ?? '');
+      // Prefer the adopted/PUT id; otherwise use the id the POST returned.
+      const twEntryId = resolvedTwId ?? (apiResult.twEntryId === undefined ? '' : String(apiResult.twEntryId));
 
       // History is always recorded (success or failure), but written in one
       // batch after the pool drains.

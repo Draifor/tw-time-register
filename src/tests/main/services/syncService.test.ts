@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { calcDuration, smartSyncEntries, pullEntriesFromTW } from '../../../main/services/syncService';
+import {
+  calcDuration,
+  smartSyncEntries,
+  pullEntriesFromTW,
+  matchExistingTWEntry
+} from '../../../main/services/syncService';
+import type { TWTimeEntry } from '../../../main/services/apiService';
 
 // ── Mock all external dependencies ────────────────────────────────────────────
 
@@ -25,7 +31,12 @@ vi.mock('../../../main/services/timeLogService', () => ({
 import openDb from '../../../main/database/database';
 import { getTWCredentials } from '../../../main/services/settingsService';
 import { getLastSuccessfulSyncBatch, recordSyncBatch } from '../../../main/services/historyService';
-import { sendTimeEntryToTW, updateTimeEntryInTW, fetchUserTimeEntriesInRange } from '../../../main/services/apiService';
+import {
+  sendTimeEntryToTW,
+  updateTimeEntryInTW,
+  fetchUserTimeEntriesForTask,
+  fetchUserTimeEntriesInRange
+} from '../../../main/services/apiService';
 import { markEntriesAsSent } from '../../../main/services/timeLogService';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -184,6 +195,143 @@ describe('smartSyncEntries', () => {
     expect(result.succeeded).toBe(1);
   });
 
+  it('self-heals a prior sync with no captured id by adopting the matching TW entry', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    setupMockDb();
+    vi.mocked(getLastSuccessfulSyncBatch).mockResolvedValue(
+      new Map([
+        [
+          1,
+          {
+            historyId: 1,
+            entryId: 1,
+            action: 'created' as const,
+            syncedAt: '2026-03-01T10:00:00',
+            twTimeEntryId: null,
+            twTaskId: '555',
+            success: true,
+            errorMessage: null
+          }
+        ]
+      ])
+    );
+    vi.mocked(fetchUserTimeEntriesForTask).mockResolvedValue({
+      success: true,
+      entries: [
+        {
+          id: '321',
+          taskId: '555',
+          date: '20260301',
+          time: '09:00',
+          hours: 1,
+          minutes: 30,
+          description: 'Test task',
+          isBillable: true
+        }
+      ]
+    });
+    vi.mocked(updateTimeEntryInTW).mockResolvedValue({ success: true });
+    vi.mocked(recordSyncBatch).mockResolvedValue(undefined);
+    vi.mocked(markEntriesAsSent).mockResolvedValue(undefined);
+
+    const result = await smartSyncEntries([1]);
+
+    expect(fetchUserTimeEntriesForTask).toHaveBeenCalledOnce();
+    expect(updateTimeEntryInTW).toHaveBeenCalledWith(
+      '321',
+      expect.objectContaining({ twTaskId: '555' }),
+      expect.objectContaining({ userId: '42' })
+    );
+    expect(sendTimeEntryToTW).not.toHaveBeenCalled();
+    expect(result.results[0].action).toBe('updated');
+    expect(result.results[0].twEntryId).toBe('321');
+    expect(result.succeeded).toBe(1);
+  });
+
+  it('POSTs when a prior sync exists but no matching TW entry is found', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    setupMockDb();
+    vi.mocked(getLastSuccessfulSyncBatch).mockResolvedValue(
+      new Map([
+        [
+          1,
+          {
+            historyId: 1,
+            entryId: 1,
+            action: 'created' as const,
+            syncedAt: '2026-03-01T10:00:00',
+            twTimeEntryId: null,
+            twTaskId: '555',
+            success: true,
+            errorMessage: null
+          }
+        ]
+      ])
+    );
+    vi.mocked(fetchUserTimeEntriesForTask).mockResolvedValue({ success: true, entries: [] });
+    vi.mocked(sendTimeEntryToTW).mockResolvedValue({ success: true, twEntryId: 42 });
+    vi.mocked(recordSyncBatch).mockResolvedValue(undefined);
+    vi.mocked(markEntriesAsSent).mockResolvedValue(undefined);
+
+    const result = await smartSyncEntries([1]);
+
+    expect(fetchUserTimeEntriesForTask).toHaveBeenCalledOnce();
+    expect(sendTimeEntryToTW).toHaveBeenCalledOnce();
+    expect(updateTimeEntryInTW).not.toHaveBeenCalled();
+    expect(result.results[0].action).toBe('created');
+    expect(result.results[0].twEntryId).toBe('42');
+    expect(result.succeeded).toBe(1);
+  });
+
+  it('does not call the self-heal lookup for brand-new entries', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    setupMockDb();
+    vi.mocked(getLastSuccessfulSyncBatch).mockResolvedValue(new Map());
+    vi.mocked(sendTimeEntryToTW).mockResolvedValue({ success: true, twEntryId: 7 });
+    vi.mocked(recordSyncBatch).mockResolvedValue(undefined);
+    vi.mocked(markEntriesAsSent).mockResolvedValue(undefined);
+
+    await smartSyncEntries([1]);
+
+    expect(fetchUserTimeEntriesForTask).not.toHaveBeenCalled();
+    expect(sendTimeEntryToTW).toHaveBeenCalledOnce();
+  });
+
+  it('fails without POSTing when the self-heal lookup fails', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    setupMockDb();
+    vi.mocked(getLastSuccessfulSyncBatch).mockResolvedValue(
+      new Map([
+        [
+          1,
+          {
+            historyId: 1,
+            entryId: 1,
+            action: 'created' as const,
+            syncedAt: '2026-03-01T10:00:00',
+            twTimeEntryId: null,
+            twTaskId: '555',
+            success: true,
+            errorMessage: null
+          }
+        ]
+      ])
+    );
+    vi.mocked(fetchUserTimeEntriesForTask).mockResolvedValue({ success: false, message: 'TW down' });
+    vi.mocked(recordSyncBatch).mockResolvedValue(undefined);
+
+    const result = await smartSyncEntries([1]);
+
+    expect(sendTimeEntryToTW).not.toHaveBeenCalled();
+    expect(updateTimeEntryInTW).not.toHaveBeenCalled();
+    expect(result.results[0].success).toBe(false);
+    expect(result.results[0].message).toBe('TW down');
+    expect(recordSyncBatch).toHaveBeenCalledWith([
+      expect.objectContaining({ entryId: 1, success: false, twTimeEntryId: null })
+    ]);
+    expect(markEntriesAsSent).not.toHaveBeenCalled();
+  });
+
   it('records failure in one batch and does NOT mark the entry as sent', async () => {
     vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
     setupMockDb();
@@ -262,6 +410,66 @@ describe('smartSyncEntries', () => {
     expect(result.results[0].success).toBe(false);
     expect(result.results[1].success).toBe(true);
     expect(markEntriesAsSent).toHaveBeenCalledWith([2]);
+  });
+});
+
+// ── matchExistingTWEntry ──────────────────────────────────────────────────────
+
+describe('matchExistingTWEntry', () => {
+  const target = { date: '2026-03-01', description: 'Test task', hours: 1, minutes: 30 };
+
+  const makeTWEntry = (overrides: Partial<TWTimeEntry> = {}): TWTimeEntry => ({
+    id: '1',
+    taskId: '555',
+    date: '20260301',
+    time: '09:00',
+    hours: 1,
+    minutes: 30,
+    description: 'Test task',
+    isBillable: false,
+    ...overrides
+  });
+
+  it('returns the candidate whose description matches exactly', () => {
+    const candidates = [
+      makeTWEntry({ id: '5', description: 'Other work' }),
+      makeTWEntry({ id: '9', description: 'Test task' })
+    ];
+
+    expect(matchExistingTWEntry(candidates, target)?.id).toBe('9');
+  });
+
+  it('adopts a unique same-duration candidate with a different description', () => {
+    const candidates = [makeTWEntry({ id: '7', description: 'Different wording' })];
+
+    expect(matchExistingTWEntry(candidates, target)?.id).toBe('7');
+  });
+
+  it('returns null when two same-duration candidates do not match the description', () => {
+    const candidates = [makeTWEntry({ id: '1', description: 'Alpha' }), makeTWEntry({ id: '2', description: 'Beta' })];
+
+    expect(matchExistingTWEntry(candidates, target)).toBeNull();
+  });
+
+  it('returns null when no candidate matches the target date', () => {
+    const candidates = [makeTWEntry({ id: '1', date: '20260302' })];
+
+    expect(matchExistingTWEntry(candidates, target)).toBeNull();
+  });
+
+  it('returns null when the duration does not match', () => {
+    const candidates = [makeTWEntry({ id: '1', minutes: 0 })];
+
+    expect(matchExistingTWEntry(candidates, target)).toBeNull();
+  });
+
+  it('picks the lowest numeric id among multiple exact description matches', () => {
+    const candidates = [
+      makeTWEntry({ id: '12', description: 'Test task' }),
+      makeTWEntry({ id: '3', description: 'Test task' })
+    ];
+
+    expect(matchExistingTWEntry(candidates, target)?.id).toBe('3');
   });
 });
 
