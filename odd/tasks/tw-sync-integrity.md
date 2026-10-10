@@ -7,7 +7,7 @@
 - **Branch:** `fix/tw-sync-integrity` (off `staging` @ `7a66bb3`)
 - **Created:** 2026-10-09
 - **Source:** user report + empirical prod-DB inspection + TeamWork v1 API docs
-- **Status:** **REOPENED (round 2)** — TS-01/TS-02 approved but the human smoke test FAILED: editing and re-syncing still creates duplicates. New empirical root causes below (TS-03/TS-04/TS-05).
+- **Status:** **CLOSED** — round-2 human smoke test PASSED (editing + re-syncing updates the same TW entry, no duplicate). Both native reviews approved; delivered to `staging` and released as `v1.16.1`.
 
 ## Objective
 
@@ -202,8 +202,11 @@ do NOT re-review this candidate):
   failures first, then 56/56 focused and 643/643 full suite green; `type-check` clean, `lint`
   0 errors (82 pre-existing warnings elsewhere). Commit `6fae7e1`.
 - 2026-10-09 — Native review approved and authority burned (`review-52ff5e92daccd741`).
-- Human smoke test still pending (round 2): edit a synced entry (change billable and/or
-  description) and sync → TW must show the SAME entry updated, not a duplicate.
+- 2026-10-09 — **Human smoke test PASSED (round 2):** editing a synced entry (change billable
+  and/or description) and re-syncing updates the SAME TW entry — no duplicate. Feature closed.
+  Residual `R3-AMBIG` (ambiguous day+duration match after a description edit on legacy unlinked
+  entries) accepted as a follow-up: it only affects pre-existing NULL-id records, which the user
+  rarely edits; new records always carry a real id and go straight to PUT.
 
 ### Round-2 evidence files
 
