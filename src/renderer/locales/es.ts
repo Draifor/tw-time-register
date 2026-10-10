@@ -572,6 +572,8 @@ const es = {
       notifyCount: '{{count}} persona(s) seleccionada(s)',
       notifySearch: 'Buscar persona...',
       notifyEmpty: 'Sin resultados',
+      notifyLoadError: 'No se pudieron cargar las personas. Vuelve a abrir la lista para reintentar.',
+      attachmentFailed: 'No se pudo enviar: falló la subida de un archivo adjunto',
       removeNotify: 'Quitar'
     }
   }

@@ -570,6 +570,8 @@ const en = {
       notifyCount: '{{count}} person(s) selected',
       notifySearch: 'Search person...',
       notifyEmpty: 'No results',
+      notifyLoadError: 'Could not load people. Reopen the list to retry.',
+      attachmentFailed: 'Could not send: an attachment failed to upload',
       removeNotify: 'Remove'
     }
   }

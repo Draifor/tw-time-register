@@ -53,6 +53,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const [notifyIds, setNotifyIds] = useState<Set<string>>(new Set());
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [loadingPeople, setLoadingPeople] = useState(false);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
   const [peopleSearch, setPeopleSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -114,10 +115,15 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const handleOpenNotify = useCallback(async () => {
     if (people.length > 0 || loadingPeople) return;
     setLoadingPeople(true);
+    setNotifyError(null);
     const result = await fetchTWPeopleForTask(twTaskId);
-    if (result.success && result.people) setPeople(result.people);
+    if (result.success && result.people) {
+      setPeople(result.people);
+    } else {
+      setNotifyError(result.message ?? t('taskComment.notifyLoadError'));
+    }
     setLoadingPeople(false);
-  }, [people.length, loadingPeople, twTaskId]);
+  }, [people.length, loadingPeople, twTaskId, t]);
 
   const handleNotifyOpenChange = (nextOpen: boolean) => {
     setNotifyOpen(nextOpen);
@@ -142,17 +148,34 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
 
   // ── Send ────────────────────────────────────────────────────────────────────
   const handleSend = async () => {
-    if (!body.trim() && attachments.length === 0) return;
+    // A comment must carry a non-empty body (attachment-only sends are not supported).
+    if (!body.trim()) return;
+
+    // Fail closed: never send the comment while an attachment is known to be broken.
+    if (attachments.some((a) => a.error)) {
+      toast.error(t('taskComment.attachmentFailed'));
+      return;
+    }
+
     setSending(true);
 
     const refs: string[] = [];
+    let uploadFailed = false;
     for (let i = 0; i < attachments.length; i++) {
       if (attachments[i].ref) {
         refs.push(attachments[i].ref!);
       } else {
         const ref = await uploadFile(i);
         if (ref) refs.push(ref);
+        else uploadFailed = true;
       }
+    }
+
+    // Any failed attachment aborts the send and keeps the dialog open.
+    if (uploadFailed) {
+      setSending(false);
+      toast.error(t('taskComment.attachmentFailed'));
+      return;
     }
 
     const notify = [...notifyIds].join(',');
@@ -179,6 +202,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setDragOver(false);
       setNotifyIds(new Set());
       setNotifyOpen(false);
+      setNotifyError(null);
       setPeopleSearch('');
       setPeople([]); // reset so next task fetches fresh project members
     }
@@ -291,6 +315,8 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                       <div className="flex items-center justify-center py-6">
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       </div>
+                    ) : notifyError ? (
+                      <p className="px-3 py-4 text-center text-xs text-destructive">{notifyError}</p>
                     ) : filteredPeople.length === 0 ? (
                       <p className="py-4 text-center text-xs text-muted-foreground">{t('taskComment.notifyEmpty')}</p>
                     ) : (
@@ -400,7 +426,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
             <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={sending}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleSend} disabled={sending || (!body.trim() && attachments.length === 0)}>
+            <Button onClick={handleSend} disabled={sending || !body.trim()}>
               {sending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
