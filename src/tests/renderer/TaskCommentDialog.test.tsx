@@ -158,3 +158,118 @@ describe('TaskCommentDialog hardening (TC-2)', () => {
     await waitFor(() => expect(mockFetchPeople).toHaveBeenCalledTimes(2));
   });
 });
+
+describe('TaskCommentDialog hardening (TC-3)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockGetTemplates.mockResolvedValue([]);
+    mockFetchPeople.mockResolvedValue({ success: true, people: [] });
+    mockAddComment.mockResolvedValue({ success: true });
+    mockUpload.mockResolvedValue({ success: false });
+    await i18n.changeLanguage('en');
+  });
+  afterEach(() => cleanup());
+
+  it('rejects an oversized attachment without adding it and toasts the limit', async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+    expect(fileInput, 'file input not found').not.toBeNull();
+
+    const oversized = new File(['x'], 'huge.bin', { type: 'application/octet-stream' });
+    // Override size cheaply instead of allocating a real 26 MB buffer.
+    Object.defineProperty(oversized, 'size', { value: 26 * 1024 * 1024 });
+
+    await user.upload(fileInput as HTMLInputElement, oversized);
+
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith(i18n.t('taskComment.attachTooLarge', { max: '25 MB' }))
+    );
+    expect(screen.queryByText('huge.bin')).not.toBeInTheDocument();
+  });
+
+  it('auto-retries a previously failed attachment on the next send', async () => {
+    mockUpload
+      .mockResolvedValueOnce({ success: false, message: 'transient failure' })
+      .mockResolvedValueOnce({ success: true, ref: 'ref-1' });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await attachFile(user, 'report.txt');
+    await user.type(bodyInput(), 'Retry me');
+
+    // First send: the upload fails, the send aborts, the dialog stays open.
+    await user.click(sendButton());
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith(i18n.t('taskComment.attachmentFailed')));
+    expect(mockAddComment).not.toHaveBeenCalled();
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Second send: the failed attachment auto-retries and succeeds.
+    await user.click(sendButton());
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledTimes(1));
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    expect(mockAddComment).toHaveBeenCalledWith('12345', 'Retry me', 'ref-1', '');
+  });
+
+  it('shows a template load error and retries via the retry button', async () => {
+    mockGetTemplates
+      .mockRejectedValueOnce(new Error('templates boom'))
+      .mockResolvedValueOnce([
+        { templateId: 1, title: 'Greeting', body: 'Hello there', createdAt: '2026-01-01T00:00:00.000Z' }
+      ]);
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    // The failure surfaces as an error state instead of silently disappearing.
+    expect(await screen.findByText(i18n.t('taskComment.templatesLoadError'))).toBeInTheDocument();
+
+    // The retry button re-invokes the service.
+    await user.click(screen.getByRole('button', { name: i18n.t('common.retry') }));
+    await waitFor(() => expect(mockGetTemplates).toHaveBeenCalledTimes(2));
+
+    // A successful retry restores the dropdown.
+    expect(await screen.findByText(i18n.t('taskComment.useTemplate'))).toBeInTheDocument();
+  });
+
+  it('shows the notify error state (not the empty-list message) when the request rejects', async () => {
+    mockFetchPeople.mockRejectedValueOnce(new Error('network down'));
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.notifyNone') }));
+
+    expect(await screen.findByText(i18n.t('taskComment.notifyLoadError'))).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('taskComment.notifyEmpty'))).not.toBeInTheDocument();
+  });
+
+  it('accepts a file exactly at the 25 MB limit', async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+    expect(fileInput, 'file input not found').not.toBeNull();
+
+    const atLimit = new File(['x'], 'at-limit.bin', { type: 'application/octet-stream' });
+    Object.defineProperty(atLimit, 'size', { value: 25 * 1024 * 1024 });
+
+    await user.upload(fileInput as HTMLInputElement, atLimit);
+
+    expect(await screen.findByText('at-limit.bin')).toBeInTheDocument();
+    expect(toastMock.error).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the notify error when the message is present but blank', async () => {
+    mockFetchPeople.mockResolvedValueOnce({ success: false, message: '   ' });
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.notifyNone') }));
+
+    expect(await screen.findByText(i18n.t('taskComment.notifyLoadError'))).toBeInTheDocument();
+  });
+});

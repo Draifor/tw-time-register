@@ -37,6 +37,9 @@ interface TaskCommentDialogProps {
   taskName: string;
 }
 
+/** Per-file attachment size cap. File types stay unrestricted. */
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
 export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDialogProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -47,6 +50,8 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
 
   // Templates
   const [templates, setTemplates] = useState<CommentTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
 
   // Notify people
   const [people, setPeople] = useState<TWPerson[]>([]);
@@ -57,25 +62,39 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const [peopleSearch, setPeopleSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Load templates when dialog opens ────────────────────────────────────────
-  useEffect(() => {
-    if (open) {
-      getCommentTemplates()
-        .then(setTemplates)
-        .catch(() => {});
+  // ── Template loading ────────────────────────────────────────────────────────
+  const loadTemplates = useCallback(async () => {
+    setTemplatesLoading(true);
+    setTemplatesError(null);
+    try {
+      const result = await getCommentTemplates();
+      setTemplates(result);
+    } catch {
+      setTemplatesError(t('taskComment.templatesLoadError'));
+    } finally {
+      setTemplatesLoading(false);
     }
-  }, [open]);
+  }, [t]);
+
+  // Load templates when dialog opens.
+  useEffect(() => {
+    if (open) void loadTemplates();
+  }, [open, loadTemplates]);
 
   // ── File helpers ────────────────────────────────────────────────────────────
   const addFiles = useCallback(
     (files: FileList | File[]) => {
-      const incoming = Array.from(files).filter(
+      const deduped = Array.from(files).filter(
         (f) => !attachments.some((a) => a.file.name === f.name && a.file.size === f.size)
       );
-      if (!incoming.length) return;
-      setAttachments((prev) => [...prev, ...incoming.map((file) => ({ file, uploading: false }))]);
+      const accepted = deduped.filter((f) => f.size <= MAX_ATTACHMENT_BYTES);
+      if (deduped.some((f) => f.size > MAX_ATTACHMENT_BYTES)) {
+        toast.error(t('taskComment.attachTooLarge', { max: '25 MB' }));
+      }
+      if (!accepted.length) return;
+      setAttachments((prev) => [...prev, ...accepted.map((file) => ({ file, uploading: false }))]);
     },
-    [attachments]
+    [attachments, t]
   );
 
   const removeAttachment = (idx: number) => {
@@ -93,7 +112,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
     }
     setAttachments((prev) =>
       prev.map((a, i) =>
-        i === idx ? { ...a, uploading: false, error: result.message ?? t('taskComment.uploadError') } : a
+        i === idx ? { ...a, uploading: false, error: result.message?.trim() || t('taskComment.uploadError') } : a
       )
     );
     return null;
@@ -116,13 +135,20 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
     if (people.length > 0 || loadingPeople) return;
     setLoadingPeople(true);
     setNotifyError(null);
-    const result = await fetchTWPeopleForTask(twTaskId);
-    if (result.success && result.people) {
-      setPeople(result.people);
-    } else {
-      setNotifyError(result.message ?? t('taskComment.notifyLoadError'));
+    try {
+      const result = await fetchTWPeopleForTask(twTaskId);
+      if (result.success && result.people) {
+        setPeople(result.people);
+      } else {
+        setNotifyError(result.message?.trim() || t('taskComment.notifyLoadError'));
+      }
+    } catch {
+      // A rejected promise (not a resolved { success: false }) must still surface
+      // the error state and never leave the spinner hanging.
+      setNotifyError(t('taskComment.notifyLoadError'));
+    } finally {
+      setLoadingPeople(false);
     }
-    setLoadingPeople(false);
   }, [people.length, loadingPeople, twTaskId, t]);
 
   const handleNotifyOpenChange = (nextOpen: boolean) => {
@@ -150,12 +176,6 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const handleSend = async () => {
     // A comment must carry a non-empty body (attachment-only sends are not supported).
     if (!body.trim()) return;
-
-    // Fail closed: never send the comment while an attachment is known to be broken.
-    if (attachments.some((a) => a.error)) {
-      toast.error(t('taskComment.attachmentFailed'));
-      return;
-    }
 
     setSending(true);
 
@@ -242,7 +262,24 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
 
           <div className="space-y-4 py-2">
             {/* ── Template picker ──────────────────────────────────────── */}
-            {templates.length > 0 && (
+            {templatesLoading ? (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {t('taskComment.templatesLoading')}
+              </div>
+            ) : templatesError ? (
+              <div className="flex items-center gap-2 text-xs text-destructive">
+                <span>{templatesError}</span>
+                <button
+                  type="button"
+                  className="underline hover:no-underline transition-colors"
+                  onClick={() => void loadTemplates()}
+                  disabled={sending}
+                >
+                  {t('common.retry')}
+                </button>
+              </div>
+            ) : templates.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -267,7 +304,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+            ) : null}
 
             {/* ── Comment textarea ─────────────────────────────────────── */}
             <div className="space-y-1.5">
@@ -304,6 +341,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                       type="text"
                       autoFocus
                       className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                      aria-label={t('taskComment.notifySearch')}
                       placeholder={t('taskComment.notifySearch')}
                       value={peopleSearch}
                       onChange={(e) => setPeopleSearch(e.target.value)}
