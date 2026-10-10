@@ -385,3 +385,132 @@ describe('TaskCommentDialog existing comments listing (TC-4)', () => {
     await waitFor(() => expect(mockFetchComments).toHaveBeenCalledTimes(2));
   });
 });
+
+describe('TaskCommentDialog add/send flow (TC-5)', () => {
+  beforeEach(async () => {
+    mockGetTemplates.mockReset();
+    mockFetchPeople.mockReset();
+    mockFetchComments.mockReset();
+    mockAddComment.mockReset();
+    mockUpload.mockReset();
+    mockGetTemplates.mockResolvedValue([]);
+    mockFetchPeople.mockResolvedValue({ success: true, people: [] });
+    mockFetchComments.mockResolvedValue({ success: true, comments: [] });
+    mockAddComment.mockResolvedValue({ success: true });
+    mockUpload.mockResolvedValue({ success: false });
+    await i18n.changeLanguage('en');
+  });
+  afterEach(() => cleanup());
+
+  it('sends a body-only comment and closes the dialog on success', async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.type(bodyInput(), 'Hello TeamWork');
+    await user.click(sendButton());
+
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledWith('12345', 'Hello TeamWork', '', ''));
+    expect(toastMock.success).toHaveBeenCalledWith(i18n.t('taskComment.success'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('uploads a single attachment and sends its ref', async () => {
+    mockUpload.mockResolvedValue({ success: true, ref: 'ref-9' });
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await attachFile(user, 'notes.txt');
+    await user.type(bodyInput(), 'With attachment');
+    await user.click(sendButton());
+
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledWith('12345', 'With attachment', 'ref-9', ''));
+    expect(toastMock.success).toHaveBeenCalledWith(i18n.t('taskComment.success'));
+  });
+
+  it('joins multiple attachment refs in attachment order', async () => {
+    mockUpload
+      .mockResolvedValueOnce({ success: true, ref: 'ref-1' })
+      .mockResolvedValueOnce({ success: true, ref: 'ref-2' });
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await attachFile(user, 'a.txt');
+    await attachFile(user, 'b.txt');
+    await user.type(bodyInput(), 'Two files');
+    await user.click(sendButton());
+
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledWith('12345', 'Two files', 'ref-1,ref-2', ''));
+  });
+
+  it('keeps the dialog open and preserves the body when the server rejects', async () => {
+    mockAddComment.mockResolvedValue({ success: false, message: 'server boom' });
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.type(bodyInput(), 'Will fail');
+    await user.click(sendButton());
+
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith(i18n.t('taskComment.error'), { description: 'server boom' })
+    );
+    expect(toastMock.success).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(bodyInput()).toHaveValue('Will fail');
+  });
+
+  it('sends the selected notify ids as a comma-joined list', async () => {
+    mockFetchPeople.mockResolvedValue({
+      success: true,
+      people: [
+        { id: 'p1', name: 'Ada Lovelace', email: 'ada@test.com' },
+        { id: 'p2', name: 'Alan Turing', email: 'alan@test.com' }
+      ]
+    });
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.notifyNone') }));
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: /Ada Lovelace/ }));
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: /Alan Turing/ }));
+    await user.keyboard('{Escape}');
+
+    await user.type(bodyInput(), 'Notify ping');
+    await user.click(sendButton());
+
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledWith('12345', 'Notify ping', '', 'p1,p2'));
+  });
+
+  it('applies a chosen template body to the textarea', async () => {
+    mockGetTemplates.mockResolvedValue([
+      { templateId: 1, title: 'Greeting', body: 'Hello there', createdAt: '2026-01-01T00:00:00.000Z' }
+    ]);
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.click(await screen.findByRole('button', { name: i18n.t('taskComment.useTemplate') }));
+    await user.click(await screen.findByRole('menuitem', { name: /Greeting/ }));
+
+    await waitFor(() => expect(bodyInput()).toHaveValue('Hello there'));
+  });
+
+  it('dedupes same-name/same-size attachments and omits a removed attachment from the refs', async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    // First attach through the helper, then re-upload the same name+size.
+    await attachFile(user, 'dup.txt');
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, new File(['hello'], 'dup.txt', { type: 'text/plain' }));
+    await waitFor(() => expect(screen.getAllByText('dup.txt')).toHaveLength(1));
+
+    // Removing the only attachment must leave it out of the send.
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.removeFile') }));
+    expect(screen.queryByText('dup.txt')).not.toBeInTheDocument();
+
+    await user.type(bodyInput(), 'No attachments now');
+    await user.click(sendButton());
+
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledWith('12345', 'No attachments now', '', ''));
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+});
