@@ -514,3 +514,88 @@ describe('TaskCommentDialog add/send flow (TC-5)', () => {
     expect(mockUpload).not.toHaveBeenCalled();
   });
 });
+
+describe('TaskCommentDialog listing pagination (TC-6)', () => {
+  beforeEach(async () => {
+    mockGetTemplates.mockReset();
+    mockFetchPeople.mockReset();
+    mockFetchComments.mockReset();
+    mockAddComment.mockReset();
+    mockUpload.mockReset();
+    mockGetTemplates.mockResolvedValue([]);
+    mockFetchPeople.mockResolvedValue({ success: true, people: [] });
+    mockAddComment.mockResolvedValue({ success: true });
+    mockUpload.mockResolvedValue({ success: false });
+    await i18n.changeLanguage('en');
+  });
+  afterEach(() => cleanup());
+
+  const COMMENTS_PAGE_SIZE = 50;
+
+  const makeComment = (n: number): TWComment => ({
+    id: `c${n}`,
+    body: `Comment body ${n}`,
+    authorName: `Author ${n}`,
+    datetime: '',
+    attachmentsCount: 0
+  });
+
+  it('shows the counter and load-more button, then appends the next page', async () => {
+    const page1 = Array.from({ length: COMMENTS_PAGE_SIZE }, (_, i) => makeComment(i + 1));
+    const page2 = Array.from({ length: 10 }, (_, i) => makeComment(i + 51));
+    mockFetchComments.mockImplementation(async (_twTaskId, page) =>
+      page === 2 ? { success: true, comments: page2, total: 60 } : { success: true, comments: page1, total: 60 }
+    );
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(
+      await screen.findByText(i18n.t('taskComment.commentsShowingTotal', { loaded: COMMENTS_PAGE_SIZE, total: 60 }))
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.commentsLoadMore') }));
+
+    await waitFor(() => expect(mockFetchComments).toHaveBeenCalledWith('12345', 2, COMMENTS_PAGE_SIZE));
+    expect(await screen.findByText('Comment body 60')).toBeInTheDocument();
+    expect(screen.getByText('Comment body 1')).toBeInTheDocument();
+
+    // The final page is reached: the load-more button disappears.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: i18n.t('taskComment.commentsLoadMore') })).not.toBeInTheDocument()
+    );
+  });
+
+  it('renders no load-more button when the last page is partial and total is unknown', async () => {
+    mockFetchComments.mockResolvedValue({ success: true, comments: [makeComment(1), makeComment(2)] });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText('Comment body 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: i18n.t('taskComment.commentsLoadMore') })).not.toBeInTheDocument();
+  });
+
+  it('renders two comments with empty ids without a React duplicate-key error (R3-4)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetchComments.mockResolvedValue({
+      success: true,
+      comments: [
+        { id: '', body: 'First empty id', authorName: 'A', datetime: '', attachmentsCount: 0 },
+        { id: '', body: 'Second empty id', authorName: 'B', datetime: '', attachmentsCount: 0 }
+      ]
+    });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText('First empty id')).toBeInTheDocument();
+    expect(screen.getByText('Second empty id')).toBeInTheDocument();
+
+    const keyWarnings = errorSpy.mock.calls.filter((call) =>
+      call.some((arg) => typeof arg === 'string' && /same key|duplicate key/i.test(arg))
+    );
+    expect(keyWarnings).toHaveLength(0);
+    errorSpy.mockRestore();
+  });
+});

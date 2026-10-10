@@ -42,6 +42,9 @@ interface TaskCommentDialogProps {
 /** Per-file attachment size cap. File types stay unrestricted. */
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
+/** Page size for the existing-comments listing. */
+const COMMENTS_PAGE_SIZE = 50;
+
 /** Format an ISO datetime for display, falling back to the raw value when invalid. */
 function formatCommentDate(datetime: string, language: string): string {
   const date = new Date(datetime);
@@ -61,6 +64,10 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const [comments, setComments] = useState<TWComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [commentsTotal, setCommentsTotal] = useState<number | undefined>(undefined);
+  const [commentsLoadingMore, setCommentsLoadingMore] = useState(false);
 
   // Templates
   const [templates, setTemplates] = useState<CommentTemplate[]>([]);
@@ -77,24 +84,52 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Existing comments loading ───────────────────────────────────────────────
-  const loadComments = useCallback(async () => {
-    setCommentsLoading(true);
-    setCommentsError(null);
-    try {
-      const result = await fetchTWCommentsForTask(twTaskId);
-      if (result.success) {
-        setComments(result.comments ?? []);
+  const loadComments = useCallback(
+    async (page = 1, append = false) => {
+      if (append) {
+        setCommentsLoadingMore(true);
       } else {
-        setCommentsError(result.message?.trim() || t('taskComment.commentsLoadError'));
+        setCommentsLoading(true);
+        setCommentsError(null);
       }
-    } catch {
-      // A rejected promise (not a resolved { success: false }) must still surface
-      // the error state and never leave the spinner hanging.
-      setCommentsError(t('taskComment.commentsLoadError'));
-    } finally {
-      setCommentsLoading(false);
-    }
-  }, [twTaskId, t]);
+      try {
+        const result = await fetchTWCommentsForTask(twTaskId, page, COMMENTS_PAGE_SIZE);
+        if (result.success) {
+          const incoming = result.comments ?? [];
+          setComments((prev) => (append ? [...prev, ...incoming] : incoming));
+          setCommentsPage(page);
+          setCommentsTotal(result.total);
+          // Derive "has more" from pagination state, never from `comments`, so the
+          // callback identity stays stable and the open effect does not loop.
+          setCommentsHasMore(
+            result.total !== undefined
+              ? page * COMMENTS_PAGE_SIZE < result.total
+              : incoming.length === COMMENTS_PAGE_SIZE
+          );
+        } else if (append) {
+          // Keep the current list (and the retryable button) on a failed page.
+          toast.error(t('taskComment.commentsLoadError'));
+        } else {
+          setCommentsError(result.message?.trim() || t('taskComment.commentsLoadError'));
+        }
+      } catch {
+        // A rejected promise (not a resolved { success: false }) must still surface
+        // the error state and never leave the spinner hanging.
+        if (append) {
+          toast.error(t('taskComment.commentsLoadError'));
+        } else {
+          setCommentsError(t('taskComment.commentsLoadError'));
+        }
+      } finally {
+        if (append) {
+          setCommentsLoadingMore(false);
+        } else {
+          setCommentsLoading(false);
+        }
+      }
+    },
+    [twTaskId, t]
+  );
 
   // ── Template loading ────────────────────────────────────────────────────────
   const loadTemplates = useCallback(async () => {
@@ -266,6 +301,10 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setPeople([]); // reset so next task fetches fresh project members
       setComments([]);
       setCommentsError(null);
+      setCommentsPage(1);
+      setCommentsHasMore(false);
+      setCommentsTotal(undefined);
+      setCommentsLoadingMore(false);
     }
     setOpen(val);
   };
@@ -325,25 +364,44 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
               ) : comments.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t('taskComment.commentsEmpty')}</p>
               ) : (
-                <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {comments.map((comment) => (
-                    <li key={comment.id} className="rounded-md border bg-muted/30 px-3 py-2">
-                      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground truncate">{comment.authorName || '—'}</span>
-                        {comment.datetime ? (
-                          <span className="shrink-0">{formatCommentDate(comment.datetime, i18n.language)}</span>
+                <>
+                  <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {comments.map((comment, index) => (
+                      <li key={comment.id || `comment-${index}`} className="rounded-md border bg-muted/30 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground truncate">{comment.authorName || '—'}</span>
+                          {comment.datetime ? (
+                            <span className="shrink-0">{formatCommentDate(comment.datetime, i18n.language)}</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-sm whitespace-pre-wrap break-words">{comment.body}</p>
+                        {comment.attachmentsCount > 0 ? (
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Paperclip className="h-3 w-3" />
+                            {t('taskComment.attachmentsCount', { count: comment.attachmentsCount })}
+                          </span>
                         ) : null}
-                      </div>
-                      <p className="mt-1 text-sm whitespace-pre-wrap break-words">{comment.body}</p>
-                      {comment.attachmentsCount > 0 ? (
-                        <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Paperclip className="h-3 w-3" />
-                          {t('taskComment.attachmentsCount', { count: comment.attachmentsCount })}
-                        </span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                      </li>
+                    ))}
+                  </ul>
+                  {comments.length > 0 && (commentsHasMore || commentsTotal !== undefined) ? (
+                    <p className="text-xs text-muted-foreground">
+                      {commentsTotal !== undefined
+                        ? t('taskComment.commentsShowingTotal', { loaded: comments.length, total: commentsTotal })
+                        : t('taskComment.commentsShowing', { loaded: comments.length })}
+                    </p>
+                  ) : null}
+                  {commentsHasMore ? (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline hover:no-underline transition-colors disabled:opacity-50"
+                      onClick={() => void loadComments(commentsPage + 1, true)}
+                      disabled={sending || commentsLoadingMore}
+                    >
+                      {t('taskComment.commentsLoadMore')}
+                    </button>
+                  ) : null}
+                </>
               )}
             </div>
 

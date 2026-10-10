@@ -596,6 +596,56 @@ describe('fetchTWCommentsForTask', () => {
     expect(result.success).toBe(false);
     expect(result.message).toBe('Network down');
   });
+
+  it('fails closed when the comments field is missing or not an array (R3-1)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: {} });
+    const missing = await fetchTWCommentsForTask('12345');
+    expect(missing.success).toBe(false);
+    expect(missing.comments).toBeUndefined();
+    expect(missing.message).toBe('Unexpected response from TeamWork');
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: 'nope' } });
+    const nonArray = await fetchTWCommentsForTask('12345');
+    expect(nonArray.success).toBe(false);
+    expect(nonArray.comments).toBeUndefined();
+    expect(nonArray.message).toBe('Unexpected response from TeamWork');
+  });
+
+  it('fails closed when STATUS is present and not OK (R3-1)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [], STATUS: 'FAIL' } });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Unexpected response from TeamWork');
+  });
+
+  it('stays successful for a valid array with no STATUS field (R3-1 regression)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] } });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(true);
+    expect(result.comments).toEqual([]);
+  });
+
+  it('reads the total from the x-records response header, and leaves it undefined when absent (R3-1)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] }, headers: { 'x-records': '60' } });
+    const withHeader = await fetchTWCommentsForTask('12345');
+    expect(withHeader.success).toBe(true);
+    expect(withHeader.total).toBe(60);
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] } });
+    const withoutHeader = await fetchTWCommentsForTask('12345');
+    expect(withoutHeader.success).toBe(true);
+    expect(withoutHeader.total).toBeUndefined();
+  });
 });
 
 // ── addCommentToTWTask ────────────────────────────────────────────────────────

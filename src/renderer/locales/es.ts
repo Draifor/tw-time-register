@@ -580,6 +580,9 @@ const es = {
       commentsLoading: 'Cargando comentarios...',
       commentsLoadError: 'No se pudieron cargar los comentarios.',
       commentsEmpty: 'Aún no hay comentarios',
+      commentsLoadMore: 'Cargar más',
+      commentsShowing: 'Mostrando {{loaded}}',
+      commentsShowingTotal: 'Mostrando {{loaded}} de {{total}}',
       attachmentsCount: '{{count}} archivo(s) adjunto(s)',
       attachmentFailed: 'No se pudo enviar: falló la subida de un archivo adjunto',
       removeNotify: 'Quitar'

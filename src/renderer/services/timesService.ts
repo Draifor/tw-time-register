@@ -410,5 +410,5 @@ export const fetchTWCommentsForTask = async (
   twTaskId: string,
   page?: number,
   pageSize?: number
-): Promise<{ success: boolean; comments?: TWComment[]; message?: string }> =>
+): Promise<{ success: boolean; comments?: TWComment[]; total?: number; message?: string }> =>
   window.Main.fetchTWCommentsForTask(twTaskId, page ?? 1, pageSize ?? 50);

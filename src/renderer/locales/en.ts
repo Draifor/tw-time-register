@@ -578,6 +578,9 @@ const en = {
       commentsLoading: 'Loading comments...',
       commentsLoadError: 'Could not load comments.',
       commentsEmpty: 'No comments yet',
+      commentsLoadMore: 'Load more',
+      commentsShowing: 'Showing {{loaded}}',
+      commentsShowingTotal: 'Showing {{loaded}} of {{total}}',
       attachmentsCount: '{{count}} attachment(s)',
       attachmentFailed: 'Could not send: an attachment failed to upload',
       removeNotify: 'Remove'
