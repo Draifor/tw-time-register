@@ -812,7 +812,7 @@ export async function fetchTWCommentsForTask(
   twTaskId: string,
   page = 1,
   pageSize = 50
-): Promise<{ success: boolean; comments?: TWComment[]; total?: number; message?: string }> {
+): Promise<{ success: boolean; comments?: TWComment[]; total?: number; message?: string; code?: string }> {
   const { domain, username, password } = await getTWCredentials();
   if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
 
@@ -836,7 +836,9 @@ export async function fetchTWCommentsForTask(
     const status: unknown = response.data?.STATUS;
     const statusFailed = typeof status === 'string' && status.toUpperCase() !== 'OK';
     if (!Array.isArray(rawComments) || statusFailed) {
-      return { success: false, message: 'Unexpected response from TeamWork' };
+      // A stable machine code lets the renderer localize the message; the English
+      // string stays as the internal diagnostic for logs and non-UI callers.
+      return { success: false, code: 'unexpected_response', message: 'Unexpected response from TeamWork' };
     }
 
     const raw = rawComments as Record<string, unknown>[];

@@ -16,7 +16,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../renderer/plugins/i18n';
@@ -597,5 +597,143 @@ describe('TaskCommentDialog listing pagination (TC-6)', () => {
     );
     expect(keyWarnings).toHaveLength(0);
     errorSpy.mockRestore();
+  });
+});
+
+describe('TaskCommentDialog listing follow-up (TC-6 advisories)', () => {
+  beforeEach(async () => {
+    mockGetTemplates.mockReset();
+    mockFetchPeople.mockReset();
+    mockFetchComments.mockReset();
+    mockAddComment.mockReset();
+    mockUpload.mockReset();
+    mockGetTemplates.mockResolvedValue([]);
+    mockFetchPeople.mockResolvedValue({ success: true, people: [] });
+    mockFetchComments.mockResolvedValue({ success: true, comments: [] });
+    mockAddComment.mockResolvedValue({ success: true });
+    mockUpload.mockResolvedValue({ success: false });
+    await i18n.changeLanguage('en');
+  });
+  afterEach(() => cleanup());
+
+  type CommentsResult = Awaited<ReturnType<typeof fetchTWCommentsForTask>>;
+
+  const COMMENTS_PAGE_SIZE = 50;
+
+  const makeComment = (n: number): TWComment => ({
+    id: `c${n}`,
+    body: `Comment body ${n}`,
+    authorName: `Author ${n}`,
+    datetime: '',
+    attachmentsCount: 0
+  });
+
+  /** Flush pending microtasks so a deferred fetch continuation can run. */
+  async function flushMicrotasks() {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
+  const loadMoreButton = () => screen.queryByRole('button', { name: i18n.t('taskComment.commentsLoadMore') });
+
+  it('keeps the list and re-enables Load more when an append page resolves { success: false }', async () => {
+    const page1 = Array.from({ length: COMMENTS_PAGE_SIZE }, (_, i) => makeComment(i + 1));
+    mockFetchComments.mockImplementation(async (_twTaskId, page) =>
+      page === 2 ? { success: false } : { success: true, comments: page1, total: 60 }
+    );
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    // Page 1 loaded, so the load-more affordance is visible.
+    expect(await screen.findByText('Comment body 1')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.commentsLoadMore') }));
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith(i18n.t('taskComment.commentsLoadError')));
+    // The page-1 list survives the failed append.
+    expect(screen.getByText('Comment body 1')).toBeInTheDocument();
+    // The retryable button stays present and is not stuck in its loading state.
+    expect(loadMoreButton()).toBeInTheDocument();
+    expect(loadMoreButton()).toBeEnabled();
+  });
+
+  it('keeps the list and re-enables Load more when an append page rejects', async () => {
+    const page1 = Array.from({ length: COMMENTS_PAGE_SIZE }, (_, i) => makeComment(i + 1));
+    mockFetchComments.mockImplementation(async (_twTaskId, page) => {
+      if (page === 2) throw new Error('append boom');
+      return { success: true, comments: page1, total: 60 };
+    });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText('Comment body 1')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.commentsLoadMore') }));
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith(i18n.t('taskComment.commentsLoadError')));
+    expect(screen.getByText('Comment body 1')).toBeInTheDocument();
+    expect(loadMoreButton()).toBeInTheDocument();
+    expect(loadMoreButton()).toBeEnabled();
+  });
+
+  it('ignores a stale replace response that resolves after a newer list (TF-1 guard)', async () => {
+    let resolveFirst: (value: CommentsResult) => void = () => {};
+    mockFetchComments.mockImplementationOnce(
+      () =>
+        new Promise<CommentsResult>((resolve) => {
+          resolveFirst = resolve;
+        })
+    );
+    const freshComment = makeComment(100);
+    const staleComment: TWComment = {
+      id: 'c200',
+      body: 'Stale comment body',
+      authorName: 'Stale Author',
+      datetime: '',
+      attachmentsCount: 0
+    };
+    // Any call after the deferred first one resolves with the fresh comment.
+    mockFetchComments.mockResolvedValue({ success: true, comments: [freshComment] });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    // The first (deferred) fetch is still pending: the loading state is showing.
+    expect(await screen.findByText(i18n.t('taskComment.commentsLoading'))).toBeInTheDocument();
+
+    // Close the dialog while that fetch is still in flight.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    // Reopen: the second fetch resolves with the fresh comment.
+    await user.click(screen.getByRole('button', { name: i18n.t('taskComment.triggerTooltip') }));
+    expect(await screen.findByText(freshComment.body)).toBeInTheDocument();
+
+    // Now the stale first fetch settles late with a different comment. Wrap the
+    // settle in `act` so React flushes any (incorrect) state update before we assert.
+    await act(async () => {
+      resolveFirst({ success: true, comments: [staleComment] });
+      await flushMicrotasks();
+    });
+
+    // The stale response must never overwrite the newer list.
+    expect(screen.getByText(freshComment.body)).toBeInTheDocument();
+    expect(screen.queryByText(staleComment.body)).not.toBeInTheDocument();
+  });
+
+  it('renders the localized load error (not the English literal) when the result carries a stable code', async () => {
+    await i18n.changeLanguage('es');
+    mockFetchComments.mockResolvedValueOnce({
+      success: false,
+      code: 'unexpected_response',
+      message: 'Unexpected response from TeamWork'
+    });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText(i18n.t('taskComment.commentsLoadError'))).toBeInTheDocument();
+    expect(screen.queryByText('Unexpected response from TeamWork')).not.toBeInTheDocument();
   });
 });
