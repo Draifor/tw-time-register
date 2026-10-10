@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 pending one product decision (attachment-only body). No source change yet.
+- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done (add-flow hardened). No TC-3/TC-4 work yet.
 
 ## Objective
 
@@ -132,7 +132,7 @@ No push, no PR, no merge (user owns those).
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
 | TC-1 | Verify TW v1 comments API: POST payload + GET listing endpoint/response; record exact shapes | — | read-only research | [x] done 2026-10-09 |
-| TC-2 | Fix add-flow medium defects: require non-empty body (no attachment-only send), fail-closed on attachment upload failure, notify-load error state | `TaskCommentDialog.tsx`, `locales/en.ts`, `locales/es.ts`, tests | delegated writer | [ ] in progress |
+| TC-2 | Fix add-flow medium defects: require non-empty body (no attachment-only send), fail-closed on attachment upload failure, notify-load error state | `TaskCommentDialog.tsx`, `locales/en.ts`, `locales/es.ts`, tests | delegated writer | [x] done (`481d398`) |
 | TC-3 | Low hardening: template loading/error state, attachment size/type validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts` | delegated writer | [ ] |
 | TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, tests | delegated writer | [ ] |
 | TC-5 | Tests: add-flow (upload/send/error) + listing | `src/tests/**` | delegated writer | [ ] |
@@ -225,6 +225,12 @@ Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
 - 2026-10-09 — **Decision:** attachment-only comments are removed; a non-empty body is required to
   send. TC-2 delegated to a bounded writer (files: `TaskCommentDialog.tsx`, `locales/en.ts`,
   `locales/es.ts`, new `src/tests/renderer/TaskCommentDialog.test.tsx`), TDD RED→GREEN, runner `pnpm test`.
+- 2026-10-09 — **TC-2 done** (`481d398`): the add-comment dialog now requires a non-empty body,
+  aborts the send when any attachment upload fails (visible error, no false success), and renders a
+  distinct notify-load error state with retry-on-reopen. New tests in
+  `src/tests/renderer/TaskCommentDialog.test.tsx` (RED→GREEN, 3 cases). Verification: `pnpm test`
+  646/646 pass, `pnpm type-check` clean, `pnpm lint` 0 errors (82 pre-existing warnings).
+  Known limitation: a previously failed attachment blocks send until the user removes/re-adds it (no auto-retry).
 
 ## Evidence files
 
