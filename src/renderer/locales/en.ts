@@ -574,6 +574,11 @@ const en = {
       notifySearch: 'Search person...',
       notifyEmpty: 'No results',
       notifyLoadError: 'Could not load people. Reopen the list to retry.',
+      commentsTitle: 'Existing comments',
+      commentsLoading: 'Loading comments...',
+      commentsLoadError: 'Could not load comments.',
+      commentsEmpty: 'No comments yet',
+      attachmentsCount: '{{count}} attachment(s)',
       attachmentFailed: 'Could not send: an attachment failed to upload',
       removeNotify: 'Remove'
     }

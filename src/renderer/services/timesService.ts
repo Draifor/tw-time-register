@@ -397,3 +397,18 @@ export interface TWPerson {
 export const fetchTWPeopleForTask = async (
   twTaskId: string
 ): Promise<{ success: boolean; people?: TWPerson[]; message?: string }> => window.Main.fetchTWPeopleForTask(twTaskId);
+
+// TW Task Comments (existing comments list)
+export interface TWComment {
+  id: string;
+  body: string;
+  authorName: string;
+  datetime: string;
+  attachmentsCount: number;
+}
+export const fetchTWCommentsForTask = async (
+  twTaskId: string,
+  page?: number,
+  pageSize?: number
+): Promise<{ success: boolean; comments?: TWComment[]; message?: string }> =>
+  window.Main.fetchTWCommentsForTask(twTaskId, page ?? 1, pageSize ?? 50);

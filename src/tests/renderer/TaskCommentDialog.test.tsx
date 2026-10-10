@@ -29,6 +29,7 @@ vi.mock('sonner', () => ({ toast: toastMock, Toaster: () => null }));
 vi.mock('../../renderer/services/timesService', () => ({
   getCommentTemplates: vi.fn().mockResolvedValue([]),
   fetchTWPeopleForTask: vi.fn().mockResolvedValue({ success: true, people: [] }),
+  fetchTWCommentsForTask: vi.fn().mockResolvedValue({ success: true, comments: [] }),
   addCommentToTWTask: vi.fn().mockResolvedValue({ success: true }),
   uploadPendingFileToTW: vi.fn().mockResolvedValue({ success: false })
 }));
@@ -52,12 +53,15 @@ import TaskCommentDialog from '../../renderer/components/TaskCommentDialog';
 import {
   addCommentToTWTask,
   fetchTWPeopleForTask,
+  fetchTWCommentsForTask,
   uploadPendingFileToTW,
-  getCommentTemplates
+  getCommentTemplates,
+  type TWComment
 } from '../../renderer/services/timesService';
 
 const mockAddComment = vi.mocked(addCommentToTWTask);
 const mockFetchPeople = vi.mocked(fetchTWPeopleForTask);
+const mockFetchComments = vi.mocked(fetchTWCommentsForTask);
 const mockUpload = vi.mocked(uploadPendingFileToTW);
 const mockGetTemplates = vi.mocked(getCommentTemplates);
 
@@ -271,5 +275,113 @@ describe('TaskCommentDialog hardening (TC-3)', () => {
     await user.click(screen.getByRole('button', { name: i18n.t('taskComment.notifyNone') }));
 
     expect(await screen.findByText(i18n.t('taskComment.notifyLoadError'))).toBeInTheDocument();
+  });
+});
+
+describe('TaskCommentDialog existing comments listing (TC-4)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockGetTemplates.mockReset();
+    mockFetchPeople.mockReset();
+    mockFetchComments.mockReset();
+    mockAddComment.mockReset();
+    mockUpload.mockReset();
+    mockGetTemplates.mockResolvedValue([]);
+    mockFetchPeople.mockResolvedValue({ success: true, people: [] });
+    mockFetchComments.mockResolvedValue({ success: true, comments: [] });
+    mockAddComment.mockResolvedValue({ success: true });
+    mockUpload.mockResolvedValue({ success: false });
+    await i18n.changeLanguage('en');
+  });
+  afterEach(() => cleanup());
+
+  type CommentsResult = Awaited<ReturnType<typeof fetchTWCommentsForTask>>;
+
+  const sampleComment: TWComment = {
+    id: 'c1',
+    body: 'First comment body',
+    authorName: 'Ada Lovelace',
+    datetime: '2026-01-02T10:00:00.000Z',
+    attachmentsCount: 0
+  };
+
+  it('shows the loading state while the comment fetch is pending', async () => {
+    let resolveComments: (value: CommentsResult) => void = () => {};
+    mockFetchComments.mockImplementationOnce(
+      () =>
+        new Promise<CommentsResult>((resolve) => {
+          resolveComments = resolve;
+        })
+    );
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText(i18n.t('taskComment.commentsLoading'))).toBeInTheDocument();
+
+    resolveComments({ success: true, comments: [] });
+
+    await waitFor(() => expect(screen.queryByText(i18n.t('taskComment.commentsLoading'))).not.toBeInTheDocument());
+  });
+
+  it('shows the empty message when the task has no comments', async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText(i18n.t('taskComment.commentsEmpty'))).toBeInTheDocument();
+  });
+
+  it('shows a load error and refetches when the retry button is clicked', async () => {
+    mockFetchComments
+      .mockResolvedValueOnce({ success: false, message: 'comments boom' })
+      .mockResolvedValueOnce({ success: true, comments: [sampleComment] });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText('comments boom')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: i18n.t('common.retry') }));
+
+    await waitFor(() => expect(mockFetchComments).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('First comment body')).toBeInTheDocument();
+  });
+
+  it('renders the author and body of each existing comment', async () => {
+    mockFetchComments.mockResolvedValue({
+      success: true,
+      comments: [
+        sampleComment,
+        {
+          id: 'c2',
+          body: 'Second comment body',
+          authorName: 'Alan Turing',
+          datetime: '',
+          attachmentsCount: 2
+        }
+      ]
+    });
+
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('First comment body')).toBeInTheDocument();
+    expect(screen.getByText('Alan Turing')).toBeInTheDocument();
+    expect(screen.getByText('Second comment body')).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('taskComment.attachmentsCount', { count: 2 }))).toBeInTheDocument();
+  });
+
+  it('refetches the comment list after a successful send', async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await waitFor(() => expect(mockFetchComments).toHaveBeenCalledTimes(1));
+
+    await user.type(bodyInput(), 'Brand new comment');
+    await user.click(sendButton());
+
+    await waitFor(() => expect(mockAddComment).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockFetchComments).toHaveBeenCalledTimes(2));
   });
 });

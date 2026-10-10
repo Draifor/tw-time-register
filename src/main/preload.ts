@@ -363,6 +363,10 @@ const api = {
   // TW People (notify picker)
   fetchTWPeopleForTask: (twTaskId: string) => ipcRenderer.invoke('fetchTWPeopleForTask', twTaskId),
 
+  // Existing comments listed for a TW task
+  fetchTWCommentsForTask: (twTaskId: string, page: number, pageSize: number) =>
+    ipcRenderer.invoke('fetchTWCommentsForTask', twTaskId, page, pageSize),
+
   // Auto-updater
   installUpdate: () => ipcRenderer.invoke('install-update'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

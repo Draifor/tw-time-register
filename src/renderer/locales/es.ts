@@ -576,6 +576,11 @@ const es = {
       notifySearch: 'Buscar persona...',
       notifyEmpty: 'Sin resultados',
       notifyLoadError: 'No se pudieron cargar las personas. Vuelve a abrir la lista para reintentar.',
+      commentsTitle: 'Comentarios existentes',
+      commentsLoading: 'Cargando comentarios...',
+      commentsLoadError: 'No se pudieron cargar los comentarios.',
+      commentsEmpty: 'Aún no hay comentarios',
+      attachmentsCount: '{{count}} archivo(s) adjunto(s)',
       attachmentFailed: 'No se pudo enviar: falló la subida de un archivo adjunto',
       removeNotify: 'Quitar'
     }

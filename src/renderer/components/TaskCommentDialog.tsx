@@ -18,8 +18,10 @@ import {
   uploadPendingFileToTW,
   getCommentTemplates,
   fetchTWPeopleForTask,
+  fetchTWCommentsForTask,
   type CommentTemplate,
-  type TWPerson
+  type TWPerson,
+  type TWComment
 } from '../services/timesService';
 
 interface AttachedFile {
@@ -40,13 +42,25 @@ interface TaskCommentDialogProps {
 /** Per-file attachment size cap. File types stay unrestricted. */
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
+/** Format an ISO datetime for display, falling back to the raw value when invalid. */
+function formatCommentDate(datetime: string, language: string): string {
+  const date = new Date(datetime);
+  if (Number.isNaN(date.getTime())) return datetime;
+  return date.toLocaleString(language);
+}
+
 export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [sending, setSending] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  // Existing comments
+  const [comments, setComments] = useState<TWComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
 
   // Templates
   const [templates, setTemplates] = useState<CommentTemplate[]>([]);
@@ -62,6 +76,26 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const [peopleSearch, setPeopleSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Existing comments loading ───────────────────────────────────────────────
+  const loadComments = useCallback(async () => {
+    setCommentsLoading(true);
+    setCommentsError(null);
+    try {
+      const result = await fetchTWCommentsForTask(twTaskId);
+      if (result.success) {
+        setComments(result.comments ?? []);
+      } else {
+        setCommentsError(result.message?.trim() || t('taskComment.commentsLoadError'));
+      }
+    } catch {
+      // A rejected promise (not a resolved { success: false }) must still surface
+      // the error state and never leave the spinner hanging.
+      setCommentsError(t('taskComment.commentsLoadError'));
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [twTaskId, t]);
+
   // ── Template loading ────────────────────────────────────────────────────────
   const loadTemplates = useCallback(async () => {
     setTemplatesLoading(true);
@@ -76,10 +110,13 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
     }
   }, [t]);
 
-  // Load templates when dialog opens.
+  // Load templates and existing comments when dialog opens.
   useEffect(() => {
-    if (open) void loadTemplates();
-  }, [open, loadTemplates]);
+    if (open) {
+      void loadTemplates();
+      void loadComments();
+    }
+  }, [open, loadTemplates, loadComments]);
 
   // ── File helpers ────────────────────────────────────────────────────────────
   const addFiles = useCallback(
@@ -208,6 +245,8 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setBody('');
       setAttachments([]);
       setNotifyIds(new Set());
+      // Refetch so the newly sent comment is reflected in the list.
+      void loadComments();
       setOpen(false);
     } else {
       toast.error(t('taskComment.error'), { description: result.message });
@@ -225,6 +264,8 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setNotifyError(null);
       setPeopleSearch('');
       setPeople([]); // reset so next task fetches fresh project members
+      setComments([]);
+      setCommentsError(null);
     }
     setOpen(val);
   };
@@ -261,6 +302,51 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* ── Existing comments ────────────────────────────────────── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">{t('taskComment.commentsTitle')}</p>
+              {commentsLoading ? (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {t('taskComment.commentsLoading')}
+                </div>
+              ) : commentsError ? (
+                <div className="flex items-center gap-2 text-xs text-destructive">
+                  <span>{commentsError}</span>
+                  <button
+                    type="button"
+                    className="underline hover:no-underline transition-colors"
+                    onClick={() => void loadComments()}
+                    disabled={sending}
+                  >
+                    {t('common.retry')}
+                  </button>
+                </div>
+              ) : comments.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('taskComment.commentsEmpty')}</p>
+              ) : (
+                <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {comments.map((comment) => (
+                    <li key={comment.id} className="rounded-md border bg-muted/30 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground truncate">{comment.authorName || '—'}</span>
+                        {comment.datetime ? (
+                          <span className="shrink-0">{formatCommentDate(comment.datetime, i18n.language)}</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm whitespace-pre-wrap break-words">{comment.body}</p>
+                      {comment.attachmentsCount > 0 ? (
+                        <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Paperclip className="h-3 w-3" />
+                          {t('taskComment.attachmentsCount', { count: comment.attachmentsCount })}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             {/* ── Template picker ──────────────────────────────────────── */}
             {templatesLoading ? (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

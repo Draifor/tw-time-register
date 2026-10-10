@@ -789,3 +789,65 @@ export async function addCommentToTWTask(
     };
   }
 }
+
+/** Minimal renderer-facing shape for a TeamWork task comment. */
+export interface TWComment {
+  id: string;
+  body: string;
+  authorName: string;
+  datetime: string;
+  attachmentsCount: number;
+}
+
+/**
+ * Fetch a page of comments for a TeamWork task.
+ *
+ * `GET /tasks/{twTaskId}/comments.json?page=N&pageSize=M` returns
+ * `{ comments: [...], STATUS: 'OK' }`. Each raw comment is mapped to the
+ * minimal `TWComment` renderer shape below.
+ */
+export async function fetchTWCommentsForTask(
+  twTaskId: string,
+  page = 1,
+  pageSize = 50
+): Promise<{ success: boolean; comments?: TWComment[]; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}/comments.json`, {
+          params: { page, pageSize },
+          headers: {
+            Authorization: buildAuthHeader(username, password),
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }),
+      { method: 'GET' }
+    );
+
+    const raw: Record<string, unknown>[] = (response.data?.comments as Record<string, unknown>[]) ?? [];
+    const comments: TWComment[] = raw.map((c) => {
+      const nestedAuthor = (c.author as Record<string, unknown> | undefined) ?? {};
+      const first = c['author-firstname'] ?? nestedAuthor['first-name'];
+      const last = c['author-lastname'] ?? nestedAuthor['last-name'];
+      return {
+        id: String(c.id ?? ''),
+        body: String(c.body ?? ''),
+        authorName: `${first ?? ''} ${last ?? ''}`.trim(),
+        datetime: String(c.datetime ?? ''),
+        attachmentsCount:
+          Number(c['attachments-count'] ?? (Array.isArray(c.attachments) ? c.attachments.length : 0)) || 0
+      };
+    });
+    return { success: true, comments };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    return {
+      success: false,
+      message: axiosError.response?.data?.message || axiosError.message || 'Failed to fetch comments for task'
+    };
+  }
+}
