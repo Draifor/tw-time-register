@@ -343,6 +343,12 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
   - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 
+### ✅ v1.16.1 — Sincronización con TeamWork sin duplicados (PUBLICADA - Oct 2026)
+
+- [x] Fix — al editar y re-sincronizar un registro ya enviado, se **actualiza** la entrada existente en TeamWork (PUT) en vez de crear una copia; se captura el id real que devuelve TW y se auto-sanan los registros previos sin id (`odd/tasks/tw-sync-integrity.md`)
+- [x] Fix — la instancia de desarrollo y la de producción pueden correr a la vez: `userData` separado para la build de desarrollo (`-dev`)
+- [x] Fix — el diálogo de borrado del Historial ya no se desborda con nombres de tarea largos
+
 ### ✅ v1.16.0 — UX Fase 7 (Reportes) & consistencia de tablas y scroll (PUBLICADA - Oct 2026)
 
 - [x] UX-701 — presets de rango en Reportes (este mes / esta semana / mes anterior + personalizado) con el último rango recordado

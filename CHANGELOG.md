@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.1] - 2026-10-09
+
+### Fixed
+
+- **Sincronización con TeamWork sin duplicados**: al editar y re-sincronizar un registro ya enviado, la app ahora actualiza la entrada existente en TW (PUT) en lugar de crear una copia. Se corrige la captura del id real que devuelve TW (`time-entry.id`) y se agrega **auto-sanado** para los registros previos sin id — busca la entrada existente (endpoint global, ventana ±1 día, filtrada por tarea) y la adopta por día local + duración + descripción; si la búsqueda falla, falla el envío en vez de arriesgar un duplicado (`b9e813c`, `ca3d5f6`, `6fae7e1`; `odd/tasks/tw-sync-integrity.md`)
+- **Instancia dev y producción en simultáneo**: la build de desarrollo usa su propio directorio `userData` (`-dev`), evitando el bloqueo de la caché de disco de Chromium y la pelea por el lock de instancia única al correr la app instalada y `pnpm dev` a la vez (`46e779e`; PR #53)
+- **Historial — borrado con nombres de tarea largos**: el diálogo de confirmación ya no se desborda cuando el nombre de la tarea es una cadena larga sin espacios (`7a66bb3`)
+
 ## [1.16.0] - 2026-10-08
 
 ### Added
