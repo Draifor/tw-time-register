@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done (add-flow hardened). No TC-3/TC-4 work yet.
+- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). No TC-3/TC-4 work yet.
 
 ## Objective
 
@@ -231,6 +231,16 @@ Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
   `src/tests/renderer/TaskCommentDialog.test.tsx` (RED→GREEN, 3 cases). Verification: `pnpm test`
   646/646 pass, `pnpm type-check` clean, `pnpm lint` 0 errors (82 pre-existing warnings).
   Known limitation: a previously failed attachment blocks send until the user removes/re-adds it (no auto-retry).
+- 2026-10-09 — **TC-2 RDD review: APPROVED** (lineage `review-ea22c0033bad97f6`, lens `review-reliability`,
+  target `sha256:e95f4082…`, authority burned). Three advisory (non-blocking) findings, to fold into TC-3:
+  - `TaskCommentDialog.tsx:123` — the `notifyError` fallback uses `result.message ?? t(...)`, so a
+    present-but-empty message string stays `''` (falsy) and falls through to the empty-list branch,
+    reintroducing the silent failure for that input shape. Fix: trim/truthiness fallback.
+  - `TaskCommentDialog.tsx:154-157` — the pre-send `attachments.some((a) => a.error)` guard branch is
+    not covered by a test, and a transient upload failure blocks send until the user removes/re-adds
+    the attachment (no auto-retry). Decide retry semantics in TC-3.
+  - `TaskCommentDialog.tsx:119` — pre-existing: `handleOpenNotify` has no try/catch, so a rejected
+    fetch (not a resolved `success:false`) leaves the spinner stuck and untryable. TC-3 candidate.
 
 ## Evidence files
 
