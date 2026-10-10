@@ -83,17 +83,27 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const [peopleSearch, setPeopleSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /** Monotonic token guarding `loadComments` against out-of-order responses. */
+  const commentsRequestIdRef = useRef(0);
+
   // ── Existing comments loading ───────────────────────────────────────────────
   const loadComments = useCallback(
     async (page = 1, append = false) => {
+      // Monotonic request token: a newer call (replace or append) supersedes any
+      // in-flight response so a stale result never applies over the current list.
+      const requestId = ++commentsRequestIdRef.current;
       if (append) {
         setCommentsLoadingMore(true);
       } else {
         setCommentsLoading(true);
         setCommentsError(null);
+        // A replace supersedes any in-flight append spinner.
+        setCommentsLoadingMore(false);
       }
       try {
         const result = await fetchTWCommentsForTask(twTaskId, page, COMMENTS_PAGE_SIZE);
+        // A newer request owns the state; discard this stale response untouched.
+        if (requestId !== commentsRequestIdRef.current) return;
         if (result.success) {
           const incoming = result.comments ?? [];
           setComments((prev) => (append ? [...prev, ...incoming] : incoming));
@@ -110,21 +120,31 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
           // Keep the current list (and the retryable button) on a failed page.
           toast.error(t('taskComment.commentsLoadError'));
         } else {
-          setCommentsError(result.message?.trim() || t('taskComment.commentsLoadError'));
+          // A stable code maps to a localized message; otherwise fall back to the
+          // service diagnostic, then to the localized default.
+          setCommentsError(
+            result.code
+              ? t('taskComment.commentsLoadError')
+              : result.message?.trim() || t('taskComment.commentsLoadError')
+          );
         }
       } catch {
         // A rejected promise (not a resolved { success: false }) must still surface
         // the error state and never leave the spinner hanging.
+        if (requestId !== commentsRequestIdRef.current) return;
         if (append) {
           toast.error(t('taskComment.commentsLoadError'));
         } else {
           setCommentsError(t('taskComment.commentsLoadError'));
         }
       } finally {
-        if (append) {
-          setCommentsLoadingMore(false);
-        } else {
-          setCommentsLoading(false);
+        // Only the owning request clears its own loading flag.
+        if (requestId === commentsRequestIdRef.current) {
+          if (append) {
+            setCommentsLoadingMore(false);
+          } else {
+            setCommentsLoading(false);
+          }
         }
       }
     },
