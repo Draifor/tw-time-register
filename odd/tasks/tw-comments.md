@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). No TC-3/TC-4 work yet.
+- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). TC-3 done (hardening + advisory findings). TC-4/TC-5 pending.
 
 ## Objective
 
@@ -133,7 +133,7 @@ No push, no PR, no merge (user owns those).
 |---|---|---|---|---|
 | TC-1 | Verify TW v1 comments API: POST payload + GET listing endpoint/response; record exact shapes | — | read-only research | [x] done 2026-10-09 |
 | TC-2 | Fix add-flow medium defects: require non-empty body (no attachment-only send), fail-closed on attachment upload failure, notify-load error state | `TaskCommentDialog.tsx`, `locales/en.ts`, `locales/es.ts`, tests | delegated writer | [x] done (`481d398`) |
-| TC-3 | Low hardening: template loading/error state, attachment size/type validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts` | delegated writer | [ ] |
+| TC-3 | Low hardening: template loading/error state, attachment size validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts`, tests | delegated writer | [x] done (`d200bd4`) |
 | TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, tests | delegated writer | [ ] |
 | TC-5 | Tests: add-flow (upload/send/error) + listing | `src/tests/**` | delegated writer | [ ] |
 
@@ -186,6 +186,27 @@ Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
   and every official sample includes a body. Needs a live smoke test and/or a product decision
   (see TC-2). This is not a payload-shape defect on its own.
 
+## TC-3 — Low hardening (2026-10-10, `d200bd4`)
+
+Scope: the low-severity map defects plus the three TC-2 review advisories.
+
+- Template picker: replaced the silent `.catch(() => {})` with `templatesLoading`/`templatesError` state
+  and a `loadTemplates` callback (the retry button reuses `common.retry`).
+- Attachments: 25 MB per-file cap enforced in `addFiles`; oversized files are not added and surface
+  `taskComment.attachTooLarge`. File types remain unrestricted.
+- Notify search input: added `aria-label` (the placeholder alone was not a label).
+- Fallbacks: `message?.trim() || fallback` in `uploadFile` and `handleOpenNotify` (an empty-but-present
+  message no longer falls through to the empty-list branch).
+- Auto-retry: removed the pre-send `attachments.some(a => a.error)` guard; the send loop re-uploads any
+  attachment lacking a ref and clears its prior error, so a transient failure recovers on the next send.
+- Notify fetch: `handleOpenNotify` wrapped in try/catch/finally so a rejected promise shows the error
+  state and always clears the spinner.
+- `tw_people`: dropped in a guarded migration.
+- i18n: added `attachTooLarge`, `templatesLoading`, `templatesLoadError` to `taskComment` in en + es (parity kept).
+
+Tests: 6 new RED→GREEN cases (oversized reject, auto-retry on send, template load error + retry, notify
+rejection, exact-limit accept, blank-message fallback) in `src/tests/renderer/TaskCommentDialog.test.tsx`.
+
 ## Design decisions
 
 - **Attachment-only comments (decided 2026-10-09): require text.** The send button is
@@ -200,6 +221,15 @@ Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
 - **`tw_people`**: default is to **drop** the dead table in a guarded migration unless TC-3 finds a
   near-term use; do not add weight without need.
 - **Private comments (`isprivate`)**: leave `false`; expose later only if requested.
+- **Attachment size cap (decided 2026-10-10): 25 MB per file.** TeamWork accepts up to 2 GB and does not
+  restrict types, but the app uploads via the classic `pendingfiles.json` in memory with a 30s timeout;
+  25 MB is the safe product cap. File types stay unrestricted (no blocklist) — TW accepts any type and a
+  blocklist would break legitimate flows. Oversized files are rejected up front with a visible toast.
+- **Failed-attachment semantics (decided 2026-10-10): auto-retry on send.** The pre-send hard guard is
+  removed; the send loop re-uploads any attachment lacking a ref (clearing its prior error), so a transient
+  failure recovers on the next send. A permanent failure still aborts with `attachmentFailed`.
+- **`tw_people` (resolved 2026-10-10): dropped.** The table was dead schema (people are fetched live from
+  TW); the migration now runs a guarded `DROP TABLE IF EXISTS tw_people`.
 
 ## Acceptance criteria
 
@@ -214,6 +244,7 @@ Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
 |---|---|---|
 | Mapping | delegated (one explorer) | >5 sequential lookups; broad read-only map of the comments feature |
 | TC-1 | inline (read-only research) | 3 external doc fetches + 2 targeted file reads; within inline evidence budget |
+| TC-3 | delegated writer | 5 files touched (dialog + 2 locales + migration + test); 2+ non-trivial files |
 
 ## Progress
 
@@ -241,6 +272,12 @@ Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
     the attachment (no auto-retry). Decide retry semantics in TC-3.
   - `TaskCommentDialog.tsx:119` — pre-existing: `handleOpenNotify` has no try/catch, so a rejected
     fetch (not a resolved `success:false`) leaves the spinner stuck and untryable. TC-3 candidate.
+- 2026-10-10 — **TC-3 done** (`d200bd4`): see the TC-3 section above. 6 new RED→GREEN tests
+  (`src/tests/renderer/TaskCommentDialog.test.tsx`, 9 total in the file). Verification: `pnpm test`
+  82 files / 652 tests pass, `pnpm type-check` clean, `pnpm lint` 0 errors (82 pre-existing warnings),
+  `pnpm build` OK.
+- 2026-10-10 — **TC-3 RDD assessment:** `review_due: false` (`under_budget`), risk `medium` — the slice
+  is under the ~400 authored-line delivery budget, so no native review is due for this commit.
 
 ## Evidence files
 
