@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). TC-3 done (hardening + advisory findings). TC-4 done + RDD-reviewed (APPROVED). TC-5 pending.
+- **Status:** **TASKS COMPLETE.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). TC-3 done (hardening + advisory findings). TC-4 done + RDD-reviewed (APPROVED). TC-5 done (test coverage: add/send flow + main-service comment mapper). No push/PR/merge (user owns delivery).
 
 ## Objective
 
@@ -135,7 +135,7 @@ No push, no PR, no merge (user owns those).
 | TC-2 | Fix add-flow medium defects: require non-empty body (no attachment-only send), fail-closed on attachment upload failure, notify-load error state | `TaskCommentDialog.tsx`, `locales/en.ts`, `locales/es.ts`, tests | delegated writer | [x] done (`481d398`) |
 | TC-3 | Low hardening: template loading/error state, attachment size validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts`, tests | delegated writer | [x] done (`d200bd4`) |
 | TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) + listing tests | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, `TaskCommentDialog.test.tsx` | delegated writer | [x] done (`ad40d7d`) + RDD APPROVED |
-| TC-5 | Tests: add-flow (upload/send/error) paths | `src/tests/**` | delegated writer | [ ] |
+| TC-5 | Tests: add-flow (upload/send/error) paths | `src/tests/**` | delegated writer | [x] done (`9c5578b`) |
 
 ## TC-1 — Verified TW v1 comment API shapes (2026-10-09)
 
@@ -248,6 +248,31 @@ Verification: `pnpm test` 82 files / 657 tests pass; `pnpm type-check` clean; `p
   - `TaskCommentDialog.tsx:330` (SUGGESTION, R3-4) — rows key on `comment.id`; a missing id coerces to
     `''`, so id-less comments would collide on `key=''`.
 
+## TC-5 — Test coverage (2026-10-10, `9c5578b`)
+
+Scope: add-flow (upload / send / error) coverage, folding TC-4 advisory finding **R3-2** (main-service
+mapping tests). Test-only — no production change.
+
+- `src/tests/renderer/TaskCommentDialog.test.tsx` — new `describe('TaskCommentDialog add/send flow (TC-5)')`
+  (7 cases): body-only happy path (`addCommentToTWTask('12345', body, '', '')` + success toast + dialog
+  closes); single attachment ref passed as the 3rd arg; multiple refs comma-joined in attachment order;
+  server rejection (error toast with `{ description }`, dialog stays open, body preserved, no success toast);
+  notify ids comma-joined in the 4th arg; template selection applies the body; same-name/same-size dedup plus
+  a removed attachment excluded from the refs.
+- `src/tests/main/services/apiService.test.ts` — new `describe('fetchTWCommentsForTask')` (9 cases: flat
+  author mapping; nested-`author` fallback; `attachmentsCount` from `attachments.length` then `0`; missing-field
+  defaults; default URL + `{ page: 1, pageSize: 50 }`; custom pagination; missing-creds fails without a request;
+  rejection message from `response.data.message`; rejection fallback to the error message) and
+  `describe('addCommentToTWTask')` (3 cases: POST URL + exact payload + top-level `commentId`; flat `id`
+  fallback; API error message). This executes the main-process agreement mapper that the renderer tests stub.
+
+Verification: `pnpm test` 82 files / 676 tests pass; `pnpm type-check` clean; `pnpm lint` 0 errors (82
+pre-existing warnings). Orchestrator spot check of the focused run: 2 files / 63 tests pass.
+
+RDD assessment for `9c5578b` (base `ad40d7d`): risk `medium`, `review_due: false` (`under_budget`,
+393 changed lines) → no native review due. No defects surfaced; **R3-2 is now covered**. R3-1/R3-3/R3-4
+remain non-blocking advisory follow-ups (out of scope for this feature).
+
 ## Design decisions
 
 - **Attachment-only comments (decided 2026-10-09): require text.** The send button is
@@ -287,6 +312,7 @@ Verification: `pnpm test` 82 files / 657 tests pass; `pnpm type-check` clean; `p
 | TC-1 | inline (read-only research) | 3 external doc fetches + 2 targeted file reads; within inline evidence budget |
 | TC-3 | delegated writer | 5 files touched (dialog + 2 locales + migration + test); 2+ non-trivial files |
 | TC-4 | delegated writer | 8 files touched (apiService + IPC + preload + timesService + dialog + 2 locales + test); writer trigger (2+ non-trivial files) |
+| TC-5 | delegated writer | 2 non-trivial test files touched (renderer dialog suite + main-service apiService suite); writer trigger (2+ non-trivial files) |
 
 ## Progress
 
@@ -329,6 +355,19 @@ Verification: `pnpm test` 82 files / 657 tests pass; `pnpm type-check` clean; `p
   tests). Note: the reviewer Task returned empty twice while the prompt was over-materialized; relaunching
   with the exact `provider_task.prompt` (binding line only) succeeded — the live transport supplies the
   patch context.
+- 2026-10-10 — **TC-5 done** (`9c5578b`): test-only coverage of the add/send flow + the main-service comment
+  mapper (folds R3-2), see the TC-5 section above. 19 new tests (7 renderer + 12 main-service). Verification:
+  `pnpm test` 82 files / 676 tests pass; `pnpm type-check` clean; `pnpm lint` 0 errors (82 pre-existing
+  warnings). No production code changed.
+- 2026-10-10 — **TC-5 RDD assessment:** `review_due: false` (`under_budget`, 393 changed lines), risk
+  `medium` — no native review due for this commit.
+
+## Next
+
+- **All tasks done (TC-1…TC-5).** Non-blocking advisory follow-ups left for later: R3-1 (listing fetch
+  fails open on malformed `comments`), R3-3 (listing hard-capped at page 1 / pageSize 50, no pagination UI),
+  R3-4 (row key on missing `comment.id` collides on `key=''`).
+- No push / no PR / no merge — the user owns delivery.
 
 ## Evidence files
 
