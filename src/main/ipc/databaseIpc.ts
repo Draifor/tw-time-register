@@ -62,6 +62,7 @@ import {
   debugTWSubtasks,
   fetchTWTaskDetails,
   fetchTWPeopleForTask,
+  fetchTWCommentsForTask,
   addCommentToTWTask,
   uploadPendingFileToTW
 } from '../services/apiService';
@@ -368,3 +369,8 @@ ipcMain.handle('deleteCommentTemplate', async (_event, templateId: number) => de
 
 // TW People (for notify picker)
 ipcMain.handle('fetchTWPeopleForTask', async (_event, twTaskId: string) => fetchTWPeopleForTask(twTaskId));
+
+// Existing comments listed for a TW task
+ipcMain.handle('fetchTWCommentsForTask', async (_event, twTaskId: string, page: number, pageSize: number) =>
+  fetchTWCommentsForTask(twTaskId, page, pageSize)
+);

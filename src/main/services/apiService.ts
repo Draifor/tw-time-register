@@ -789,3 +789,86 @@ export async function addCommentToTWTask(
     };
   }
 }
+
+/** Minimal renderer-facing shape for a TeamWork task comment. */
+export interface TWComment {
+  id: string;
+  body: string;
+  authorName: string;
+  datetime: string;
+  attachmentsCount: number;
+}
+
+/**
+ * Fetch a page of comments for a TeamWork task.
+ *
+ * `GET /tasks/{twTaskId}/comments.json?page=N&pageSize=M` returns
+ * `{ comments: [...], STATUS: 'OK' }`. Each raw comment is mapped to the
+ * minimal `TWComment` renderer shape below. The total record count is read from
+ * the `X-Records` response header when present. A non-array `comments` payload
+ * or an explicit non-OK `STATUS` fails closed instead of being coalesced to `[]`.
+ */
+export async function fetchTWCommentsForTask(
+  twTaskId: string,
+  page = 1,
+  pageSize = 50
+): Promise<{ success: boolean; comments?: TWComment[]; total?: number; message?: string }> {
+  const { domain, username, password } = await getTWCredentials();
+  if (!domain || !username || !password) return { success: false, message: 'TeamWork credentials not configured' };
+
+  try {
+    const response = await withRetry(
+      () =>
+        axios.get(`https://${domain}.teamwork.com/tasks/${twTaskId}/comments.json`, {
+          params: { page, pageSize },
+          headers: {
+            Authorization: buildAuthHeader(username, password),
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }),
+      { method: 'GET' }
+    );
+
+    // Fail closed: a non-array payload or an explicit non-OK STATUS is a malformed
+    // response, never an empty comment list.
+    const rawComments: unknown = response.data?.comments;
+    const status: unknown = response.data?.STATUS;
+    const statusFailed = typeof status === 'string' && status.toUpperCase() !== 'OK';
+    if (!Array.isArray(rawComments) || statusFailed) {
+      return { success: false, message: 'Unexpected response from TeamWork' };
+    }
+
+    const raw = rawComments as Record<string, unknown>[];
+    const comments: TWComment[] = raw.map((c) => {
+      const nestedAuthor = (c.author as Record<string, unknown> | undefined) ?? {};
+      const first = c['author-firstname'] ?? nestedAuthor['first-name'];
+      const last = c['author-lastname'] ?? nestedAuthor['last-name'];
+      return {
+        id: String(c.id ?? ''),
+        body: String(c.body ?? ''),
+        authorName: `${first ?? ''} ${last ?? ''}`.trim(),
+        datetime: String(c.datetime ?? ''),
+        attachmentsCount:
+          Number(c['attachments-count'] ?? (Array.isArray(c.attachments) ? c.attachments.length : 0)) || 0
+      };
+    });
+
+    // Total record count comes from the `X-Records` header (axios lowercases keys).
+    const headers = response.headers as Record<string, unknown> | undefined;
+    const rawTotal = headers?.['x-records'];
+    const parsedTotal = typeof rawTotal === 'number' ? rawTotal : Number(rawTotal);
+    const total =
+      rawTotal !== undefined && rawTotal !== null && rawTotal !== '' && Number.isFinite(parsedTotal)
+        ? parsedTotal
+        : undefined;
+
+    return { success: true, comments, total };
+  } catch (error) {
+    const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+    return {
+      success: false,
+      message: axiosError.response?.data?.message || axiosError.message || 'Failed to fetch comments for task'
+    };
+  }
+}

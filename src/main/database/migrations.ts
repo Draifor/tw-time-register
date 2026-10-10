@@ -103,16 +103,11 @@ export async function runMigrations(): Promise<void> {
   `);
   log('Migration: comment_templates table ensured');
 
-  // Migration: create tw_people cache table (idempotent)
-  await db.run(`
-    CREATE TABLE IF NOT EXISTS tw_people (
-      person_id  TEXT PRIMARY KEY,
-      name       TEXT NOT NULL,
-      email      TEXT,
-      cached_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  log('Migration: tw_people table ensured');
+  // Migration: drop the unused tw_people cache table (idempotent).
+  // The table was a dead schema: people are fetched live from TeamWork, so it is
+  // dropped on every startup that still carries it.
+  await db.run('DROP TABLE IF EXISTS tw_people');
+  log('Migration: dropped unused tw_people table');
 
   // Migration: create worktime_drafts table (idempotent)
   await db.run(`

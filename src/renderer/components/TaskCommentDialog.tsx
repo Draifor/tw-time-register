@@ -18,8 +18,10 @@ import {
   uploadPendingFileToTW,
   getCommentTemplates,
   fetchTWPeopleForTask,
+  fetchTWCommentsForTask,
   type CommentTemplate,
-  type TWPerson
+  type TWPerson,
+  type TWComment
 } from '../services/timesService';
 
 interface AttachedFile {
@@ -37,44 +39,134 @@ interface TaskCommentDialogProps {
   taskName: string;
 }
 
+/** Per-file attachment size cap. File types stay unrestricted. */
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+/** Page size for the existing-comments listing. */
+const COMMENTS_PAGE_SIZE = 50;
+
+/** Format an ISO datetime for display, falling back to the raw value when invalid. */
+function formatCommentDate(datetime: string, language: string): string {
+  const date = new Date(datetime);
+  if (Number.isNaN(date.getTime())) return datetime;
+  return date.toLocaleString(language);
+}
+
 export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [sending, setSending] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+  // Existing comments
+  const [comments, setComments] = useState<TWComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [commentsTotal, setCommentsTotal] = useState<number | undefined>(undefined);
+  const [commentsLoadingMore, setCommentsLoadingMore] = useState(false);
+
   // Templates
   const [templates, setTemplates] = useState<CommentTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
 
   // Notify people
   const [people, setPeople] = useState<TWPerson[]>([]);
   const [notifyIds, setNotifyIds] = useState<Set<string>>(new Set());
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [loadingPeople, setLoadingPeople] = useState(false);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
   const [peopleSearch, setPeopleSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Load templates when dialog opens ────────────────────────────────────────
+  // ── Existing comments loading ───────────────────────────────────────────────
+  const loadComments = useCallback(
+    async (page = 1, append = false) => {
+      if (append) {
+        setCommentsLoadingMore(true);
+      } else {
+        setCommentsLoading(true);
+        setCommentsError(null);
+      }
+      try {
+        const result = await fetchTWCommentsForTask(twTaskId, page, COMMENTS_PAGE_SIZE);
+        if (result.success) {
+          const incoming = result.comments ?? [];
+          setComments((prev) => (append ? [...prev, ...incoming] : incoming));
+          setCommentsPage(page);
+          setCommentsTotal(result.total);
+          // Derive "has more" from pagination state, never from `comments`, so the
+          // callback identity stays stable and the open effect does not loop.
+          setCommentsHasMore(
+            result.total !== undefined
+              ? page * COMMENTS_PAGE_SIZE < result.total
+              : incoming.length === COMMENTS_PAGE_SIZE
+          );
+        } else if (append) {
+          // Keep the current list (and the retryable button) on a failed page.
+          toast.error(t('taskComment.commentsLoadError'));
+        } else {
+          setCommentsError(result.message?.trim() || t('taskComment.commentsLoadError'));
+        }
+      } catch {
+        // A rejected promise (not a resolved { success: false }) must still surface
+        // the error state and never leave the spinner hanging.
+        if (append) {
+          toast.error(t('taskComment.commentsLoadError'));
+        } else {
+          setCommentsError(t('taskComment.commentsLoadError'));
+        }
+      } finally {
+        if (append) {
+          setCommentsLoadingMore(false);
+        } else {
+          setCommentsLoading(false);
+        }
+      }
+    },
+    [twTaskId, t]
+  );
+
+  // ── Template loading ────────────────────────────────────────────────────────
+  const loadTemplates = useCallback(async () => {
+    setTemplatesLoading(true);
+    setTemplatesError(null);
+    try {
+      const result = await getCommentTemplates();
+      setTemplates(result);
+    } catch {
+      setTemplatesError(t('taskComment.templatesLoadError'));
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, [t]);
+
+  // Load templates and existing comments when dialog opens.
   useEffect(() => {
     if (open) {
-      getCommentTemplates()
-        .then(setTemplates)
-        .catch(() => {});
+      void loadTemplates();
+      void loadComments();
     }
-  }, [open]);
+  }, [open, loadTemplates, loadComments]);
 
   // ── File helpers ────────────────────────────────────────────────────────────
   const addFiles = useCallback(
     (files: FileList | File[]) => {
-      const incoming = Array.from(files).filter(
+      const deduped = Array.from(files).filter(
         (f) => !attachments.some((a) => a.file.name === f.name && a.file.size === f.size)
       );
-      if (!incoming.length) return;
-      setAttachments((prev) => [...prev, ...incoming.map((file) => ({ file, uploading: false }))]);
+      const accepted = deduped.filter((f) => f.size <= MAX_ATTACHMENT_BYTES);
+      if (deduped.some((f) => f.size > MAX_ATTACHMENT_BYTES)) {
+        toast.error(t('taskComment.attachTooLarge', { max: '25 MB' }));
+      }
+      if (!accepted.length) return;
+      setAttachments((prev) => [...prev, ...accepted.map((file) => ({ file, uploading: false }))]);
     },
-    [attachments]
+    [attachments, t]
   );
 
   const removeAttachment = (idx: number) => {
@@ -92,7 +184,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
     }
     setAttachments((prev) =>
       prev.map((a, i) =>
-        i === idx ? { ...a, uploading: false, error: result.message ?? t('taskComment.uploadError') } : a
+        i === idx ? { ...a, uploading: false, error: result.message?.trim() || t('taskComment.uploadError') } : a
       )
     );
     return null;
@@ -114,10 +206,22 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
   const handleOpenNotify = useCallback(async () => {
     if (people.length > 0 || loadingPeople) return;
     setLoadingPeople(true);
-    const result = await fetchTWPeopleForTask(twTaskId);
-    if (result.success && result.people) setPeople(result.people);
-    setLoadingPeople(false);
-  }, [people.length, loadingPeople, twTaskId]);
+    setNotifyError(null);
+    try {
+      const result = await fetchTWPeopleForTask(twTaskId);
+      if (result.success && result.people) {
+        setPeople(result.people);
+      } else {
+        setNotifyError(result.message?.trim() || t('taskComment.notifyLoadError'));
+      }
+    } catch {
+      // A rejected promise (not a resolved { success: false }) must still surface
+      // the error state and never leave the spinner hanging.
+      setNotifyError(t('taskComment.notifyLoadError'));
+    } finally {
+      setLoadingPeople(false);
+    }
+  }, [people.length, loadingPeople, twTaskId, t]);
 
   const handleNotifyOpenChange = (nextOpen: boolean) => {
     setNotifyOpen(nextOpen);
@@ -142,17 +246,28 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
 
   // ── Send ────────────────────────────────────────────────────────────────────
   const handleSend = async () => {
-    if (!body.trim() && attachments.length === 0) return;
+    // A comment must carry a non-empty body (attachment-only sends are not supported).
+    if (!body.trim()) return;
+
     setSending(true);
 
     const refs: string[] = [];
+    let uploadFailed = false;
     for (let i = 0; i < attachments.length; i++) {
       if (attachments[i].ref) {
         refs.push(attachments[i].ref!);
       } else {
         const ref = await uploadFile(i);
         if (ref) refs.push(ref);
+        else uploadFailed = true;
       }
+    }
+
+    // Any failed attachment aborts the send and keeps the dialog open.
+    if (uploadFailed) {
+      setSending(false);
+      toast.error(t('taskComment.attachmentFailed'));
+      return;
     }
 
     const notify = [...notifyIds].join(',');
@@ -165,6 +280,8 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setBody('');
       setAttachments([]);
       setNotifyIds(new Set());
+      // Refetch so the newly sent comment is reflected in the list.
+      void loadComments();
       setOpen(false);
     } else {
       toast.error(t('taskComment.error'), { description: result.message });
@@ -179,8 +296,15 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
       setDragOver(false);
       setNotifyIds(new Set());
       setNotifyOpen(false);
+      setNotifyError(null);
       setPeopleSearch('');
       setPeople([]); // reset so next task fetches fresh project members
+      setComments([]);
+      setCommentsError(null);
+      setCommentsPage(1);
+      setCommentsHasMore(false);
+      setCommentsTotal(undefined);
+      setCommentsLoadingMore(false);
     }
     setOpen(val);
   };
@@ -217,8 +341,89 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* ── Existing comments ────────────────────────────────────── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">{t('taskComment.commentsTitle')}</p>
+              {commentsLoading ? (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {t('taskComment.commentsLoading')}
+                </div>
+              ) : commentsError ? (
+                <div className="flex items-center gap-2 text-xs text-destructive">
+                  <span>{commentsError}</span>
+                  <button
+                    type="button"
+                    className="underline hover:no-underline transition-colors"
+                    onClick={() => void loadComments()}
+                    disabled={sending}
+                  >
+                    {t('common.retry')}
+                  </button>
+                </div>
+              ) : comments.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('taskComment.commentsEmpty')}</p>
+              ) : (
+                <>
+                  <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {comments.map((comment, index) => (
+                      <li key={comment.id || `comment-${index}`} className="rounded-md border bg-muted/30 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground truncate">{comment.authorName || '—'}</span>
+                          {comment.datetime ? (
+                            <span className="shrink-0">{formatCommentDate(comment.datetime, i18n.language)}</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-sm whitespace-pre-wrap break-words">{comment.body}</p>
+                        {comment.attachmentsCount > 0 ? (
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Paperclip className="h-3 w-3" />
+                            {t('taskComment.attachmentsCount', { count: comment.attachmentsCount })}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {comments.length > 0 && (commentsHasMore || commentsTotal !== undefined) ? (
+                    <p className="text-xs text-muted-foreground">
+                      {commentsTotal !== undefined
+                        ? t('taskComment.commentsShowingTotal', { loaded: comments.length, total: commentsTotal })
+                        : t('taskComment.commentsShowing', { loaded: comments.length })}
+                    </p>
+                  ) : null}
+                  {commentsHasMore ? (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline hover:no-underline transition-colors disabled:opacity-50"
+                      onClick={() => void loadComments(commentsPage + 1, true)}
+                      disabled={sending || commentsLoadingMore}
+                    >
+                      {t('taskComment.commentsLoadMore')}
+                    </button>
+                  ) : null}
+                </>
+              )}
+            </div>
+
             {/* ── Template picker ──────────────────────────────────────── */}
-            {templates.length > 0 && (
+            {templatesLoading ? (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {t('taskComment.templatesLoading')}
+              </div>
+            ) : templatesError ? (
+              <div className="flex items-center gap-2 text-xs text-destructive">
+                <span>{templatesError}</span>
+                <button
+                  type="button"
+                  className="underline hover:no-underline transition-colors"
+                  onClick={() => void loadTemplates()}
+                  disabled={sending}
+                >
+                  {t('common.retry')}
+                </button>
+              </div>
+            ) : templates.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -243,7 +448,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+            ) : null}
 
             {/* ── Comment textarea ─────────────────────────────────────── */}
             <div className="space-y-1.5">
@@ -280,6 +485,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                       type="text"
                       autoFocus
                       className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                      aria-label={t('taskComment.notifySearch')}
                       placeholder={t('taskComment.notifySearch')}
                       value={peopleSearch}
                       onChange={(e) => setPeopleSearch(e.target.value)}
@@ -291,6 +497,8 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
                       <div className="flex items-center justify-center py-6">
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       </div>
+                    ) : notifyError ? (
+                      <p className="px-3 py-4 text-center text-xs text-destructive">{notifyError}</p>
                     ) : filteredPeople.length === 0 ? (
                       <p className="py-4 text-center text-xs text-muted-foreground">{t('taskComment.notifyEmpty')}</p>
                     ) : (
@@ -400,7 +608,7 @@ export default function TaskCommentDialog({ twTaskId, taskName }: TaskCommentDia
             <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={sending}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleSend} disabled={sending || (!body.trim() && attachments.length === 0)}>
+            <Button onClick={handleSend} disabled={sending || !body.trim()}>
               {sending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

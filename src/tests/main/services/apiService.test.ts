@@ -22,6 +22,8 @@ import {
   fetchUserTimeEntriesForTask,
   fetchUserTimeEntriesInRange,
   fetchTWTaskDetails,
+  fetchTWCommentsForTask,
+  addCommentToTWTask,
   type SendTimeEntryInput
 } from '../../../main/services/apiService';
 
@@ -443,5 +445,258 @@ describe('TWTimeEntry localDate mapping', () => {
     expect(result.success).toBe(true);
     expect(result.entries?.[0].date).toBe('2026-09-25T00:40:00Z');
     expect(result.entries?.[0].localDate).toBe('2026-09-24');
+  });
+});
+
+// ── fetchTWCommentsForTask ────────────────────────────────────────────────────
+
+describe('fetchTWCommentsForTask', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('maps flat author fields to the renderer comment shape', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({
+      data: {
+        comments: [
+          {
+            id: 'c1',
+            body: 'hi',
+            'author-firstname': 'Ada',
+            'author-lastname': 'Lovelace',
+            datetime: '2026-01-02T10:00:00.000Z',
+            'attachments-count': 2
+          }
+        ]
+      }
+    });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(true);
+    expect(result.comments).toEqual([
+      {
+        id: 'c1',
+        body: 'hi',
+        authorName: 'Ada Lovelace',
+        datetime: '2026-01-02T10:00:00.000Z',
+        attachmentsCount: 2
+      }
+    ]);
+  });
+
+  it('falls back to the nested author object when flat fields are absent', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({
+      data: {
+        comments: [
+          {
+            id: 'c2',
+            body: 'nested',
+            author: { 'first-name': 'Alan', 'last-name': 'Turing' },
+            datetime: '',
+            'attachments-count': 0
+          }
+        ]
+      }
+    });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.comments?.[0].authorName).toBe('Alan Turing');
+  });
+
+  it('falls back to attachments.length for the count and defaults to 0 when absent', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({
+      data: {
+        comments: [
+          { id: 'c3', body: 'a', attachments: [{}, {}] },
+          { id: 'c4', body: 'b' }
+        ]
+      }
+    });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.comments?.[0].attachmentsCount).toBe(2);
+    expect(result.comments?.[1].attachmentsCount).toBe(0);
+  });
+
+  it('defaults missing id, body, datetime and author to empty values', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [{}] } });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.comments?.[0]).toEqual({
+      id: '',
+      body: '',
+      authorName: '',
+      datetime: '',
+      attachmentsCount: 0
+    });
+  });
+
+  it('requests the comments endpoint with the default pagination', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] } });
+
+    await fetchTWCommentsForTask('12345');
+
+    const [url, config] = (mockedAxios.get as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      { params: { page: number; pageSize: number } }
+    ];
+    expect(url).toBe('https://acme.teamwork.com/tasks/12345/comments.json');
+    expect(config.params).toEqual({ page: 1, pageSize: 50 });
+  });
+
+  it('passes custom pagination parameters through', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] } });
+
+    await fetchTWCommentsForTask('12345', 3, 10);
+
+    const [, config] = (mockedAxios.get as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      { params: { page: number; pageSize: number } }
+    ];
+    expect(config.params).toEqual({ page: 3, pageSize: 10 });
+  });
+
+  it('fails without a request when credentials are missing', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(emptyCreds);
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/not configured/i);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
+  it('surfaces the API message when the request rejects with a response body', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockRejectedValue({
+      response: { data: { message: 'Nope' } },
+      message: 'Request failed with status code 500'
+    });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Nope');
+  });
+
+  it('falls back to the error message when the response body has no message', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockRejectedValue(new Error('Network down'));
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Network down');
+  });
+
+  it('fails closed when the comments field is missing or not an array (R3-1)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: {} });
+    const missing = await fetchTWCommentsForTask('12345');
+    expect(missing.success).toBe(false);
+    expect(missing.comments).toBeUndefined();
+    expect(missing.message).toBe('Unexpected response from TeamWork');
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: 'nope' } });
+    const nonArray = await fetchTWCommentsForTask('12345');
+    expect(nonArray.success).toBe(false);
+    expect(nonArray.comments).toBeUndefined();
+    expect(nonArray.message).toBe('Unexpected response from TeamWork');
+  });
+
+  it('fails closed when STATUS is present and not OK (R3-1)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [], STATUS: 'FAIL' } });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Unexpected response from TeamWork');
+  });
+
+  it('stays successful for a valid array with no STATUS field (R3-1 regression)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] } });
+
+    const result = await fetchTWCommentsForTask('12345');
+
+    expect(result.success).toBe(true);
+    expect(result.comments).toEqual([]);
+  });
+
+  it('reads the total from the x-records response header, and leaves it undefined when absent (R3-1)', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] }, headers: { 'x-records': '60' } });
+    const withHeader = await fetchTWCommentsForTask('12345');
+    expect(withHeader.success).toBe(true);
+    expect(withHeader.total).toBe(60);
+
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { comments: [] } });
+    const withoutHeader = await fetchTWCommentsForTask('12345');
+    expect(withoutHeader.success).toBe(true);
+    expect(withoutHeader.total).toBeUndefined();
+  });
+});
+
+// ── addCommentToTWTask ────────────────────────────────────────────────────────
+
+describe('addCommentToTWTask', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('posts the comment payload and returns the top-level commentId', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { commentId: 555 } });
+
+    const result = await addCommentToTWTask('12345', 'Hello', 'ref-1', 'p1');
+
+    expect(result.success).toBe(true);
+    expect(result.commentId).toBe(555);
+    const [url, payload] = (mockedAxios.post as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      { comment: Record<string, unknown> }
+    ];
+    expect(url).toBe('https://acme.teamwork.com/tasks/12345/comments.json');
+    expect(payload).toEqual({
+      comment: {
+        body: 'Hello',
+        'content-type': 'text',
+        notify: 'p1',
+        isprivate: false,
+        pendingFileAttachments: 'ref-1'
+      }
+    });
+  });
+
+  it('falls back to the flat id when commentId is absent', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { id: 777 } });
+
+    const result = await addCommentToTWTask('12345', 'Hello');
+
+    expect(result.success).toBe(true);
+    expect(result.commentId).toBe(777);
+  });
+
+  it('returns the API message when the POST fails', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockRejectedValue({
+      response: { data: { MESSAGE: 'Task not found' } },
+      message: 'Request failed with status code 404'
+    });
+
+    const result = await addCommentToTWTask('12345', 'Hello');
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Task not found');
   });
 });
