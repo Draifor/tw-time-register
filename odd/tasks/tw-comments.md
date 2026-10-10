@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **OPEN — not started.** Plan persisted only; no source change yet.
+- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 pending one product decision (attachment-only body). No source change yet.
 
 ## Objective
 
@@ -131,14 +131,67 @@ No push, no PR, no merge (user owns those).
 
 | ID | Task | Files | Route | Status |
 |---|---|---|---|---|
-| TC-1 | Verify TW v1 comments API: POST payload + GET listing endpoint/response; record exact shapes | — | read-only research | [ ] |
-| TC-2 | Fix add-flow medium defects: guard attachment-only empty body, surface failed attachments, notify-load error state | `TaskCommentDialog.tsx` (+`apiService.ts` if payload), tests | delegated writer | [ ] |
+| TC-1 | Verify TW v1 comments API: POST payload + GET listing endpoint/response; record exact shapes | — | read-only research | [x] done 2026-10-09 |
+| TC-2 | Fix add-flow medium defects: require non-empty body (no attachment-only send), fail-closed on attachment upload failure, notify-load error state | `TaskCommentDialog.tsx`, `locales/en.ts`, `locales/es.ts`, tests | delegated writer | [ ] in progress |
 | TC-3 | Low hardening: template loading/error state, attachment size/type validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts` | delegated writer | [ ] |
 | TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, tests | delegated writer | [ ] |
 | TC-5 | Tests: add-flow (upload/send/error) + listing | `src/tests/**` | delegated writer | [ ] |
 
+## TC-1 — Verified TW v1 comment API shapes (2026-10-09)
+
+Evidence: official API v1 reference (`apidocs.teamwork.com` comments pages), the official
+`Teamwork/Teamwork.com-API-Request-Examples` repo, and the community Teamwork MCP tool. No source change.
+
+### POST — create comment
+
+`POST https://{domain}.teamwork.com/tasks/{taskId}/comments.json`
+
+```json
+{
+  "comment": {
+    "body": "text",
+    "content-type": "text",
+    "notify": "",
+    "isprivate": false,
+    "pendingFileAttachments": "tf_...,tf_..."
+  }
+}
+```
+
+- `content-type`: `"text"` = plain (official samples use `"TEXT"`/`"text"`; case-insensitive), `"html"` for HTML.
+  Current code's `"text"` matches a confirmed working sample → **no change needed**.
+- `notify`: `""` none · `"true"` followers/assignees · `"all"` whole project · comma-list of user IDs.
+  **Gotcha: you cannot notify yourself** (TW rejects the author id in the list).
+- `pendingFileAttachments`: comma-separated `tf_...` refs returned by `POST /pendingfiles.json`.
+  Current code already joins refs with `,` → correct.
+- Response: `{ "commentId": "4294639", "STATUS": "OK" }`. `commentId` is a **string** (current code
+  reads `commentId || id` — correct; its TS return type claims `number`, a minor type lie).
+
+### GET — list comments
+
+`GET https://{domain}.teamwork.com/tasks/{taskId}/comments.json?page=N&pageSize=M`
+
+Response: `{ "comments": [ { ... } ], "STATUS": "OK" }`. Per-comment fields usable by the listing UI:
+
+- `id` (string), `body`, `html-body`, `content-type`
+- `author-id`, `author-firstname`, `author-lastname`, `datetime` (ISO 8601)
+- `private` ("0"/"1"), `attachments` (array), `attachments-count`
+
+Paging headers: `X-Records` (total), `X-Pages`, `X-Page`.
+
+### Open uncertainty (not resolvable from docs)
+
+- **Attachment-only comment (empty `body`)**: the docs do not state whether TW accepts an empty
+  `body` when `pendingFileAttachments` is present. The official MCP tool marks `body` as **required**
+  and every official sample includes a body. Needs a live smoke test and/or a product decision
+  (see TC-2). This is not a payload-shape defect on its own.
+
 ## Design decisions
 
+- **Attachment-only comments (decided 2026-10-09): require text.** The send button is
+  disabled when the body is empty; the attachment-only path is removed. Rationale: TW's `body` is
+  required by convention (official MCP tool marks it required) and empty-body behavior is
+  undocumented, so we fail safe instead of offering a capability that may be rejected.
 - **TC-1 gates TC-2/TC-4.** Do not change the POST payload or add the listing endpoint until the TW
   v1 shapes are confirmed (docs/live). The attachment-only-empty-body question is answered by TC-1.
 - **Listing UI**: prefer extending `TaskCommentDialog` (list existing comments above the composer)
@@ -160,11 +213,18 @@ No push, no PR, no merge (user owns those).
 | Task group | Route | Trigger evidence |
 |---|---|---|
 | Mapping | delegated (one explorer) | >5 sequential lookups; broad read-only map of the comments feature |
+| TC-1 | inline (read-only research) | 3 external doc fetches + 2 targeted file reads; within inline evidence budget |
 
 ## Progress
 
 - 2026-10-09 — Feature opened from a read-only mapping (delegated explorer). Doc committed on
   `feat/tw-comments` off `staging` @ `e87f5e1`. **No implementation yet.**
+- 2026-10-09 — **TC-1 done** (read-only, inline): verified the TW v1 comment POST payload and the
+  GET listing shape against official docs. No payload-shape defect found. One open item before TC-2:
+  empty-body (attachment-only) behavior — needs a product decision and/or live smoke test.
+- 2026-10-09 — **Decision:** attachment-only comments are removed; a non-empty body is required to
+  send. TC-2 delegated to a bounded writer (files: `TaskCommentDialog.tsx`, `locales/en.ts`,
+  `locales/es.ts`, new `src/tests/renderer/TaskCommentDialog.test.tsx`), TDD RED→GREEN, runner `pnpm test`.
 
 ## Evidence files
 
