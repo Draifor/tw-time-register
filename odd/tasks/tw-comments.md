@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **TASKS COMPLETE.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). TC-3 done (hardening + advisory findings). TC-4 done + RDD-reviewed (APPROVED). TC-5 done (test coverage: add/send flow + main-service comment mapper). No push/PR/merge (user owns delivery).
+- **Status:** **TASKS COMPLETE.** TC-1…TC-6 done. RDD-reviewed: TC-2 / TC-4 / TC-6 (all APPROVED, authority burned). Only non-blocking advisories remain (R3-A/R3-B/R3-C). Delivery (push/PR/merge) is user-owned.
 
 ## Objective
 
@@ -97,6 +97,11 @@ edge-case debt.
 - Editing or deleting comments; private-comment UI; @mentions; reactions.
 - Rewiring `tw_people` into an actual cache (unless TC-3 decides to drop it).
 
+**Authorized follow-up (2026-10-10, user request):** TC-6 closes the three non-blocking advisories left by the
+TC-4 RDD review — R3-1 (listing fetch fails open on a malformed response), R3-3 (listing hard-capped with no
+pagination/indicator), R3-4 (row key collides when `comment.id` is missing). R3-3 approach chosen by the user:
+**load more + counter**. Everything else in the list above stays out of scope.
+
 ## Constraints
 
 - TypeScript strict; no `any`; conventional commits; English artifacts; no AI attribution.
@@ -136,6 +141,7 @@ No push, no PR, no merge (user owns those).
 | TC-3 | Low hardening: template loading/error state, attachment size validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts`, tests | delegated writer | [x] done (`d200bd4`) |
 | TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) + listing tests | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, `TaskCommentDialog.test.tsx` | delegated writer | [x] done (`ad40d7d`) + RDD APPROVED |
 | TC-5 | Tests: add-flow (upload/send/error) paths | `src/tests/**` | delegated writer | [x] done (`9c5578b`) |
+| TC-6 | Close TC-4 advisories: R3-1 fail-closed fetch, R3-3 listing pagination (load more + counter), R3-4 stable row key | `apiService.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, tests | delegated writer | [x] done (`a9e3e1f`) + RDD APPROVED |
 
 ## TC-1 — Verified TW v1 comment API shapes (2026-10-09)
 
@@ -273,6 +279,41 @@ RDD assessment for `9c5578b` (base `ad40d7d`): risk `medium`, `review_due: false
 393 changed lines) → no native review due. No defects surfaced; **R3-2 is now covered**. R3-1/R3-3/R3-4
 remain non-blocking advisory follow-ups (out of scope for this feature).
 
+## TC-6 — TC-4 advisory follow-ups (2026-10-10, `a9e3e1f`)
+
+Scope: close the three non-blocking advisories from the TC-4 review. Real behavior change — TDD RED→GREEN.
+
+- **R3-1** (`apiService.ts`): `fetchTWCommentsForTask` now fails closed — a non-array `comments` payload or an
+  explicitly non-OK string `STATUS` returns `{ success: false, message: 'Unexpected response from TeamWork' }`
+  instead of a silent `success: true` + `[]`. It also reads the page total from the `X-Records` response header
+  (`total?: number`); `timesService.ts` wrapper type widened to match.
+- **R3-3** (`TaskCommentDialog.tsx` + locales): the listing is now paged. `loadComments(page = 1, append = false)`
+  appends on "Load more"; `hasMore` derives from `page`/`total`/`incoming.length` (never from the `comments`
+  array, so the callback identity stays stable and the open effect does not loop). Counter + "Load more" button;
+  i18n `commentsLoadMore` / `commentsShowing` / `commentsShowingTotal` added to en + es (parity kept).
+- **R3-4** (`TaskCommentDialog.tsx`): row key fallback `comment.id || \`comment-${index}\``.
+
+Tests: 7 new RED→GREEN cases — 4 in `apiService.test.ts` (fail-closed missing/non-array, non-OK STATUS,
+valid-no-STATUS regression, `x-records` total present/absent) and 3 in `TaskCommentDialog.test.tsx`
+(counter + load-more + append, partial last page → no button, dual empty-id render without a duplicate-key error).
+
+Verification: `pnpm test` 82 files / 683 tests pass; `pnpm type-check` clean; `pnpm lint` 0 errors
+(83 warnings; +1 advisory `no-array-index-key` on the intentional fallback); `pnpm build` OK.
+
+### TC-6 RDD review (lineage `review-61a70c55a901bdd9`)
+
+- Assessment: `review_due: true` (`slice_budget_reached`; slice from `ad40d7d`, 8 files / 730 lines, risk `medium`).
+- Result: **APPROVED** (lens `review-reliability`, target `sha256:57922b3c…`, authority burned).
+- 3 non-blocking advisory findings (separate later work):
+  - `TaskCommentDialog.tsx:98-108` (WARNING, R3-A) — `loadComments` writes every fetch result unconditionally; the
+    new append path adds a second fetch trigger with no in-flight/out-of-order guard or cancellation, so a late
+    response can overwrite the current list. Widened exposure; a request token / stale-response guard would close it.
+  - `TaskCommentDialog.tsx:109-122` (WARNING, R3-B) — the append failure branches (resolved `{success:false}` and
+    the append-catch) ship unproved by tests.
+  - `apiService.ts:839` (SUGGESTION, R3-C) — the fail-closed message is a hardcoded English literal and the renderer
+    prefers `result.message`, so it surfaces untranslated in `es`; map it to the localized `commentsLoadError` or
+    return a stable code.
+
 ## Design decisions
 
 - **Attachment-only comments (decided 2026-10-09): require text.** The send button is
@@ -313,6 +354,7 @@ remain non-blocking advisory follow-ups (out of scope for this feature).
 | TC-3 | delegated writer | 5 files touched (dialog + 2 locales + migration + test); 2+ non-trivial files |
 | TC-4 | delegated writer | 8 files touched (apiService + IPC + preload + timesService + dialog + 2 locales + test); writer trigger (2+ non-trivial files) |
 | TC-5 | delegated writer | 2 non-trivial test files touched (renderer dialog suite + main-service apiService suite); writer trigger (2+ non-trivial files) |
+| TC-6 | delegated writer | 5 non-trivial files touched (apiService + timesService + dialog + 2 locales) + 2 test files; writer trigger (2+ non-trivial files) |
 
 ## Progress
 
@@ -361,13 +403,19 @@ remain non-blocking advisory follow-ups (out of scope for this feature).
   warnings). No production code changed.
 - 2026-10-10 — **TC-5 RDD assessment:** `review_due: false` (`under_budget`, 393 changed lines), risk
   `medium` — no native review due for this commit.
+- 2026-10-10 — **TC-6 done** (`a9e3e1f`): closed the TC-4 advisories R3-1 (fail-closed fetch), R3-3 (load more +
+  counter), R3-4 (stable row key). 7 new RED→GREEN tests. Verification: `pnpm test` 82 files / 683 tests pass;
+  `pnpm type-check` clean; `pnpm lint` 0 errors (83 warnings); `pnpm build` OK.
+- 2026-10-10 — **TC-6 RDD review: APPROVED** (lineage `review-61a70c55a901bdd9`, lens `review-reliability`,
+  target `sha256:57922b3c…`, authority burned). 3 non-blocking advisories recorded above (R3-A/R3-B/R3-C).
+  The reviewer Task returned empty once while the prompt was over-materialized; relaunching with the exact
+  `provider_task.prompt` (binding line only) succeeded — same lesson as TC-4.
 
 ## Next
 
-- **All tasks done (TC-1…TC-5).** Non-blocking advisory follow-ups left for later: R3-1 (listing fetch
-  fails open on malformed `comments`), R3-3 (listing hard-capped at page 1 / pageSize 50, no pagination UI),
-  R3-4 (row key on missing `comment.id` collides on `key=''`).
-- No push / no PR / no merge — the user owns delivery.
+- **All tasks done (TC-1…TC-6).** Only non-blocking advisories remain: R3-A (unguarded `loadComments` setState),
+  R3-B (append-failure tests), R3-C (untranslated fail-closed message).
+- Delivery: branch `feat/tw-comments` → push + PR (user authorized 2026-10-10). Merge stays with the user.
 
 ## Evidence files
 
