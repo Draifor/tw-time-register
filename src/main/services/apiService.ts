@@ -66,6 +66,36 @@ export interface SendTimeEntryInput {
   isBillable: boolean;
 }
 
+/** Pull the created time-entry id out of a TW create response (any documented shape). */
+function extractTwEntryId(data: unknown): number | undefined {
+  let body: unknown = data;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!body || typeof body !== 'object') return undefined;
+
+  const record = body as Record<string, unknown>;
+  const single = record['time-entry'] ?? record['timeEntry'] ?? record['time_entry'];
+  const singleObj = Array.isArray(single)
+    ? (single[0] as Record<string, unknown> | undefined)
+    : (single as Record<string, unknown> | undefined);
+  const list = Array.isArray(record['time-entries'])
+    ? (record['time-entries'][0] as Record<string, unknown> | undefined)
+    : undefined;
+
+  const candidates = [singleObj?.id, list?.id, record.id, record.timeLogEntryId, record.timeLogId];
+  for (const value of candidates) {
+    if (value === undefined || value === null) continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
 // Send a single time entry to TeamWork
 export async function sendTimeEntryToTW(
   entry: SendTimeEntryInput,
@@ -103,9 +133,7 @@ export async function sendTimeEntryToTW(
         ),
       { method: 'POST' }
     );
-    // TW API v1 returns the new entry id as `timeLogEntryId`; fallback to `id`
-    const rawId = response.data?.timeLogEntryId ?? response.data?.id;
-    return { success: true, twEntryId: rawId ? Number(rawId) : undefined };
+    return { success: true, twEntryId: extractTwEntryId(response.data) };
   } catch (error) {
     const axiosError = error as { response?: { data?: { MESSAGE?: string; message?: string } }; message?: string };
     const msg =
@@ -211,6 +239,18 @@ export async function debugTWSubtasks(parentTaskLink: string): Promise<{
   }
 }
 
+/**
+ * Local calendar day (YYYY-MM-DD) for a raw TW time-entry object.
+ * TW returns `date` as an ISO UTC instant and `dateUserPerspective` as the
+ * user's local wall-clock instant; the day the user sees is the latter.
+ */
+function deriveLocalDate(raw: Record<string, unknown>): string {
+  const perspective = String(raw.dateUserPerspective ?? '');
+  if (perspective.length >= 10) return perspective.slice(0, 10);
+  const date = String(raw.date ?? '');
+  return date.length >= 10 ? date.slice(0, 10) : date;
+}
+
 export interface TWTimeEntry {
   /** Numeric ID of the time entry in TeamWork */
   id: string;
@@ -218,6 +258,8 @@ export interface TWTimeEntry {
   taskId: string;
   /** Date in YYYYMMDD */
   date: string;
+  /** User's local calendar day, YYYY-MM-DD (from `dateUserPerspective`). */
+  localDate: string;
   /** HH:MM start time */
   time: string;
   hours: number;
@@ -270,6 +312,7 @@ export async function fetchUserTimeEntriesForTask(
         id: String(e.id),
         taskId: String(e['task-id'] ?? e.taskId ?? twTaskId),
         date: String(e.date ?? ''),
+        localDate: deriveLocalDate(e),
         time: startTime,
         hours: Number(e.hours ?? 0),
         minutes: Number(e.minutes ?? 0),
@@ -479,6 +522,7 @@ export async function fetchUserTimeEntriesInRange(
           // TW v1 /time_entries.json uses 'todo-item-id'; some endpoints use 'task-id'
           taskId: String(e['todo-item-id'] ?? e['task-id'] ?? e.taskId ?? ''),
           date: String(e.date ?? ''),
+          localDate: deriveLocalDate(e),
           time: startTime,
           hours: Number(e.hours ?? 0),
           minutes: Number(e.minutes ?? 0),

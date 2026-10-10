@@ -156,9 +156,39 @@ describe('sendTimeEntryToTW', () => {
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
-  it('returns success=true with twEntryId on a successful POST', async () => {
+  it('returns success=true with twEntryId from the real TW v1 shape (time-entry.id)', async () => {
     vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
-    mockedAxios.post = vi.fn().mockResolvedValue({ data: { timeLogEntryId: 9999 } });
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { 'time-entry': { id: 9999 } } });
+
+    const result = await sendTimeEntryToTW(sampleEntry);
+
+    expect(result.success).toBe(true);
+    expect(result.twEntryId).toBe(9999);
+  });
+
+  it('falls back to timeLogEntryId when the response omits time-entry', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { timeLogEntryId: 123 } });
+
+    const result = await sendTimeEntryToTW(sampleEntry);
+
+    expect(result.success).toBe(true);
+    expect(result.twEntryId).toBe(123);
+  });
+
+  it('reads the id from the flat TW OpenAPI shape ({ id, STATUS })', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: { id: 9999, STATUS: 'OK' } });
+
+    const result = await sendTimeEntryToTW(sampleEntry);
+
+    expect(result.success).toBe(true);
+    expect(result.twEntryId).toBe(9999);
+  });
+
+  it('JSON-parses a string response body before extracting the id', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: '{"id": 9999, "STATUS": "OK"}' });
 
     const result = await sendTimeEntryToTW(sampleEntry);
 
@@ -360,5 +390,58 @@ describe('fetchUserTimeEntriesInRange pagination guard', () => {
     expect(result.success).toBe(true);
     expect(result.entries).toHaveLength(1);
     expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── TWTimeEntry localDate mapping ─────────────────────────────────────────────
+
+describe('TWTimeEntry localDate mapping', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  const rawEntry = {
+    id: 25760074,
+    'todo-item-id': 42651681,
+    date: '2026-09-25T00:40:00Z',
+    dateUserPerspective: '2026-09-24T19:40:00Z',
+    hours: 1,
+    minutes: 50,
+    description: 'sync',
+    isbillable: false
+  };
+
+  it('derives localDate from dateUserPerspective and keeps date as the raw ISO value', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { 'time-entries': [rawEntry] } });
+
+    const result = await fetchUserTimeEntriesInRange({}, validCreds);
+
+    expect(result.success).toBe(true);
+    expect(result.entries?.[0].date).toBe('2026-09-25T00:40:00Z');
+    expect(result.entries?.[0].localDate).toBe('2026-09-24');
+  });
+
+  it('falls back to the raw date day when dateUserPerspective is absent', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    const { dateUserPerspective: _ignored, ...withoutPerspective } = rawEntry;
+    void _ignored;
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: { 'time-entries': [withoutPerspective] } });
+
+    const result = await fetchUserTimeEntriesInRange({}, validCreds);
+
+    expect(result.success).toBe(true);
+    expect(result.entries?.[0].localDate).toBe('2026-09-25');
+  });
+
+  it('derives localDate in the task-scoped mapper too', async () => {
+    vi.mocked(getTWCredentials).mockResolvedValue(validCreds);
+    mockedAxios.get = vi.fn().mockResolvedValue({
+      data: { 'time-entries': [{ ...rawEntry, 'task-id': 42651681 }] }
+    });
+
+    const result = await fetchUserTimeEntriesForTask('42651681', '42', undefined, validCreds);
+
+    expect(result.success).toBe(true);
+    expect(result.entries?.[0].date).toBe('2026-09-25T00:40:00Z');
+    expect(result.entries?.[0].localDate).toBe('2026-09-24');
   });
 });
