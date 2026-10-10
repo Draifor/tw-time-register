@@ -7,7 +7,7 @@
 - **Branch:** `feat/tw-comments` (off `staging` @ `e87f5e1`, post `v1.16.1`)
 - **Created:** 2026-10-09
 - **Source:** user request — review the TeamWork comments feature and make everything related work correctly; read-only mapping by one delegated explorer.
-- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). TC-3 done (hardening + advisory findings). TC-4/TC-5 pending.
+- **Status:** **IN PROGRESS.** TC-1 done (TW v1 API shapes verified). TC-2 done + RDD-reviewed (APPROVED). TC-3 done (hardening + advisory findings). TC-4 done + RDD-reviewed (APPROVED). TC-5 pending.
 
 ## Objective
 
@@ -134,8 +134,8 @@ No push, no PR, no merge (user owns those).
 | TC-1 | Verify TW v1 comments API: POST payload + GET listing endpoint/response; record exact shapes | — | read-only research | [x] done 2026-10-09 |
 | TC-2 | Fix add-flow medium defects: require non-empty body (no attachment-only send), fail-closed on attachment upload failure, notify-load error state | `TaskCommentDialog.tsx`, `locales/en.ts`, `locales/es.ts`, tests | delegated writer | [x] done (`481d398`) |
 | TC-3 | Low hardening: template loading/error state, attachment size validation, notify search aria-label, resolve dead `tw_people` schema | `TaskCommentDialog.tsx`, locales, `migrations.ts`, tests | delegated writer | [x] done (`d200bd4`) |
-| TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, tests | delegated writer | [ ] |
-| TC-5 | Tests: add-flow (upload/send/error) + listing | `src/tests/**` | delegated writer | [ ] |
+| TC-4 | Comment listing: GET service + IPC + preload + renderer service + UI (loading/empty/error) + listing tests | `apiService.ts`, `databaseIpc.ts`, `preload.ts`, `timesService.ts`, `TaskCommentDialog.tsx`, locales, `TaskCommentDialog.test.tsx` | delegated writer | [x] done (`ad40d7d`) + RDD APPROVED |
+| TC-5 | Tests: add-flow (upload/send/error) paths | `src/tests/**` | delegated writer | [ ] |
 
 ## TC-1 — Verified TW v1 comment API shapes (2026-10-09)
 
@@ -207,6 +207,47 @@ Scope: the low-severity map defects plus the three TC-2 review advisories.
 Tests: 6 new RED→GREEN cases (oversized reject, auto-retry on send, template load error + retry, notify
 rejection, exact-limit accept, blank-message fallback) in `src/tests/renderer/TaskCommentDialog.test.tsx`.
 
+## TC-4 — Comment listing (2026-10-10, `ad40d7d`)
+
+Scope: read/list a task's existing TW comments end-to-end, with loading/empty/error states.
+
+- `apiService.ts`: new `fetchTWCommentsForTask(twTaskId, page = 1, pageSize = 50)` —
+  `GET /tasks/{id}/comments.json?page&pageSize`, reusing `getTWCredentials`/`buildAuthHeader`/`withRetry`.
+  Maps each raw comment to a minimal `TWComment { id, body, authorName, datetime, attachmentsCount }`;
+  author name from flat `author-firstname`/`author-lastname` with a nested `author` fallback.
+- `databaseIpc.ts` + `preload.ts`: new `fetchTWCommentsForTask` IPC handler and bridge method.
+- `timesService.ts`: `TWComment` interface + `fetchTWCommentsForTask` wrapper.
+- `TaskCommentDialog.tsx`: existing-comments list above the composer; `loadComments` callback; loads on
+  open (alongside templates), refetches after a successful send, resets on close. State priority:
+  loading → error+retry → empty → list. Each row shows author, formatted date, body, and an attachment
+  count when > 0. `isprivate` stays `false`; no pagination UI (first page only).
+- i18n: +`commentsTitle`, `commentsLoading`, `commentsLoadError`, `commentsEmpty`, `attachmentsCount`
+  (en + es parity).
+
+Tests: 5 new RED→GREEN cases in `src/tests/renderer/TaskCommentDialog.test.tsx` (loading, empty,
+error + retry-refetch, populated render, refetch-after-send).
+
+Verification: `pnpm test` 82 files / 657 tests pass; `pnpm type-check` clean; `pnpm lint` 0 errors
+(82 pre-existing warnings); `pnpm build` OK.
+
+### TC-4 RDD review (lineage `review-7a14444811da6384`)
+
+- Assessment: `review_due: true` (`slice_budget_reached`; slice from `481d398`, 10 files / 582 lines,
+  risk `medium`).
+- Result: **APPROVED** (lens `review-reliability`, target `sha256:5c332d05…`); authority burned. No
+  correction opened. Reviewed boundary advanced to `ad40d7d`.
+- 4 non-blocking advisory findings (separate later work; never re-open this candidate):
+  - `apiService.ts:831-845` (WARNING, R3-1) — the fetch fails open: a malformed/non-array `comments` is
+    coalesced to `[]` and still returns `success:true`, so the renderer error branch never sees it (the
+    same silent-failure class fixed elsewhere). `STATUS` is not checked.
+  - `tests/renderer/TaskCommentDialog.test.tsx:32` (WARNING, R3-2) — the renderer tests stub the whole
+    `timesService` module, so the new main-process mapping in `fetchTWCommentsForTask` is never executed
+    by a test; its fallbacks ship unproved. → folds into TC-5.
+  - `TaskCommentDialog.tsx:84` (WARNING, R3-3) — the listing is hard-capped at page 1 / pageSize 50 with
+    no pagination or "showing N of M"; a task with >50 comments renders a truncated list that looks complete.
+  - `TaskCommentDialog.tsx:330` (SUGGESTION, R3-4) — rows key on `comment.id`; a missing id coerces to
+    `''`, so id-less comments would collide on `key=''`.
+
 ## Design decisions
 
 - **Attachment-only comments (decided 2026-10-09): require text.** The send button is
@@ -245,6 +286,7 @@ rejection, exact-limit accept, blank-message fallback) in `src/tests/renderer/Ta
 | Mapping | delegated (one explorer) | >5 sequential lookups; broad read-only map of the comments feature |
 | TC-1 | inline (read-only research) | 3 external doc fetches + 2 targeted file reads; within inline evidence budget |
 | TC-3 | delegated writer | 5 files touched (dialog + 2 locales + migration + test); 2+ non-trivial files |
+| TC-4 | delegated writer | 8 files touched (apiService + IPC + preload + timesService + dialog + 2 locales + test); writer trigger (2+ non-trivial files) |
 
 ## Progress
 
@@ -278,10 +320,19 @@ rejection, exact-limit accept, blank-message fallback) in `src/tests/renderer/Ta
   `pnpm build` OK.
 - 2026-10-10 — **TC-3 RDD assessment:** `review_due: false` (`under_budget`), risk `medium` — the slice
   is under the ~400 authored-line delivery budget, so no native review is due for this commit.
+- 2026-10-10 — **TC-4 done** (`ad40d7d`): comment listing implemented end-to-end (see the TC-4 section).
+  5 new RED→GREEN tests. Verification: `pnpm test` 82 files / 657 tests pass, `pnpm type-check` clean,
+  `pnpm lint` 0 errors (82 pre-existing warnings), `pnpm build` OK.
+- 2026-10-10 — **TC-4 RDD review: APPROVED** (lineage `review-7a14444811da6384`, lens `review-reliability`,
+  target `sha256:5c332d05…`, authority burned; reviewed boundary advanced to `ad40d7d`). Four advisory
+  (non-blocking) findings recorded above (R3-1…R3-4); R3-2 folds naturally into TC-5 (main-service mapping
+  tests). Note: the reviewer Task returned empty twice while the prompt was over-materialized; relaunching
+  with the exact `provider_task.prompt` (binding line only) succeeded — the live transport supplies the
+  patch context.
 
 ## Evidence files
 
 - `src/renderer/components/TaskCommentDialog.tsx` — dialog; owns the defects.
-- `src/main/services/apiService.ts` — `addCommentToTWTask`, `uploadPendingFileToTW`, `fetchTWPeopleForTask`.
+- `src/main/services/apiService.ts` — `addCommentToTWTask`, `uploadPendingFileToTW`, `fetchTWPeopleForTask`, `fetchTWCommentsForTask`.
 - `src/main/services/commentTemplateService.ts`, `src/renderer/pages/SettingsPage.tsx` — templates.
 - `src/main/database/migrations.ts` — `comment_templates` (+ dead `tw_people`).
