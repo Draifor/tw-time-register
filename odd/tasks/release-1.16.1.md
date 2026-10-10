@@ -51,7 +51,7 @@ this doc). Under the ~400-line delivery budget, so one work unit.
 | R-1 | Create `release/1.16.1` from `origin/staging` + this document | this document | direct inline | [x] |
 | R-2 | Bump version, write `[1.16.1]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | direct inline | [x] |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one verifier) | [x] — all green (see evidence) |
-| R-4 | Commit `chore(release): 1.16.1` | — | direct inline | [ ] |
+| R-4 | Commit `chore(release): 1.16.1` | — | direct inline | [x] — `987b530` |
 | R-5 | Promote to `main` + `staging` (FF) + tag `v1.16.1` | — | direct | [ ] |
 | R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
 
@@ -87,3 +87,9 @@ _(to be filled after publish)_
   (`4d78b19`) → FF promotion. PR #54 merged into `staging`; post-merge topology check passed
   (`fix/tw-sync-integrity` tip `9d2db02` is an ancestor of `origin/staging`). `release/1.16.1`
   created from `origin/staging`. R-1/R-2 done.
+- 2026-10-09 — **R-3 done** (one verifier): all five gates green — VERDICT PASS (see *Verification
+  evidence*).
+- 2026-10-09 — **R-4 done:** `987b530` `chore(release): 1.16.1` (4 files, +104/−1, includes this
+  doc). RDD assessment (`review mode status`: `on`; `assess --base-ref origin/staging
+  --committed-only --json`): **medium** (`configuration_change: package.json`), `review_due: false`
+  — `under_budget` (4 paths, 105 lines). No native review required for this work unit.
