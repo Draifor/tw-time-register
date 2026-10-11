@@ -127,6 +127,20 @@ const firstInvalidRowIndex = (entryErrors?: FieldErrors<WorkTimeEntry>[]): numbe
 };
 
 /**
+ * Number of leading rows that are valid and safe to persist, or `null` when the
+ * valid prefix cannot be determined and the submit must fail closed.
+ *
+ * `onInvalid` only runs after validation rejected the form, so a missing/non-array
+ * `errors.entries` (or an array with no located error) means the valid prefix is
+ * unknown — persisting anything would risk saving rows RHF just rejected (R3-2).
+ */
+export const validPrefixCount = (entryErrors?: FieldErrors<WorkTimeEntry>[]): number | null => {
+  if (!Array.isArray(entryErrors)) return null;
+  const firstInvalid = firstInvalidRowIndex(entryErrors);
+  return firstInvalid === -1 ? null : firstInvalid;
+};
+
+/**
  * Map form entries to the payload accepted by the batch time-entry endpoint.
  */
 export function toTimeEntryInputs(entries: WorkTimeEntry[]): TimeEntryInput[] {
@@ -909,6 +923,7 @@ export default function WorkTimeForm() {
         }
         if (newIdx !== timerIdx) {
           const updated = { ...activeTimerRef.current, index: newIdx };
+          activeTimerRef.current = updated;
           setActiveTimer(updated);
           localStorage.setItem(
             'wt_activeTimer',
@@ -1042,7 +1057,16 @@ export default function WorkTimeForm() {
     // stale array would `setValue` past the live row count and recreate a partial
     // row, so only cascade once the watched rows match the authoritative values.
     const liveEntries = getValues('entries');
-    if (!Array.isArray(liveEntries) || result.length !== liveEntries.length) return;
+    if (!Array.isArray(liveEntries) || result.length !== liveEntries.length) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[WorkTimeForm] time cascade skipped: watched entries (${result.length}) out of sync with form values (${
+            Array.isArray(liveEntries) ? liveEntries.length : 'n/a'
+          })`
+        );
+      }
+      return;
+    }
 
     result.forEach((entry, index) => {
       const prevEntry = previousValues.current[index];
@@ -1222,15 +1246,18 @@ export default function WorkTimeForm() {
     if (activeTimerRef.current) {
       const timerIdx = activeTimerRef.current.index;
       if (timerIdx < entriesToSave.length) {
+        activeTimerRef.current = null;
         setActiveTimer(null);
         setTimerElapsedMinutes(0);
         localStorage.removeItem('wt_activeTimer');
       } else {
         const newIdx = timerIdx - entriesToSave.length;
-        setActiveTimer({ index: newIdx, startedAt: activeTimerRef.current.startedAt });
+        const remapped = { index: newIdx, startedAt: activeTimerRef.current.startedAt };
+        activeTimerRef.current = remapped;
+        setActiveTimer(remapped);
         localStorage.setItem(
           'wt_activeTimer',
-          JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+          JSON.stringify({ index: newIdx, startedAt: remapped.startedAt.toISOString() })
         );
       }
     }
@@ -1274,10 +1301,11 @@ export default function WorkTimeForm() {
 
   const onInvalid = (formErrors: FieldErrors<{ entries: WorkTimeEntry[] }>) => {
     const values = getValues('entries');
-    const firstInvalid = firstInvalidRowIndex(formErrors.entries as FieldErrors<WorkTimeEntry>[] | undefined);
-    const validCount = firstInvalid === -1 ? values.length : firstInvalid;
-    // Nothing valid to persist: RHF already renders the row errors (AC6).
-    if (validCount === 0) return;
+    const validCount = validPrefixCount(formErrors.entries as FieldErrors<WorkTimeEntry>[] | undefined);
+    // Fail closed (R3-2): onInvalid fired, so something is invalid, but if the
+    // usable error shape is missing we cannot locate the valid prefix — save nothing.
+    // Nothing valid to persist → RHF already renders the row errors (AC6).
+    if (validCount === null || validCount === 0) return;
     return runSubmit(() => persistEntries(values.slice(0, validCount)));
   };
 
@@ -1430,10 +1458,12 @@ export default function WorkTimeForm() {
     // Keep the running timer pointing at the right entry after the shift.
     if (activeTimerRef.current && atIndex <= activeTimerRef.current.index) {
       const newIdx = activeTimerRef.current.index + 1;
-      setActiveTimer({ ...activeTimerRef.current, index: newIdx });
+      const remapped = { ...activeTimerRef.current, index: newIdx };
+      activeTimerRef.current = remapped;
+      setActiveTimer(remapped);
       localStorage.setItem(
         'wt_activeTimer',
-        JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+        JSON.stringify({ index: newIdx, startedAt: remapped.startedAt.toISOString() })
       );
     }
 

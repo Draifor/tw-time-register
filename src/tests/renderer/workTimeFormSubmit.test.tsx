@@ -62,10 +62,17 @@ vi.mock('../../renderer/services/timesService', () => ({
   minutesToHoursMinutes: (minutes: number) => ({ hours: Math.floor(minutes / 60), minutes: minutes % 60 })
 }));
 
-import WorkTimeForm from '../../renderer/components/WorkTimeForm';
+// Capture toasts without a mounted <Toaster />.
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }
+}));
+
+import { toast } from 'sonner';
+import WorkTimeForm, { validPrefixCount } from '../../renderer/components/WorkTimeForm';
 import type { WorkTimeDraftEntry } from '../../renderer/services/timesService';
 import {
   addTimeEntries,
+  getDailyTimeInfo,
   getWorkTimeDraft,
   clearWorkTimeDraft,
   saveWorkTimeDraft
@@ -230,6 +237,18 @@ describe('WorkTimeForm partial registration', () => {
     vi.mocked(getWorkTimeDraft).mockResolvedValue({ entries: draftEntries });
     vi.mocked(saveWorkTimeDraft).mockReset();
     vi.mocked(saveWorkTimeDraft).mockResolvedValue(undefined);
+    vi.mocked(getDailyTimeInfo).mockReset();
+    vi.mocked(getDailyTimeInfo).mockResolvedValue({
+      date: '2026-10-01',
+      totalMinutes: 0,
+      maxMinutes: 480,
+      remainingMinutes: 480,
+      lastEndTime: null
+    });
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.warning).mockClear();
+    vi.mocked(toast.info).mockClear();
   });
 
   it('persists only the valid prefix, keeps the incomplete row, and does not clear the draft (AC2/AC3/AC5)', async () => {
@@ -308,6 +327,12 @@ describe('WorkTimeForm partial registration', () => {
 
     // AC5: a partial save must not clear the draft.
     expect(clearWorkTimeDraft).not.toHaveBeenCalled();
+
+    // The partial-save toast reports the saved/kept split (AC2).
+    expect(toast.success).toHaveBeenCalledWith(
+      'Partial registration',
+      expect.objectContaining({ description: expect.any(String) })
+    );
   });
 
   it('saves nothing when the first row is invalid and surfaces the error (AC6)', async () => {
@@ -391,5 +416,101 @@ describe('WorkTimeForm partial registration', () => {
       const persisted = JSON.parse(localStorage.getItem('wt_activeTimer') || 'null');
       expect(persisted?.index).toBe(0);
     });
+  });
+
+  it('scopes the overtime check to the saved rows only (AC8)', async () => {
+    // Valid prefix is 1h; the trailing (kept) row is 2h. With a 2h daily limit,
+    // counting the kept row would yield 3h > 2h and wrongly fire the warning.
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [
+        draftEntry({
+          description: 'work',
+          task: '1',
+          startTime: ['1970-01-01T09:00:00'],
+          endTime: ['1970-01-01T10:00:00'],
+          hours: ['1970-01-01T01:00:00']
+        }),
+        draftEntry({
+          description: '',
+          task: '1',
+          startTime: ['1970-01-01T10:00:00'],
+          endTime: ['1970-01-01T12:00:00'],
+          hours: ['1970-01-01T02:00:00']
+        })
+      ]
+    });
+    vi.mocked(getDailyTimeInfo).mockResolvedValue({
+      date: '2026-10-01',
+      totalMinutes: 0,
+      maxMinutes: 120,
+      remainingMinutes: 120,
+      lastEndTime: null
+    });
+
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(addTimeEntries).mock.calls[0][0]).toHaveLength(1);
+    // The kept draft row must not count toward the limit.
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it('still warns when the saved rows alone exceed the daily limit (AC8)', async () => {
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [
+        draftEntry({
+          description: 'work',
+          task: '1',
+          startTime: ['1970-01-01T09:00:00'],
+          endTime: ['1970-01-01T10:00:00'],
+          hours: ['1970-01-01T01:00:00']
+        }),
+        draftEntry({ description: '', task: '1' })
+      ]
+    });
+    // The 1h saved prefix alone exceeds this 30-minute limit.
+    vi.mocked(getDailyTimeInfo).mockResolvedValue({
+      date: '2026-10-01',
+      totalMinutes: 0,
+      maxMinutes: 30,
+      remainingMinutes: 30,
+      lastEndTime: null
+    });
+
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+    expect(toast.warning).toHaveBeenCalled();
+  });
+});
+
+describe('validPrefixCount (R3-2)', () => {
+  it('fails closed when the per-row error shape is unusable', () => {
+    expect(validPrefixCount(undefined)).toBeNull();
+    expect(validPrefixCount({} as never)).toBeNull();
+    expect(validPrefixCount([])).toBeNull();
+  });
+
+  it('returns the length of the valid leading prefix', () => {
+    expect(validPrefixCount([{ description: { type: 'required' } } as never, undefined as never])).toBe(0);
+    expect(
+      validPrefixCount([undefined as never, undefined as never, { description: { type: 'required' } } as never])
+    ).toBe(2);
   });
 });
