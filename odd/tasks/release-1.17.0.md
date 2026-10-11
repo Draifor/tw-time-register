@@ -95,3 +95,7 @@ _Pending (R-5/R-6)._
   note.
 - 2026-10-11 — **R-3 done** (one delegated verifier): all five gates green — VERDICT PASS (see
   *Verification evidence*).
+- 2026-10-11 — **R-4 done:** `6e73271` `chore(release): 1.17.0` (4 files, +127/−1, includes this
+  doc). RDD assessment (`review mode status`: `on`; `assess --base-ref origin/staging
+  --committed-only --json`): **medium** (`configuration_change: package.json`), `review_due: false`
+  — `under_budget` (4 paths, 128 lines). No native review required for this work unit.
