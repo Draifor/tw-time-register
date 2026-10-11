@@ -343,6 +343,14 @@ Las releases se publican automáticamente vía GitHub Actions al crear un tag `v
 - [ ] **Pendiente**: verificar el relanzado en un build empaquetado real, actualizando un cliente ya en `1.13.0` a una versión posterior
   - El instalador NSIS compila con el include custom, pero el relanzado end-to-end sólo se observa en una actualización real. Detalle, decisiones y evidencia en `odd/tasks/update-ux.md`.
 
+### ✅ v1.17.0 — Comentarios de tareas TW (lectura) y registro parcial de work time (PUBLICADA - Oct 2026)
+
+- [x] TW comments — **listado de comentarios existentes** de una tarea end-to-end (carga/vacío/error, paginación "Cargar más", refetch tras enviar) y hardening del flujo de alta (tope de 25 MB por adjunto, plantillas con estado/reintento, búsqueda de personas con `aria-label`)
+- [x] TW comments — lectura **fail-closed** con mensaje localizado y guarda de respuesta obsoleta (una respuesta tardía no pisa una lista más nueva)
+- [x] Work time — **registro parcial**: se persiste el prefijo válido y las filas incompletas quedan como borrador, sin re-desplazar la cascada de horarios
+- [x] Limpieza — se elimina el esquema muerto `tw_people`
+- [x] Cobertura — suite de **696** tests (83 archivos)
+
 ### ✅ v1.16.1 — Sincronización con TeamWork sin duplicados (PUBLICADA - Oct 2026)
 
 - [x] Fix — al editar y re-sincronizar un registro ya enviado, se **actualiza** la entrada existente en TeamWork (PUT) en vez de crear una copia; se captura el id real que devuelve TW y se auto-sanan los registros previos sin id (`odd/tasks/tw-sync-integrity.md`)

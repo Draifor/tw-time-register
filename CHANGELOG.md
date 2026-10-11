@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-10-11
+
+### Added
+
+- **Listado de comentarios de tareas TW**: la app ahora puede **leer/listar** los comentarios existentes de una tarea (antes era solo escritura) -flujo completo main `GET`  IPC  preload  renderer  diálogo con estados de carga/vacío/error, paginación incremental ("Cargar más"), contador y refetch tras enviar (`ad40d7d`; PR #55; `odd/tasks/tw-comments.md`)-
+- **Registro parcial de work time**: al enviar con filas finales incompletas (todavía en curso), se persiste el **prefijo válido** y las filas incompletas quedan como borrador en el formulario, sin re-desplazar la cascada de horarios de las filas que quedan (`7955426`; PR #57; `odd/tasks/partial-time-registration.md`)
+
+### Changed
+
+- **Hardening del diálogo de comentarios**: tope por archivo de 25 MB en adjuntos, estados de carga/error y reintento en la carga de plantillas, `aria-label` en la búsqueda de personas a notificar, y `body` con fallback para comentarios solo-adjunto (`d200bd4`; PR #55)
+- **Listado de comentarios fail-closed y paginado**: la lectura falla cerrada ante una respuesta inesperada de TW (con mensaje localizado, sin literal en inglés) en vez de mostrar una lista vacía; guarda de respuesta obsoleta para que una respuesta tardía no pise una lista más nueva; paginación con "Cargar más" y clave de fila estable (`a9e3e1f`, `5e504e7`; PR #55/#56)
+- **Cobertura**: la suite pasa a **696** tests (83 archivos), con cobertura del listado de comentarios, el envío parcial y los guards de respuesta obsoleta
+
+### Fixed
+
+- **Envío parcial fail-closed**: `onInvalid` ya no trata un shape de errores inutilizable como "todo válido"; el remapeo del timer sincroniza el ref; la guarda de longitud de la cascada es observable en dev (`b7b87d2`; PR #57)
+
+### Removed
+
+- **Esquema muerto `tw_people`**: se elimina la tabla de caché que nunca se leía ni escribía, vía `DROP TABLE IF EXISTS` idempotente en la migración (`ad40d7d`; PR #55)
+
 ## [1.16.1] - 2026-10-09
 
 ### Fixed
