@@ -88,6 +88,40 @@ Rows are dropped with `reset({ entries })` instead of `useFieldArray.remove()`, 
 - R3-3: the timer remap writes state/localStorage but not `activeTimerRef.current` at the remap site.
 - R3-4: the cascade length guard skips the cascade on any transient desync with no observable signal.
 
+## Follow-up closure work unit (F1–F4)
+
+Closing the four advisory findings from the approved review, on the same branch,
+as a second work unit before delivery.
+
+- **Route:** delegated direct (one writer) — 2+ non-trivial files
+  (`src/renderer/components/WorkTimeForm.tsx`, `src/tests/renderer/workTimeFormSubmit.test.tsx`
+  + new `src/tests/renderer/totalTimeDayRefresh.test.tsx`). Writer trigger fired.
+- **Delivery strategy:** still `single-pr` (this work unit forecast ~120–200 authored changed lines).
+
+### Follow-up tasks
+
+- [x] **F1 (R3-1)** — Dedicated test coverage: AC7 (`TotalTimeDay` refresh) and AC8 (overtime
+  scope over saved rows only); assert the partial-save toast. Done in `b7b87d2`.
+- [x] **F2 (R3-2)** — `onInvalid` fails closed when the per-row error shape is unusable, via an
+  exported pure `validPrefixCount` helper. Done in `b7b87d2`.
+- [x] **F3 (R3-3)** — Timer remap writes `activeTimerRef.current` synchronously at the remap site
+  (and the two sibling index-mutating sites) so the ref never lags the state. Done in `b7b87d2`.
+- [x] **F4 (R3-4)** — Make the cascade length guard observable with a dev-only warning. Done in `b7b87d2`.
+- [x] **F5** — Verification (`pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm build`), work-unit
+  commit, RDD assess. *parent*
+
+### Follow-up closure evidence
+
+- Work-unit commit `b7b87d2` (base `4eb2b86`): 3 files, 231 insertions, 10 deletions.
+- TDD: RED — focused files 2 failed | 9 passed (both failures `validPrefixCount is not a function`).
+  GREEN — 2 files, 11 tests passed. F3 (ref sync) and F4 (dev warning) have no meaningful runnable
+  RED; the existing AC4 timer-remap test and the focused file stay green instead.
+- Writer verification: `pnpm type-check` exit 0; `pnpm lint` 0 errors (83 pre-existing warnings);
+  `pnpm test` 83 files / 696 tests passed; `pnpm build` exit 0.
+- Parent spot check: focused `workTimeFormSubmit` + `totalTimeDayRefresh` 11/11 passed.
+- RDD assess (`--base-ref 4eb2b86 --committed-only`): risk `medium`, `review_due: false`
+  (`under_budget`, 241 changed lines). No native review required for this slice.
+
 ## Next step
 
-Delivery (push/PR/merge) is user-owned. Advisory follow-ups are separate later work.
+Delivery: open the PR from `feat/partial-time-registration` into `staging` (user-owned).
