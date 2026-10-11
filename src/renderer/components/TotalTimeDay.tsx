@@ -17,6 +17,9 @@ interface TotalTimeDayProps {
   // Control is contravariant in its type param — accept any control without losing type safety
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
+  // Bump to force a refetch even when the set of dates is unchanged (e.g. after a
+  // partial save). Optional so existing renders that omit it keep working.
+  refreshToken?: number;
 }
 
 function fmt(minutes: number): string {
@@ -24,7 +27,7 @@ function fmt(minutes: number): string {
   return `${hours}h ${mins.toString().padStart(2, '0')}m`;
 }
 
-function TotalTimeDay({ control }: TotalTimeDayProps) {
+function TotalTimeDay({ control, refreshToken }: TotalTimeDayProps) {
   const { t } = useTranslation();
 
   const entries = useWatch({ control, name: 'entries' });
@@ -65,7 +68,7 @@ function TotalTimeDay({ control }: TotalTimeDayProps) {
       cancelled = true;
     };
     // eslint-disable-next-line @eslint-react/exhaustive-deps
-  }, [datesKey]);
+  }, [datesKey, refreshToken]);
 
   // Draft minutes per date, aggregated from form entries
   const draftByDate = useMemo(() => {

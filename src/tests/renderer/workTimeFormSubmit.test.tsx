@@ -62,8 +62,21 @@ vi.mock('../../renderer/services/timesService', () => ({
   minutesToHoursMinutes: (minutes: number) => ({ hours: Math.floor(minutes / 60), minutes: minutes % 60 })
 }));
 
-import WorkTimeForm from '../../renderer/components/WorkTimeForm';
-import { addTimeEntries } from '../../renderer/services/timesService';
+// Capture toasts without a mounted <Toaster />.
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }
+}));
+
+import { toast } from 'sonner';
+import WorkTimeForm, { validPrefixCount } from '../../renderer/components/WorkTimeForm';
+import type { WorkTimeDraftEntry } from '../../renderer/services/timesService';
+import {
+  addTimeEntries,
+  getDailyTimeInfo,
+  getWorkTimeDraft,
+  clearWorkTimeDraft,
+  saveWorkTimeDraft
+} from '../../renderer/services/timesService';
 
 function renderForm() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -80,12 +93,49 @@ async function waitForFirstCard(container: HTMLElement) {
   });
 }
 
+async function waitForTwoCards(container: HTMLElement) {
+  await waitFor(() => {
+    expect(container.querySelector('textarea[name="entries.1.description"]')).not.toBeNull();
+  });
+}
+
+// A fully-valid draft row; override a required field (e.g. `description: ''`)
+// to make a specific row fail validation.
+function draftEntry(overrides: Partial<WorkTimeDraftEntry> = {}): WorkTimeDraftEntry {
+  return {
+    date: '2026-10-01',
+    description: 'work',
+    endTime: ['1970-01-01T10:00:00'],
+    hours: ['1970-01-01T01:00:00'],
+    startTime: ['1970-01-01T09:00:00'],
+    task: '1',
+    isBillable: false,
+    afterLunch: false,
+    manualStartTime: false,
+    ...overrides
+  };
+}
+
+// flatpickr's visible input carries the row's field id (`entries.<i>.startTime`).
+function timeInputValue(id: string): string {
+  const el = document.getElementById(id) as HTMLInputElement | null;
+  return el?.value ?? '';
+}
+
+function descriptionTextareas(container: HTMLElement): NodeListOf<HTMLTextAreaElement> {
+  return container.querySelectorAll('textarea[name$=".description"]');
+}
+
 describe('WorkTimeForm robust submit (UX-401)', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     localStorage.clear();
     vi.mocked(addTimeEntries).mockReset();
     vi.mocked(addTimeEntries).mockResolvedValue([]);
+    vi.mocked(clearWorkTimeDraft).mockReset();
+    vi.mocked(clearWorkTimeDraft).mockResolvedValue(undefined);
+    vi.mocked(getWorkTimeDraft).mockReset();
+    vi.mocked(getWorkTimeDraft).mockResolvedValue({ entries: draftEntries });
   });
 
   it('guards re-entry and shows a pending state while the save is in flight', async () => {
@@ -172,5 +222,295 @@ describe('WorkTimeForm robust submit (UX-401)', () => {
     await waitFor(() => {
       expect(addTimeEntries).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+describe('WorkTimeForm partial registration', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+    localStorage.clear();
+    vi.mocked(addTimeEntries).mockReset();
+    vi.mocked(addTimeEntries).mockResolvedValue([]);
+    vi.mocked(clearWorkTimeDraft).mockReset();
+    vi.mocked(clearWorkTimeDraft).mockResolvedValue(undefined);
+    vi.mocked(getWorkTimeDraft).mockReset();
+    vi.mocked(getWorkTimeDraft).mockResolvedValue({ entries: draftEntries });
+    vi.mocked(saveWorkTimeDraft).mockReset();
+    vi.mocked(saveWorkTimeDraft).mockResolvedValue(undefined);
+    vi.mocked(getDailyTimeInfo).mockReset();
+    vi.mocked(getDailyTimeInfo).mockResolvedValue({
+      date: '2026-10-01',
+      totalMinutes: 0,
+      maxMinutes: 480,
+      remainingMinutes: 480,
+      lastEndTime: null
+    });
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.warning).mockClear();
+    vi.mocked(toast.info).mockClear();
+  });
+
+  it('persists only the valid prefix, keeps the incomplete row, and does not clear the draft (AC2/AC3/AC5)', async () => {
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [
+        draftEntry({
+          description: 'work',
+          task: '1',
+          startTime: ['1970-01-01T09:00:00'],
+          endTime: ['1970-01-01T10:00:00'],
+          hours: ['1970-01-01T01:00:00']
+        }),
+        draftEntry({
+          description: '',
+          task: '1',
+          startTime: ['1970-01-01T11:00:00'],
+          endTime: ['1970-01-01T12:00:00'],
+          hours: ['1970-01-01T01:00:00']
+        })
+      ]
+    });
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    // Snapshot the row that must survive (currently index 1). The cascade only
+    // shifts `startTime`, so that is the field that proves it did not re-shift.
+    const survivorStartBefore = timeInputValue('entries.1.startTime');
+    const draftCallsBefore = vi.mocked(saveWorkTimeDraft).mock.calls.length;
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    // Only the valid leading row is persisted.
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+    const payload = vi.mocked(addTimeEntries).mock.calls[0][0];
+    expect(payload).toHaveLength(1);
+    expect(payload[0].description).toBe('work');
+    expect(payload[0].taskId).toBe(1);
+
+    // The incomplete row remains as the sole row of the form.
+    await waitFor(() => {
+      expect(descriptionTextareas(container).length).toBe(1);
+    });
+    const survivor = container.querySelector('textarea[name="entries.0.description"]') as HTMLTextAreaElement;
+    expect(survivor).not.toBeNull();
+    expect(survivor.value).toBe('');
+
+    // Cascade did not re-shift the surviving row's start time (only the index moved).
+    expect(timeInputValue('entries.0.startTime')).toBe(survivorStartBefore);
+
+    // The remaining row is kept as draft (AC5): the autosave persists exactly one
+    // entry — the incomplete one — with its start time preserved.
+    await waitFor(
+      () => {
+        expect(vi.mocked(saveWorkTimeDraft).mock.calls.length).toBeGreaterThan(draftCallsBefore);
+      },
+      { timeout: 3000 }
+    );
+    const draftPayload = vi.mocked(saveWorkTimeDraft).mock.calls.at(-1)![0];
+    expect(draftPayload.entries).toHaveLength(1);
+    expect(draftPayload.entries[0].description).toBe('');
+    const draftStart = new Date(draftPayload.entries[0].startTime[0]);
+    const draftEnd = new Date(draftPayload.entries[0].endTime[0]);
+    const draftHours = new Date(draftPayload.entries[0].hours[0]);
+    expect(
+      `${String(draftStart.getHours()).padStart(2, '0')}:${String(draftStart.getMinutes()).padStart(2, '0')}`
+    ).toBe(survivorStartBefore);
+    // The surviving row's end time is still start + duration (not corrupted).
+    expect(draftEnd.getHours() * 60 + draftEnd.getMinutes()).toBe(
+      draftStart.getHours() * 60 + draftStart.getMinutes() + draftHours.getHours() * 60 + draftHours.getMinutes()
+    );
+
+    // AC5: a partial save must not clear the draft.
+    expect(clearWorkTimeDraft).not.toHaveBeenCalled();
+
+    // The partial-save toast reports the saved/kept split (AC2).
+    expect(toast.success).toHaveBeenCalledWith(
+      'Partial registration',
+      expect.objectContaining({ description: expect.any(String) })
+    );
+  });
+
+  it('saves nothing when the first row is invalid and surfaces the error (AC6)', async () => {
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [draftEntry({ description: '' }), draftEntry({ description: 'second', task: '1' })]
+    });
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(document.getElementById('entries.0.description-error')).not.toBeNull();
+    });
+    expect(addTimeEntries).not.toHaveBeenCalled();
+    expect(clearWorkTimeDraft).not.toHaveBeenCalled();
+    // Both rows stay in the form (no partial removal).
+    expect(descriptionTextareas(container).length).toBe(2);
+  });
+
+  it('performs a full save, clears the draft and resets when every row is valid (AC1/AC5)', async () => {
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [
+        draftEntry({ description: 'first', task: '1' }),
+        draftEntry({
+          description: 'second',
+          task: '2',
+          startTime: ['1970-01-01T11:00:00'],
+          endTime: ['1970-01-01T12:00:00']
+        })
+      ]
+    });
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(addTimeEntries).mock.calls[0][0]).toHaveLength(2);
+
+    await waitFor(() => {
+      expect(clearWorkTimeDraft).toHaveBeenCalled();
+    });
+    // Full save resets the form to a single default entry.
+    await waitFor(() => {
+      expect(descriptionTextareas(container).length).toBe(1);
+    });
+  });
+
+  it('remaps the running timer to the surviving row after a partial save (AC4)', async () => {
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [draftEntry({ description: 'work' }), draftEntry({ description: '' })]
+    });
+    localStorage.setItem(
+      'wt_activeTimer',
+      JSON.stringify({ index: 1, startedAt: new Date('2026-10-01T09:05:00').toISOString() })
+    );
+
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+
+    // The saved row owned index 0; the timer was on index 1, so it shifts to 0.
+    await waitFor(() => {
+      const persisted = JSON.parse(localStorage.getItem('wt_activeTimer') || 'null');
+      expect(persisted?.index).toBe(0);
+    });
+  });
+
+  it('scopes the overtime check to the saved rows only (AC8)', async () => {
+    // Valid prefix is 1h; the trailing (kept) row is 2h. With a 2h daily limit,
+    // counting the kept row would yield 3h > 2h and wrongly fire the warning.
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [
+        draftEntry({
+          description: 'work',
+          task: '1',
+          startTime: ['1970-01-01T09:00:00'],
+          endTime: ['1970-01-01T10:00:00'],
+          hours: ['1970-01-01T01:00:00']
+        }),
+        draftEntry({
+          description: '',
+          task: '1',
+          startTime: ['1970-01-01T10:00:00'],
+          endTime: ['1970-01-01T12:00:00'],
+          hours: ['1970-01-01T02:00:00']
+        })
+      ]
+    });
+    vi.mocked(getDailyTimeInfo).mockResolvedValue({
+      date: '2026-10-01',
+      totalMinutes: 0,
+      maxMinutes: 120,
+      remainingMinutes: 120,
+      lastEndTime: null
+    });
+
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(addTimeEntries).mock.calls[0][0]).toHaveLength(1);
+    // The kept draft row must not count toward the limit.
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it('still warns when the saved rows alone exceed the daily limit (AC8)', async () => {
+    vi.mocked(getWorkTimeDraft).mockResolvedValueOnce({
+      entries: [
+        draftEntry({
+          description: 'work',
+          task: '1',
+          startTime: ['1970-01-01T09:00:00'],
+          endTime: ['1970-01-01T10:00:00'],
+          hours: ['1970-01-01T01:00:00']
+        }),
+        draftEntry({ description: '', task: '1' })
+      ]
+    });
+    // The 1h saved prefix alone exceeds this 30-minute limit.
+    vi.mocked(getDailyTimeInfo).mockResolvedValue({
+      date: '2026-10-01',
+      totalMinutes: 0,
+      maxMinutes: 30,
+      remainingMinutes: 30,
+      lastEndTime: null
+    });
+
+    const { container } = renderForm();
+    await waitForTwoCards(container);
+
+    const saveButton = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(addTimeEntries).toHaveBeenCalledTimes(1);
+    });
+    expect(toast.warning).toHaveBeenCalled();
+  });
+});
+
+describe('validPrefixCount (R3-2)', () => {
+  it('fails closed when the per-row error shape is unusable', () => {
+    expect(validPrefixCount(undefined)).toBeNull();
+    expect(validPrefixCount({} as never)).toBeNull();
+    expect(validPrefixCount([])).toBeNull();
+  });
+
+  it('returns the length of the valid leading prefix', () => {
+    expect(validPrefixCount([{ description: { type: 'required' } } as never, undefined as never])).toBe(0);
+    expect(
+      validPrefixCount([undefined as never, undefined as never, { description: { type: 'required' } } as never])
+    ).toBe(2);
   });
 });

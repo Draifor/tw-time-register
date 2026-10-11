@@ -529,6 +529,8 @@ const es = {
       escHint: 'Presiona Esc para eliminar la última entrada',
       savedTitle: '¡Entradas guardadas!',
       savedDesc: '{{count}} entradas de tiempo registradas.',
+      partialSavedTitle: 'Registro parcial',
+      partialSavedDesc: '{{saved}} entradas registradas · {{kept}} quedan como borrador (filas incompletas).',
       saveErrorTitle: 'Error al guardar entradas',
       saveErrorDesc: 'Por favor, inténtalo de nuevo más tarde.',
       lastRemoved: 'Última entrada eliminada',
