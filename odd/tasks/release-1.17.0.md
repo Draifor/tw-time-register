@@ -55,8 +55,8 @@ this doc). Under the ~400-line delivery budget, so one work unit.
 | R-2 | Bump version, write `[1.17.0]` CHANGELOG entry, add README release note | `package.json`, `CHANGELOG.md`, `README.md` | direct inline | [x] |
 | R-3 | Pre-publish verification: frozen install, type-check, lint, tests, build | — | delegated (one verifier) | [x] — all green (see evidence) |
 | R-4 | Commit `chore(release): 1.17.0` | — | direct inline | [ ] |
-| R-5 | Promote to `main` + `staging` (FF) + tag `v1.17.0` | — | direct | [ ] |
-| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [ ] |
+| R-5 | Promote to `main` + `staging` (FF) + tag `v1.17.0` | — | direct | [x] — main `e87f5e1..70124c6`; staging `7e44e7e..70124c6`; tag `v1.17.0` |
+| R-6 | Publish the tag and verify the release | `.github/workflows/release.yml` (run) | direct | [x] — run `38145755420` green; asset gate passed |
 
 ## Acceptance criteria
 
@@ -84,7 +84,13 @@ Post-run `git status --porcelain` unchanged vs baseline (only the four expected 
 
 ## Release outcome
 
-_Pending (R-5/R-6)._
+- `main` fast-forwarded `e87f5e1..70124c6`; `staging` fast-forwarded `7e44e7e..70124c6`; annotated
+  tag `v1.17.0` pushed at `70124c6`. Publish run
+  [38145755420](https://github.com/Draifor/tw-time-register/actions/runs/38145755420) — **green**;
+  the `Pre-create the GitHub release` and the `Verify release assets` steps both passed.
+- **Verified final state:** exactly **1** release for `v1.17.0` (not draft, not prerelease);
+  3 assets — `latest.yml` (364 B), `TW-Time-Register-Setup-1.17.0.exe` (126,307,015 B),
+  `TW-Time-Register-Setup-1.17.0.exe.blockmap` (133,593 B); `latest.yml` reports `version: 1.17.0`.
 
 ## Progress
 
@@ -99,3 +105,6 @@ _Pending (R-5/R-6)._
   doc). RDD assessment (`review mode status`: `on`; `assess --base-ref origin/staging
   --committed-only --json`): **medium** (`configuration_change: package.json`), `review_due: false`
   — `under_budget` (4 paths, 128 lines). No native review required for this work unit.
+- 2026-10-11 — **R-5/R-6 done:** `release/1.17.0` pushed; `main` FF `e87f5e1..70124c6`, `staging` FF
+  `7e44e7e..70124c6`; tag `v1.17.0` pushed. Publish run `38145755420` green; release verified
+  (1 release, 3 assets, `latest.yml` `1.17.0`).
