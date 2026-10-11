@@ -527,6 +527,8 @@ const en = {
       escHint: 'Press Esc to remove last entry',
       savedTitle: 'Entries saved successfully!',
       savedDesc: '{{count}} time entries registered.',
+      partialSavedTitle: 'Partial registration',
+      partialSavedDesc: '{{saved}} entries registered · {{kept}} kept as draft (incomplete rows).',
       saveErrorTitle: 'Error saving entries',
       saveErrorDesc: 'Please try again later.',
       lastRemoved: 'Last entry removed',

@@ -112,6 +112,21 @@ const getEntryMinutes = (entry?: WorkTimeEntry): number => {
 };
 
 /**
+ * Index of the first row with a validation error, or -1 when there is none.
+ *
+ * RHF's field-array error arrays are **sparse** (a hole for every valid row), so
+ * `Array.prototype.findIndex` would skip the holes and could never locate a
+ * valid row — iterate by index instead.
+ */
+const firstInvalidRowIndex = (entryErrors?: FieldErrors<WorkTimeEntry>[]): number => {
+  if (!Array.isArray(entryErrors)) return -1;
+  for (let i = 0; i < entryErrors.length; i++) {
+    if (entryErrors[i] !== undefined) return i;
+  }
+  return -1;
+};
+
+/**
  * Map form entries to the payload accepted by the batch time-entry endpoint.
  */
 export function toTimeEntryInputs(entries: WorkTimeEntry[]): TimeEntryInput[] {
@@ -557,6 +572,12 @@ export default function WorkTimeForm() {
   // while the state drives the button's disabled/spinner UI.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+
+  // Bumped after a partial save so `TotalTimeDay` re-fetches the daily info even
+  // when the set of dates in the form is unchanged — the saved/draft split has
+  // still moved, so its cached totals would otherwise be stale.
+  const [summaryRefreshToken, setSummaryRefreshToken] = useState(0);
+  const bumpSummaryRefresh = useCallback(() => setSummaryRefreshToken((n) => n + 1), []);
 
   // Single pending-deletion state driving one reusable confirmation dialog for
   // every draft-entry removal (the per-row Trash2 control and the Esc shortcut).
@@ -1015,6 +1036,14 @@ export default function WorkTimeForm() {
   );
 
   useEffect(() => {
+    // `useWatch('entries')` can lag one commit behind a field-array mutation
+    // (RHF does not re-emit `values` for every array op), so the watched rows may
+    // briefly disagree with the live form values. Running the cascade against a
+    // stale array would `setValue` past the live row count and recreate a partial
+    // row, so only cascade once the watched rows match the authoritative values.
+    const liveEntries = getValues('entries');
+    if (!Array.isArray(liveEntries) || result.length !== liveEntries.length) return;
+
     result.forEach((entry, index) => {
       const prevEntry = previousValues.current[index];
 
@@ -1113,50 +1142,54 @@ export default function WorkTimeForm() {
         }
       }
     });
-  }, [result, setValue]);
+  }, [result, fields.length, setValue, getValues]);
 
-  const onSubmit = async (data: { entries: WorkTimeEntry[] }) => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
+  // Persist a set of rows. `entriesToSave` may be the whole form (full save) or
+  // just the valid leading prefix (partial save); `keptCount` decides which
+  // outcome applies. The overtime check and the toast are scoped to the rows
+  // being saved, not to every row currently in the form.
+  const persistEntries = async (entriesToSave: WorkTimeEntry[]) => {
+    const totalRows = getValues('entries').length;
+    const keptCount = totalRows - entriesToSave.length;
 
-    try {
-      // Group entries by date and validate against max hours
-      const entriesByDate: Record<string, number> = {};
-      for (const entry of data.entries) {
-        const startTime = entry.startTime[0];
-        const endTime = entry.endTime[0];
-        if (startTime && endTime) {
-          const durationMinutes =
-            endTime.getHours() * 60 + endTime.getMinutes() - (startTime.getHours() * 60 + startTime.getMinutes());
-          entriesByDate[entry.date] = (entriesByDate[entry.date] || 0) + durationMinutes;
-        }
+    // Group entries by date and validate against max hours
+    const entriesByDate: Record<string, number> = {};
+    for (const entry of entriesToSave) {
+      const startTime = entry.startTime[0];
+      const endTime = entry.endTime[0];
+      if (startTime && endTime) {
+        const durationMinutes =
+          endTime.getHours() * 60 + endTime.getMinutes() - (startTime.getHours() * 60 + startTime.getMinutes());
+        entriesByDate[entry.date] = (entriesByDate[entry.date] || 0) + durationMinutes;
       }
+    }
 
-      // Check each date for over-limit
-      for (const [date, draftMinutes] of Object.entries(entriesByDate)) {
-        const dailyInfo = await getDailyTimeInfo(date);
-        const totalAfterSave = dailyInfo.totalMinutes + draftMinutes;
+    // Check each date for over-limit
+    for (const [date, draftMinutes] of Object.entries(entriesByDate)) {
+      const dailyInfo = await getDailyTimeInfo(date);
+      const totalAfterSave = dailyInfo.totalMinutes + draftMinutes;
 
-        if (totalAfterSave > dailyInfo.maxMinutes && dailyInfo.maxMinutes > 0) {
-          const overMinutes = totalAfterSave - dailyInfo.maxMinutes;
-          const overHours = Math.floor(overMinutes / 60);
-          const overMins = overMinutes % 60;
+      if (totalAfterSave > dailyInfo.maxMinutes && dailyInfo.maxMinutes > 0) {
+        const overMinutes = totalAfterSave - dailyInfo.maxMinutes;
+        const overHours = Math.floor(overMinutes / 60);
+        const overMins = overMinutes % 60;
 
-          toast.warning(t('workTimeForm.overtimeTitle', { date }), {
-            description: t('workTimeForm.overtimeDesc', {
-              overH: overHours,
-              overM: overMins,
-              maxH: dailyInfo.maxMinutes / 60
-            })
-          });
-        }
+        toast.warning(t('workTimeForm.overtimeTitle', { date }), {
+          description: t('workTimeForm.overtimeDesc', {
+            overH: overHours,
+            overM: overMins,
+            maxH: dailyInfo.maxMinutes / 60
+          })
+        });
       }
+    }
 
-      await saveWorkTimeEntries(data.entries, queryClient);
+    await saveWorkTimeEntries(entriesToSave, queryClient);
 
+    if (keptCount <= 0) {
+      // Full save: reset to a fresh slot, exactly as before.
       toast.success(t('workTimeForm.savedTitle'), {
-        description: t('workTimeForm.savedDesc', { count: data.entries.length })
+        description: t('workTimeForm.savedDesc', { count: entriesToSave.length })
       });
       await clearWorkTimeDraft();
       localStorage.removeItem('workTimeFormEntries');
@@ -1168,6 +1201,64 @@ export default function WorkTimeForm() {
       } catch {
         reset({ entries: [defaultValue] });
       }
+      return;
+    }
+
+    // Partial save: the trailing rows stay in the form as draft.
+    toast.success(t('workTimeForm.partialSavedTitle'), {
+      description: t('workTimeForm.partialSavedDesc', {
+        saved: entriesToSave.length,
+        kept: keptCount
+      })
+    });
+
+    // Re-index the cascade tracker BEFORE removing the saved rows, so the
+    // remaining rows keep their tracked start/hours and the cascade effect sees
+    // no change (AC3).
+    previousValues.current = previousValues.current.slice(entriesToSave.length);
+
+    // Remap the running timer (AC4): clear it when its row was saved, otherwise
+    // shift the index down by the number of removed rows.
+    if (activeTimerRef.current) {
+      const timerIdx = activeTimerRef.current.index;
+      if (timerIdx < entriesToSave.length) {
+        setActiveTimer(null);
+        setTimerElapsedMinutes(0);
+        localStorage.removeItem('wt_activeTimer');
+      } else {
+        const newIdx = timerIdx - entriesToSave.length;
+        setActiveTimer({ index: newIdx, startedAt: activeTimerRef.current.startedAt });
+        localStorage.setItem(
+          'wt_activeTimer',
+          JSON.stringify({ index: newIdx, startedAt: activeTimerRef.current.startedAt.toISOString() })
+        );
+      }
+    }
+
+    // Drop the saved rows from the form and re-seed the remaining ones as draft.
+    //
+    // `useFieldArray.remove` updates the rendered row list but does NOT re-emit
+    // form `values`, so a `useWatch('entries')` consumer (the time cascade, the
+    // autosave draft, `TotalTimeDay`) would keep seeing the already-saved rows —
+    // and the cascade could `setValue` past the shrunk array, recreating a partial
+    // row. `reset` drops the rows and re-emits the values, keeping all consumers
+    // in sync. `previousValues` was re-indexed above so the surviving rows keep
+    // their tracked times and the cascade does not re-shift them.
+    reset({ entries: getValues('entries').slice(entriesToSave.length) }, { keepDefaultValues: true });
+
+    // Deliberately do NOT clear the draft here (AC5): the autosave effect persists
+    // the remaining rows.
+    bumpSummaryRefresh();
+  };
+
+  // Runs a persistence task behind the synchronous re-entry guard so a click and
+  // the Ctrl+S form submit cannot both start a save (UX-401).
+  const runSubmit = async (fn: () => Promise<void>) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await fn();
     } catch (error) {
       console.error('Error saving entries:', error);
       toast.error(t('workTimeForm.saveErrorTitle'), {
@@ -1178,6 +1269,19 @@ export default function WorkTimeForm() {
       setIsSubmitting(false);
     }
   };
+
+  const onValid = (data: { entries: WorkTimeEntry[] }) => runSubmit(() => persistEntries(data.entries));
+
+  const onInvalid = (formErrors: FieldErrors<{ entries: WorkTimeEntry[] }>) => {
+    const values = getValues('entries');
+    const firstInvalid = firstInvalidRowIndex(formErrors.entries as FieldErrors<WorkTimeEntry>[] | undefined);
+    const validCount = firstInvalid === -1 ? values.length : firstInvalid;
+    // Nothing valid to persist: RHF already renders the row errors (AC6).
+    if (validCount === 0) return;
+    return runSubmit(() => persistEntries(values.slice(0, validCount)));
+  };
+
+  const submitForm = handleSubmit(onValid, onInvalid);
 
   const handleAddEntry = async () => {
     const entries = getValues('entries');
@@ -1376,10 +1480,10 @@ export default function WorkTimeForm() {
           <h1 className="text-2xl font-bold tracking-tight">{t('workTimeForm.title')}</h1>
           <p className="text-muted-foreground">{t('workTimeForm.subtitle')}</p>
         </div>
-        <TotalTimeDay control={typedControl} />
+        <TotalTimeDay control={typedControl} refreshToken={summaryRefreshToken} />
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-1">
+      <form ref={formRef} onSubmit={submitForm} className="space-y-1">
         {fields.flatMap((field, index) => [
           <InsertDivider
             key={`insert-${index}`}
