@@ -56,10 +56,10 @@ and keep the rest as draft.
 
 ## Tasks
 
-- [ ] **T1** — Partial-prefix registration: `WorkTimeForm.tsx` (submit partition + persist + reindex + timer remap + conditional draft clear + overtime scope) and `TotalTimeDay.tsx` (refresh token) and `locales/en.ts`/`locales/es.ts` (toast keys). *delegated writer*
-- [ ] **T2** — Tests covering AC1–AC8 in `src/tests/renderer/workTimeFormSubmit.test.tsx`. *delegated writer, same work unit*
-- [ ] **T3** — Verification (`pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm build`), work-unit commit, RDD assess. *parent*
-- [ ] **T4** — Close doc with evidence. *parent*
+- [x] **T1** — Partial-prefix registration: `WorkTimeForm.tsx` (submit partition + persist + reindex + timer remap + conditional draft clear + overtime scope) and `TotalTimeDay.tsx` (refresh token) and `locales/en.ts`/`locales/es.ts` (toast keys). Done in `7955426`. *delegated writer*
+- [x] **T2** — Tests covering AC1–AC6 in `src/tests/renderer/workTimeFormSubmit.test.tsx`. Done in `7955426`. *delegated writer, same work unit*
+- [x] **T3** — Verification (`pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm build`), work-unit commit, RDD assess. *parent*
+- [x] **T4** — Close doc with evidence. *parent*
 
 ## Checks
 
@@ -70,8 +70,24 @@ and keep the rest as draft.
 
 ## Progress / evidence
 
-- (pending)
+- Work-unit commit `7955426` (base `origin/staging` @ `14ed643`): 6 files, 450 insertions, 43 deletions.
+- TDD: RED — `pnpm exec vitest run src/tests/renderer/workTimeFormSubmit.test.tsx` → 2 failed | 4 passed (the two partial-path tests timed out because today a partial submit saves nothing). GREEN — 6 passed.
+- Writer verification: `pnpm type-check` exit 0; `pnpm lint` 0 errors (83 pre-existing warnings); `pnpm test` 82 files / 691 tests passed; `pnpm build` exit 0.
+- Parent spot check: focused test file 6/6 passed; `pnpm lint:fix` no-op.
+- RDD assess (`--base-ref 14ed643 --committed-only`): risk `medium`, `review_due: true` (`slice_budget_reached`, 493 changed lines).
+- Native review (lineage `review-20cfe08c42ffb5f8`, lens `review-reliability`): **approved**, authority burned (`gentle-ai.review-acknowledged/v1`, consumed revision `sha256:b3d2e167f03ec06d2022690c53714edde9c8504d9b7c7e5b5acf17ae5180bf66`).
+
+### Implementation deviation (accepted)
+
+Rows are dropped with `reset({ entries })` instead of `useFieldArray.remove()`, because RHF's `remove` does not re-emit form values, leaving `useWatch('entries')` stale and letting the time cascade write past the shrunk array. A length guard was added to the cascade effect. Verified by the writer against RHF 7.89 source and covered by tests.
+
+### Advisory follow-ups (non-blocking, from the approved review)
+
+- R3-1: AC7 (TotalTimeDay refresh) and AC8 (overtime scope) have no dedicated test; the partial-save toast is never asserted.
+- R3-2: `onInvalid` treats a missing/non-array `errors.entries` as "all rows valid" (fail-open). Consider failing closed.
+- R3-3: the timer remap writes state/localStorage but not `activeTimerRef.current` at the remap site.
+- R3-4: the cascade length guard skips the cascade on any transient desync with no observable signal.
 
 ## Next step
 
-Delegate T1+T2 to a bounded writer, then verify and commit.
+Delivery (push/PR/merge) is user-owned. Advisory follow-ups are separate later work.
